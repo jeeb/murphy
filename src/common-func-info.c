@@ -19,11 +19,11 @@ static mrp_debug_info_t info_0[] = {
     { .line = 424, .func = "mrp_debug_dump_sites" },
     { .line = 432, .func = "mrp_debug_msg" },
     { .line = 445, .func = "mrp_debug_check" },
-    { .line = 515, .func = "mrp_debug_register_file" },
-    { .line = 523, .func = "mrp_debug_unregister_file" },
-    { .line = 534, .func = "mrp_debug_site_function" },
-    { .line = 563, .func = "populate_file_table" },
-    { .line = 587, .func = "flush_file_table" },
+    { .line = 518, .func = "mrp_debug_register_file" },
+    { .line = 526, .func = "mrp_debug_unregister_file" },
+    { .line = 537, .func = "mrp_debug_site_function" },
+    { .line = 566, .func = "populate_file_table" },
+    { .line = 590, .func = "flush_file_table" },
     { .line = 0, .func = NULL }
 };
 static mrp_debug_file_t file_0 = {
