@@ -1,3 +1,4 @@
+#include <murphy/common/macros.h>
 #include <murphy/core/plugin.h>
 #include <murphy/core/console.h>
 
@@ -82,7 +83,201 @@ void four_cb(mrp_console_t *c, void *user_data, int argc, char **argv)
     }
 }
 
+MRP_EXPORTABLE(static char *, method1, (int arg1, char *arg2, double arg3))
+{
+    MRP_UNUSED(arg1);
+    MRP_UNUSED(arg2);
+    MRP_UNUSED(arg3);
 
+    mrp_log_info("%s()...", __FUNCTION__);
+
+    return "method1 was here...";
+}
+
+static int boilerplate1(mrp_plugin_t *plugin,
+                        const char *name, mrp_script_env_t *env)
+{
+    MRP_UNUSED(plugin);
+    MRP_UNUSED(name);
+    MRP_UNUSED(env);
+
+    return -1;
+}
+
+MRP_EXPORTABLE(static int,  method2, (char *arg1, double arg2, int arg3))
+{
+    MRP_UNUSED(arg1);
+    MRP_UNUSED(arg2);
+    MRP_UNUSED(arg3);
+
+    mrp_log_info("%s()...", __FUNCTION__);
+
+    return 313;
+}
+
+static int boilerplate2(mrp_plugin_t *plugin,
+                        const char *name, mrp_script_env_t *env)
+{
+    MRP_UNUSED(plugin);
+    MRP_UNUSED(name);
+    MRP_UNUSED(env);
+
+    return -1;
+}
+
+
+MRP_IMPORTABLE(char *, method1ptr, (int arg1, char *arg2, double arg3));
+MRP_IMPORTABLE(int, method2ptr, (char *arg1, double arg2, int arg3));
+
+
+#if 0
+static int export_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t methods[] = {
+        { "method1", "char *(int arg1, char *arg2, double arg3)",
+          method1, boilerplate1, plugin },
+        { "method2", "int (char *arg1, double arg2, int arg3)",
+          method2, boilerplate2, plugin },
+        { NULL, NULL, NULL, NULL, NULL }
+    };
+    mrp_method_descr_t *m;
+
+    for (m = methods; m->name != NULL; m++)
+        if (mrp_export_method(m) < 0)
+            return FALSE;
+        else
+            mrp_log_info("Successfully exported method '%s'...", m->name);
+
+    return TRUE;
+}
+
+
+static int remove_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t methods[] = {
+        { "method1", "char *(int arg1, char *arg2, double arg3)",
+          method1, boilerplate1, plugin },
+        { "method2", "int (char *arg1, double arg2, int arg3)",
+          method2, boilerplate2, plugin },
+        { NULL, NULL, NULL, NULL, NULL }
+    };
+    mrp_method_descr_t *m;
+
+    for (m = methods; m->name != NULL; m++)
+        if (mrp_remove_method(m) < 0)
+            mrp_log_info("Failed to remove method '%s'...", m->name);
+        else
+            mrp_log_info("Failed to remove method '%s'...", m->name);
+
+    return TRUE;
+}
+
+
+static int import_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t methods[] = {
+        { "method1", "char *(int arg1, char *arg2, double arg3)",
+          method1, boilerplate1, plugin },
+        { "method2", "int (char *arg1, double arg2, int arg3)",
+          method2, boilerplate2, plugin },
+        { NULL, NULL, NULL, NULL, NULL }
+    };
+
+    void *native_check[] = { method1, method2 };
+    void *script_check[] = { boilerplate1, boilerplate2 };
+    int   i;
+
+    mrp_method_descr_t *m;
+
+    const char    *name, *sig;
+    char           buf[512];
+    void          *native;
+    int          (*script)(mrp_plugin_t *, const char *, mrp_script_env_t *);
+
+    for (i = 0, m = methods; m->name != NULL; i++, m++) {
+        name = m->name;
+        sig  = m->signature;
+
+        if (mrp_import_method(name, sig, &native, &script) < 0)
+            return FALSE;
+
+        if (native != native_check[i] || script != script_check[i])
+            return FALSE;
+
+        mrp_log_info("%s imported as %p, %p...", name, native, script);
+
+        snprintf(buf, sizeof(buf), "%s.%s", plugin->instance, m->name);
+        name = buf;
+
+        if (mrp_import_method(name, sig, &native, &script) < 0)
+            return FALSE;
+
+        if (native != native_check[i] || script != script_check[i])
+            return FALSE;
+
+        mrp_log_info("%s imported as %p, %p...", name, native, script);
+    }
+
+    return TRUE;
+}
+
+
+static int release_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t methods[] = {
+        { "method1", "char *(int arg1, char *arg2, double arg3)",
+          method1, boilerplate1, plugin },
+        { "method2", "int (char *arg1, double arg2, int arg3)",
+          method2, boilerplate2, plugin },
+        { NULL, NULL, NULL, NULL, NULL }
+    };
+    const char *name, *sig;
+    char        buf[512];
+    mrp_method_descr_t *m;
+    void *native, *natives[] = { method1     , method2      };
+    int (*script)(mrp_plugin_t *, const char *, mrp_script_env_t *);
+    void *scripts[] = { boilerplate1, boilerplate2 };
+    int   i;
+
+    for (i = 0, m = methods; m->name != NULL; i++, m++) {
+        name   = m->name;
+        sig    = m->signature;
+        native = natives[i];
+        script = scripts[i];
+
+        if (mrp_release_method(name, sig, &native, &script) < 0)
+            mrp_log_error("Failed to release method '%s'...", name);
+        else
+            mrp_log_info("Successfully released method '%s'...", name);
+
+        snprintf(buf, sizeof(buf), "%s.%s", plugin->instance, m->name);
+        name   = buf;
+        native = natives[i];
+        script = scripts[i];
+
+        if (mrp_release_method(name, sig, &native, &script) < 0)
+            mrp_log_error("Failed to release method '%s'...", name);
+        else
+            mrp_log_info("Successfully released method '%s'...", name);
+    }
+
+    return TRUE;
+}
+
+#endif
+
+int test_imports(void)
+{
+    if (method1ptr == NULL || method2ptr == NULL) {
+        mrp_log_error("Failed to import methods...");
+        return FALSE;
+    }
+
+    mrp_log_info("method1ptr returned '%s'...", method1ptr(1, "foo", 3.141));
+    mrp_log_info("method2ptr returned '%d'...", method2ptr("bar", 9.81, 2));
+
+    return TRUE;
+}
 
 
 static int test_init(mrp_plugin_t *plugin)
@@ -103,6 +298,17 @@ static int test_init(mrp_plugin_t *plugin)
     printf("init fail: %s\n", args[ARG_FAILINIT].bln ? "TRUE" : "FALSE");
     printf("exit fail: %s\n", args[ARG_FAILEXIT].bln ? "TRUE" : "FALSE");
 
+#if 0
+    if (!export_methods(plugin))
+        return FALSE;
+
+    if (!import_methods(plugin))
+        return FALSE;
+#endif
+
+    test_imports();
+
+
     return !args[ARG_FAILINIT].bln;
 }
 
@@ -111,6 +317,11 @@ static void test_exit(mrp_plugin_t *plugin)
 {
     mrp_log_info("%s() called for test instance '%s'...", __FUNCTION__,
                  plugin->instance);
+
+#if 0
+    release_methods(plugin);
+    remove_methods(plugin);
+#endif
 
     /*return !args[ARG_FAILINIT].bln;*/
 }
@@ -133,6 +344,21 @@ static mrp_plugin_arg_t args[] = {
     MRP_PLUGIN_ARGIDX(ARG_FAILEXIT, BOOL  , "failexit", FALSE            ),
 };
 
+static mrp_method_descr_t exports[] = {
+    MRP_GENERIC_METHOD("method1", method1, boilerplate1),
+    MRP_GENERIC_METHOD("method2", method2, boilerplate2),
+};
+
+static mrp_method_descr_t imports[] = {
+    MRP_IMPORT_METHOD("method1", method1ptr),
+    MRP_IMPORT_METHOD("method2", method2ptr),
+};
+
+
 MURPHY_REGISTER_PLUGIN("test",
                        TEST_VERSION, TEST_DESCRIPTION, TEST_AUTHORS, TEST_HELP,
-                       MRP_MULTIPLE, test_init, test_exit, args, &test_group);
+                       MRP_MULTIPLE, test_init, test_exit,
+                       args, MRP_ARRAY_SIZE(args),
+                       exports, MRP_ARRAY_SIZE(exports),
+                       imports, MRP_ARRAY_SIZE(imports),
+                       &test_group);
