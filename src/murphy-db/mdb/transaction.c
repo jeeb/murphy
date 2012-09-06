@@ -50,6 +50,7 @@ static int destroy_row(mdb_table_t *, mdb_row_t *);
 static int remove_row(mdb_table_t *, mdb_row_t *);
 static int add_row(mdb_table_t *, mdb_row_t *);
 static int copy_row(mdb_table_t *, mdb_row_t *, mdb_row_t *);
+static int restore_stamp(mdb_table_t *, uint32_t);
 
 
 uint32_t mdb_transaction_begin(void)
@@ -103,6 +104,10 @@ int mdb_transaction_commit(uint32_t depth)
             s = destroy_row(en->table, en->before);
             break;
 
+        case mdb_log_stamp:
+            s = 0;
+            break;
+
         default:
             s = -1;
             break;
@@ -114,6 +119,8 @@ int mdb_transaction_commit(uint32_t depth)
 
     if (start_triggered)
         mdb_trigger_transaction_end();
+
+    txdepth--;
 
     return sts;
 
@@ -138,12 +145,15 @@ int mdb_transaction_rollback(uint32_t depth)
         case mdb_log_insert:  s = remove_row(tbl, en->after);            break;
         case mdb_log_delete:  s = add_row(tbl, en->before);              break;
         case mdb_log_update:  s = copy_row(tbl, en->after, en->before);  break;
+        case mdb_log_stamp:   s = restore_stamp(tbl, en->stamp);         break;
         default:              s = -1;                                    break;
         }
 
         if (sts == 0)
             sts = s;
     }
+
+    txdepth--;
 
     return sts;
 }
@@ -163,6 +173,7 @@ int mdb_transaction_drop_table(mdb_table_t *tbl)
         case mdb_log_insert:  s = 0;                                     break;
         case mdb_log_delete:
         case mdb_log_update:  s = destroy_row(en->table, en->before);    break;
+        case mdb_log_stamp:   s = 0;                                     break;
         default:              s = -1;                                    break;
         }
 
@@ -221,6 +232,13 @@ static int copy_row(mdb_table_t *tbl, mdb_row_t *dst, mdb_row_t *src)
     return 0;
 }
 
+
+static int restore_stamp(mdb_table_t *tbl, uint32_t stamp)
+{
+    tbl->stamp = stamp;
+
+    return 0;
+}
 
 /*
  * Local Variables:

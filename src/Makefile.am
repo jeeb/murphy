@@ -1,4 +1,5 @@
-SUBDIRS         = . murphy-db common/tests core/tests daemon/tests
+SUBDIRS         = . murphy-db \
+		  common/tests core/tests daemon/tests resolver/tests
 AM_CFLAGS       = $(WARNING_CFLAGS) -I$(top_builddir) -DLIBDIR=\"@LIBDIR@\"
 MURPHY_CFLAGS   = 
 pkgconfigdir    = ${libdir}/pkgconfig
@@ -9,6 +10,10 @@ pkgconfig_DATA  =
 EXTRA_DIST      =
 
 QUIET_GEN       = $(Q:@=@echo '  GEN   '$@;)
+
+LEXCOMPILE      = $(LEX) $(LFLAGS) $(AM_LFLAGS)
+YACCCOMPILE     = $(YACC) $(YFLAGS) $(AM_YFLAGS)
+
 
 ###################################
 # murphy common library
@@ -102,19 +107,25 @@ libmurphy_coreh_ladir      =		\
 libmurphy_coreh_la_HEADERS =		\
 		core.h
 
-libmurphy_core_ladir      =		\
+libmurphy_core_ladir =			\
 		$(includedir)/murphy/core
 
 libmurphy_core_la_HEADERS =		\
 		core/context.h		\
 		core/plugin.h		\
 		core/console-command.h	\
-		core/console.h
+		core/console.h		\
+		core/scripting.h	\
+		core/method.h		\
+		core/event.h
 
 libmurphy_core_la_REGULAR_SOURCES =	\
 		core/context.c		\
 		core/plugin.c		\
-		core/console.c
+		core/console.c		\
+		core/scripting.c	\
+		core/method.c		\
+		core/event.c
 
 libmurphy_core_la_SOURCES =		\
 		$(libmurphy_core_la_REGULAR_SOURCES) \
@@ -244,6 +255,100 @@ clean-linker-script::
 endif
 
 ###################################
+# murphy resolver library
+#
+
+lib_LTLIBRARIES += libmurphy-resolver.la
+EXTRA_DIST      += resolver/murphy-resolver.pc
+pkgconfig_DATA  += resolver/murphy-resolver.pc
+
+libmurphy_resolver_ladir =			\
+		$(includedir)/murphy/resolver
+
+libmurphy_resolver_la_HEADERS =			\
+		resolver/resolver.h
+
+SIMPLE_SCRIPT_SOURCES = 					\
+		resolver/scripting/simple/simple-script.c	\
+		resolver/scripting/simple/simple-scanner.c	\
+		resolver/scripting/simple/simple-parser.c	\
+		resolver/scripting/simple/call.c                \
+		resolver/scripting/simple/builtins.c
+
+libmurphy_resolver_la_REGULAR_SOURCES =				\
+		resolver/resolver.c				\
+		resolver/parser.c				\
+		resolver/scanner.c      			\
+		resolver/target.c				\
+		resolver/target-sorter.c			\
+		resolver/db.c					\
+		resolver/fact.c					\
+		$(SIMPLE_SCRIPT_SOURCES)
+
+libmurphy_resolver_la_SOURCES =			\
+		$(libmurphy_resolver_la_REGULAR_SOURCES)	\
+		resolver-func-info.c
+
+libmurphy_resolver_la_CFLAGS =			\
+		$(AM_CFLAGS)
+
+libmurphy_resolver_la_LDFLAGS =			\
+		-Wl,-version-script=linker-script.resolver \
+		-version-info @MURPHY_VERSION_INFO@
+
+libmurphy_resolver_la_LIBADD =	    \
+		libmurphy-core.la   \
+		libmurphy-common.la
+
+libmurphy_resolver_la_DEPENDENCIES = linker-script.resolver \
+				     libmurphy-core.la      \
+				     libmurphy-common.la
+
+# resolver lexical analyser and parser generation
+RESOLVER_PARSER_PREFIX = yy_res_
+
+resolver/scanner.c: resolver/scanner.l resolver/parser.h
+	$(LEXCOMPILE) -P $(RESOLVER_PARSER_PREFIX) $<
+	mv lex.$(RESOLVER_PARSER_PREFIX).c $@
+
+resolver/parser.h resolver/parser.c: resolver/parser.y
+	$(YACCCOMPILE) -p $(RESOLVER_PARSER_PREFIX) $<
+	mv -f y.tab.h resolver/parser.h
+	mv -f y.tab.c resolver/parser.c
+
+# debug file:line-function mapping generation
+resolver-func-info.c: $(libmurphy_resolver_la_REGULAR_SOURCES)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-debug-table -o $@ $^
+
+clean-func-infos::
+	-rm resolver-func-info.c
+
+# resolver linker script generation
+linker-script.resolver: $(libmurphy_resolver_la_HEADERS)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linker-script -q -o $@ $^
+
+clean-linker-script::
+	-rm -f linker-script.resolver
+
+# simple interpreter lexical analyser and parser generation
+SIMPLE_PARSER_PREFIX = yy_smpl_
+
+resolver/scripting/simple/simple-scanner.c:		\
+    resolver/scripting/simple/simple-scanner.l		\
+    resolver/scripting/simple/simple-parser.h
+	$(LEXCOMPILE) -P $(SIMPLE_PARSER_PREFIX) $<
+	mv lex.$(SIMPLE_PARSER_PREFIX).c $@
+
+# simple interpreter parser generation
+resolver/scripting/simple/simple-parser.h 	\
+resolver/scripting/simple/simple-parser.c:	\
+    resolver/scripting/simple/simple-parser.y
+	$(YACCCOMPILE) -p $(SIMPLE_PARSER_PREFIX) $<
+	mv -f y.tab.h resolver/scripting/simple/simple-parser.h
+	mv -f y.tab.c resolver/scripting/simple/simple-parser.c
+
+
+###################################
 # murphy plugins
 #
 
@@ -348,6 +453,7 @@ clean-func-infos::
 	-rm plugin-console-func-info.c
 endif
 
+
 ###################################
 # murphy daemon
 #
@@ -367,6 +473,7 @@ murphyd_CFLAGS  =			\
 		$(BUILTIN_CFLAGS)
 
 murphyd_LDADD  =			\
+		libmurphy-resolver.la	\
 		libmurphy-core.la	\
 		libmurphy-common.la	\
 		$(BUILTIN_LIBS)

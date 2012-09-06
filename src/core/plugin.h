@@ -37,14 +37,39 @@
 #include <murphy/common/mm.h>
 #include <murphy/common/log.h>
 #include <murphy/common/list.h>
+#include <murphy/common/refcnt.h>
 #include <murphy/core/context.h>
 #include <murphy/core/console-command.h>
+
+typedef struct mrp_plugin_s mrp_plugin_t;
+
+#include <murphy/core/method.h>
 
 #ifndef MRP_DEFAULT_PLUGIN_DIR
 #    define MRP_DEFAULT_PLUGIN_DIR LIBDIR"/murphy/plugins"
 #endif
 
 #define MRP_PLUGIN_DESCRIPTOR "mrp_get_plugin_descriptor"
+
+
+/*
+ * names of plugin-related events we emit
+ */
+
+#define MRP_PLUGIN_EVENT_LOADED   "plugin-loaded"
+#define MRP_PLUGIN_EVENT_STARTED  "plugin-started"
+#define MRP_PLUGIN_EVENT_FAILED   "plugin-failed"
+#define MRP_PLUGIN_EVENT_STOPPING "plugin-stopping"
+#define MRP_PLUGIN_EVENT_STOPPED  "plugin-stopped"
+#define MRP_PLUGIN_EVENT_UNLOADED "plugin-unloaded"
+
+
+/*
+ * event message data tags
+ */
+
+#define MRP_PLUGIN_TAG_PLUGIN     ((uint16_t)1)  /* plugin name string */
+#define MRP_PLUGIN_TAG_INSTANCE   ((uint16_t)2)  /* plugin instance string */
 
 
 /*
@@ -174,8 +199,6 @@ typedef struct {
  */
 
 
-typedef struct mrp_plugin_s mrp_plugin_t;
-
 typedef int  (*mrp_plugin_init_t)(mrp_plugin_t *);
 typedef void (*mrp_plugin_exit_t)(mrp_plugin_t *);
 
@@ -199,6 +222,10 @@ typedef struct {
     const char          *authors;              /* plugin authors */
     const char          *help;                 /* plugin help string */
     mrp_console_group_t *cmds;                 /* default console commands */
+    mrp_method_descr_t  *exports;              /* exported methods */
+    int                  nexport;              /* number of exported methods */
+    mrp_method_descr_t  *imports;              /* imported methods */
+    int                  nimport;              /* number of imported methods */
 } mrp_plugin_descr_t;
 
 
@@ -220,7 +247,7 @@ struct mrp_plugin_s {
     mrp_plugin_descr_t  *descriptor;           /* plugin descriptor */
     void                *handle;               /* DSO handle */
     mrp_plugin_state_t   state;                /* plugin state */
-    int                  refcnt;               /* reference count */
+    mrp_refcnt_t         refcnt;               /* reference count */
     void                *data;                 /* private plugin data */
     mrp_plugin_arg_t    *args;                 /* plugin arguments */
     mrp_console_group_t *cmds;                 /* default console commands */
@@ -240,7 +267,13 @@ struct mrp_plugin_s {
                                      _init,                               \
                                      _exit,                               \
                                      _args,                               \
+                                     _narg,                               \
+                                     _exports,                            \
+                                     _nexport,                            \
+                                     _imports,                            \
+                                     _nimport,                            \
                                      _cmds)                               \
+                                                                          \
     static void register_plugin(void) __attribute__((constructor));       \
                                                                           \
     static void register_plugin(void) {                                   \
@@ -258,8 +291,12 @@ struct mrp_plugin_s {
             .singleton   = _single,                                       \
             .ninstance   = 0,                                             \
             .args        = _args,                                         \
-            .narg        = MRP_ARRAY_SIZE(_args),                         \
-            .cmds = _cmds,                                                \
+            .narg        = _narg,                                         \
+            .cmds        = _cmds,                                         \
+            .exports     = _exports,                                      \
+            .nexport     = _nexport,                                      \
+            .imports     = _imports,                                      \
+            .nimport     = _nimport,                                      \
         };                                                                \
                                                                           \
         if ((base = strrchr(path, '/')) != NULL)                          \
@@ -281,6 +318,11 @@ struct mrp_plugin_s {
                                      _init,                               \
                                      _exit,                               \
                                      _args,                               \
+                                     _narg,                               \
+                                     _exports,                            \
+                                     _nexport,                            \
+                                     _imports,                            \
+                                     _nimport,                            \
                                      _cmds)                               \
                                                                           \
     mrp_plugin_descr_t *mrp_get_plugin_descriptor(void) {                 \
@@ -297,8 +339,12 @@ struct mrp_plugin_s {
             .singleton   = _single,                                       \
             .ninstance   = 0,                                             \
             .args        = _args,                                         \
-            .narg        = MRP_ARRAY_SIZE(_args),                         \
+            .narg        = _narg,                                         \
             .cmds        = _cmds,                                         \
+            .exports     = _exports,                                      \
+            .nexport     = _nexport,                                      \
+            .imports     = _imports,                                      \
+            .nimport     = _nimport,                                      \
         };                                                                \
                                                                           \
         return &descriptor;                                               \
@@ -307,11 +353,27 @@ struct mrp_plugin_s {
 #endif
 
 
-#define MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, _s, _i, _e, _args, _c) \
-    __MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, FALSE, _s, _i, _e, _args, _c)
+#define MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, _s, _i, _e,          \
+                               _args, _narg,                            \
+                               _exports, _nexport,                      \
+                               _imports, _nimport,                      \
+                               _cmds)                                   \
+    __MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, FALSE, _s, _i, _e,     \
+                             _args, _narg,                              \
+                             _exports, _nexport,                        \
+                             _imports, _nimport,                        \
+                             _cmds)
 
-#define MURPHY_REGISTER_CORE_PLUGIN(_n, _v, _d, _a, _h, _s, _i, _e, _args, _c) \
-    __MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, TRUE, _s, _i, _e, _args, _c)
+#define MURPHY_REGISTER_CORE_PLUGIN(_n, _v, _d, _a, _h, _s, _i, _e,     \
+                                    _args, _narg,                       \
+                                    _exports, _nexport,                 \
+                                    _imports, _nimport,                 \
+                                    _cmds)                              \
+    __MURPHY_REGISTER_PLUGIN(_n, _v, _d, _a, _h, TRUE, _s, _i, _e,      \
+                             _args, _narg,                              \
+                             _exports, _nexport,                        \
+                             _imports, _nimport,                        \
+                             _cmds)
 
 #define MRP_REGISTER_PLUGIN MURPHY_REGISTER_PLUGIN
 #define MRP_REGISTER_CORE_PLUGIN MURPHY_REGISTER_CORE_PLUGIN
@@ -329,6 +391,17 @@ int mrp_start_plugin(mrp_plugin_t *plugin);
 int mrp_stop_plugin(mrp_plugin_t *plugin);
 int mrp_request_plugin(mrp_context_t *ctx, const char *name,
                        const char *instance);
+
+static inline mrp_plugin_t *mrp_ref_plugin(mrp_plugin_t *plugin)
+{
+    return mrp_ref_obj(plugin, refcnt);
+}
+
+
+static inline int mrp_unref_plugin(mrp_plugin_t *plugin)
+{
+    return mrp_unref_obj(plugin, refcnt);
+}
 
 
 #endif /* __MURPHY_PLUGIN_H__ */

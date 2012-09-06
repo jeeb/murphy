@@ -29,13 +29,16 @@
 
 #include <unistd.h>
 #include <errno.h>
+#include <stdarg.h>
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
 #include <murphy/common/list.h>
 #include <murphy/common/file-utils.h>
+#include <murphy/core/event.h>
 #include <murphy/core/plugin.h>
+
 
 #define PLUGIN_PREFIX "plugin-"
 
@@ -47,9 +50,56 @@ static mrp_plugin_t *find_plugin_instance(mrp_context_t *ctx,
 static int parse_plugin_args(mrp_plugin_t *plugin,
                              mrp_plugin_arg_t *argv, int argc);
 
+static int export_plugin_methods(mrp_plugin_t *plugin);
+static int remove_plugin_methods(mrp_plugin_t *plugin);
+static int import_plugin_methods(mrp_plugin_t *plugin);
+static int release_plugin_methods(mrp_plugin_t *plugin);
 
-static MRP_LIST_HOOK(builtin_plugins);    /* list of built-in plugins */
 
+/*
+ * list of built-in in plugins
+ *
+ * Descriptors of built-in plugins, ie. plugins that are linked to
+ * the daemon, get collected to this list during startup.
+ */
+
+static MRP_LIST_HOOK(builtin_plugins);
+
+
+/*
+ * plugin-related events
+ */
+
+enum {
+    PLUGIN_EVENT_LOADED = 0,             /* plugin has been loaded */
+    PLUGIN_EVENT_STARTED,                /* plugin has been started */
+    PLUGIN_EVENT_FAILED,                 /* plugin failed to start */
+    PLUGIN_EVENT_STOPPING,               /* plugin being stopped */
+    PLUGIN_EVENT_STOPPED,                /* plugin has been stopped */
+    PLUGIN_EVENT_UNLOADED,               /* plugin has been unloaded */
+    PLUGIN_EVENT_MAX,
+};
+
+
+MRP_REGISTER_EVENTS(events,
+                    { MRP_PLUGIN_EVENT_LOADED  , PLUGIN_EVENT_LOADED   },
+                    { MRP_PLUGIN_EVENT_STARTED , PLUGIN_EVENT_STARTED  },
+                    { MRP_PLUGIN_EVENT_FAILED  , PLUGIN_EVENT_FAILED   },
+                    { MRP_PLUGIN_EVENT_STOPPING, PLUGIN_EVENT_STOPPING },
+                    { MRP_PLUGIN_EVENT_STOPPED , PLUGIN_EVENT_STOPPED  },
+                    { MRP_PLUGIN_EVENT_UNLOADED, PLUGIN_EVENT_UNLOADED });
+
+
+static int emit_plugin_event(int idx, mrp_plugin_t *plugin)
+{
+    uint16_t name = MRP_PLUGIN_TAG_PLUGIN;
+    uint16_t inst = MRP_PLUGIN_TAG_INSTANCE;
+
+    return mrp_emit_event(events[idx].id,
+                          MRP_MSG_TAG_STRING(name, plugin->descriptor->name),
+                          MRP_MSG_TAG_STRING(inst, plugin->instance),
+                          MRP_MSG_END);
+}
 
 
 int mrp_register_builtin_plugin(mrp_plugin_descr_t *descriptor)
@@ -154,7 +204,7 @@ mrp_plugin_t *mrp_load_plugin(mrp_context_t *ctx, const char *name,
 
     if (dynamic != NULL) {
         if (builtin != NULL)
-                mrp_log_warning("Dynamic plugin '%s' shadows builtin plugin '%s'.",
+            mrp_log_warning("Dynamic plugin '%s' shadows builtin plugin '%s'.",
                             path, builtin->path);
         descr = dynamic;
     }
@@ -219,8 +269,9 @@ mrp_plugin_t *mrp_load_plugin(mrp_context_t *ctx, const char *name,
 
         plugin->ctx        = ctx;
         plugin->descriptor = descr;
-        plugin->refcnt     = 1;
         plugin->handle     = handle;
+
+        mrp_refcnt_init(&plugin->refcnt);
 
         if (!parse_plugin_args(plugin, args, narg))
             goto fail;
@@ -228,7 +279,12 @@ mrp_plugin_t *mrp_load_plugin(mrp_context_t *ctx, const char *name,
         if (plugin->cmds != NULL)
             mrp_console_add_group(plugin->ctx, plugin->cmds);
 
+        if (!export_plugin_methods(plugin))
+            goto fail;
+
         mrp_list_append(&ctx->plugins, &plugin->hook);
+
+        emit_plugin_event(PLUGIN_EVENT_LOADED, plugin);
 
         return plugin;
     }
@@ -325,6 +381,8 @@ int mrp_unload_plugin(mrp_plugin_t *plugin)
 
             plugin->descriptor->ninstance--;
 
+            emit_plugin_event(PLUGIN_EVENT_UNLOADED, plugin);
+
             if (plugin->handle != NULL)
                 dlclose(plugin->handle);
 
@@ -334,6 +392,9 @@ int mrp_unload_plugin(mrp_plugin_t *plugin)
                 mrp_free(plugin->cmds->name);
                 mrp_free(plugin->cmds);
             }
+
+            release_plugin_methods(plugin);
+            remove_plugin_methods(plugin);
 
             mrp_free(plugin->instance);
             mrp_free(plugin->path);
@@ -357,16 +418,28 @@ int mrp_start_plugins(mrp_context_t *ctx)
     mrp_list_foreach(&ctx->plugins, p, n) {
         plugin = mrp_list_entry(p, typeof(*plugin), hook);
 
+        if (!import_plugin_methods(plugin)) {
+            if (!plugin->may_fail)
+                return FALSE;
+            else
+                goto unload;
+        }
+
         if (!mrp_start_plugin(plugin)) {
             mrp_log_error("Failed to start plugin %s (%s).",
                           plugin->instance, plugin->descriptor->name);
 
-            if (!plugin->may_fail) {
+            emit_plugin_event(PLUGIN_EVENT_FAILED, plugin);
+
+            if (!plugin->may_fail)
                 return FALSE;
-            }
-            else
+            else {
+            unload:
                 mrp_unload_plugin(plugin);
+            }
         }
+        else
+            emit_plugin_event(PLUGIN_EVENT_STARTED, plugin);
     }
 
     return TRUE;
@@ -386,8 +459,10 @@ int mrp_stop_plugin(mrp_plugin_t *plugin)
 {
     if (plugin != NULL) {
         if (plugin->refcnt <= 1) {
+            emit_plugin_event(PLUGIN_EVENT_STOPPING, plugin);
             plugin->descriptor->exit(plugin);
             plugin->refcnt = 0;
+            emit_plugin_event(PLUGIN_EVENT_STOPPED, plugin);
 
             return TRUE;
         }
@@ -597,4 +672,78 @@ static int parse_plugin_args(mrp_plugin_t *plugin,
     }
 
     return TRUE;
+}
+
+
+static int export_plugin_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t *methods = plugin->descriptor->exports, *m;
+    int                 nmethod = plugin->descriptor->nexport, i;
+
+    for (i = 0, m = methods; i < nmethod; i++, m++) {
+        m->plugin = plugin;
+        if (mrp_export_method(m) != 0) {
+            mrp_log_error("Failed to export method %s from plugin %s.",
+                          m->name, plugin->instance);
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+
+static int remove_plugin_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t *methods = plugin->descriptor->exports, *m;
+    int                 nmethod = plugin->descriptor->nexport, i;
+    int                 success = TRUE;
+
+    for (i = 0, m = methods; i < nmethod; i++, m++) {
+        m->plugin = plugin;
+        if (mrp_remove_method(m) != 0) {
+            mrp_log_error("Failed to remove exported method %s of plugin %s.",
+                          m->name, plugin->instance);
+            success = FALSE;
+        }
+    }
+
+    return success;
+}
+
+
+static int import_plugin_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t *methods = plugin->descriptor->imports, *m;
+    int                 nmethod = plugin->descriptor->nimport, i;
+
+    for (i = 0, m = methods; i < nmethod; i++, m++) {
+        if (mrp_import_method(m->name, m->signature,
+                              (void **)m->native_ptr, NULL, NULL) != 0) {
+            mrp_log_error("Failed to import method %s (%s) for plugin %s.",
+                          m->name, m->signature, plugin->instance);
+            return FALSE;
+        }
+    }
+
+    return TRUE;
+}
+
+
+static int release_plugin_methods(mrp_plugin_t *plugin)
+{
+    mrp_method_descr_t *methods = plugin->descriptor->imports, *m;
+    int                 nmethod = plugin->descriptor->nimport, i;
+    int                 success = TRUE;
+
+    for (i = 0, m = methods; i < nmethod; i++, m++) {
+        if (mrp_release_method(m->name, m->signature,
+                               (void **)m->native_ptr, NULL) != 0) {
+            mrp_log_error("Failed to release imported method %s of plugin %s.",
+                          m->name, plugin->instance);
+            success = FALSE;
+        }
+    }
+
+    return success;
 }

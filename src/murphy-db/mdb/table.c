@@ -171,6 +171,7 @@ mdb_table_t *mdb_table_create(char *name,
 
     tbl->handle  = MQI_HANDLE_INVALID;
     tbl->name    = strdup(name);
+    tbl->stamp   = 1;
     tbl->chash   = chash;
     tbl->ncolumn = ncolumn;
     tbl->columns = columns;
@@ -479,6 +480,11 @@ int mdb_table_get_column_size(mdb_table_t *tbl, int colidx)
     return tbl->columns[colidx].length;
 }
 
+uint32_t mdb_table_get_stamp(mdb_table_t *tbl)
+{
+    return tbl->stamp;
+}
+
 int mdb_table_print_rows(mdb_table_t *tbl, char *buf, int len)
 {
     mdb_row_t *row;
@@ -579,6 +585,7 @@ static int table_print_info(mdb_table_t *tbl, char *buf, int len)
     *buf = '\0';
 
     PRINT("table name  : '%s'\n", tbl->name);
+    PRINT("table stamp : %u\n"  , tbl->stamp);
     PRINT("row length  : %d\n"  , tbl->dlgh);
     PRINT("no of column: %d\n"  , tbl->ncolumn);
     PRINT("    index name             type     offset length\n"
@@ -782,7 +789,7 @@ static int delete_conditional(mdb_table_t *tbl, mqi_cond_entry_t *cond)
 static int delete_all(mdb_table_t *tbl)
 {
     mdb_row_t *row, *n;
-    int        ndelete;
+    int        ndelete = 0;
 
     mdb_index_reset(tbl);
 

@@ -34,6 +34,8 @@
 
 #include <murphy/common/list.h>
 #include <murphy/common/mainloop.h>
+#include <murphy/resolver/resolver.h>
+
 
 typedef struct {
     /* logging settings, path configuration, etc. */
@@ -45,11 +47,14 @@ typedef struct {
     const char *plugin_dir;                /* plugin directory */
     bool        foreground;                /* whether to stay in foreground*/
 
+    char       *resolver_ruleset;          /* resolver ruleset file */
+
     /* actual runtime context data */
     mrp_mainloop_t  *ml;                   /* mainloop */
     mrp_list_hook_t  plugins;              /* list of loaded plugins */
     mrp_list_hook_t  cmd_groups;           /* console command groups */
     mrp_list_hook_t  consoles;             /* active consoles */
+    mrp_resolver_t  *r;                    /* resolver context */
 } mrp_context_t;
 
 /** Create a new murphy context. */
