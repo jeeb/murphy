@@ -181,7 +181,7 @@ static void config_set_defaults(mrp_context_t *ctx)
 }
 
 
-int mrp_parse_cmdline(mrp_context_t *ctx, int argc, char **argv)
+void mrp_parse_cmdline(mrp_context_t *ctx, int argc, char **argv)
 {
     #define OPTIONS "c:C:l:t:fP:a:vd:Dhq"
     struct option options[] = {
@@ -243,7 +243,6 @@ int mrp_parse_cmdline(mrp_context_t *ctx, int argc, char **argv)
 
         case 'd':
             ctx->log_mask |= MRP_LOG_MASK_DEBUG;
-            mrp_log_set_mask(ctx->log_mask);
             mrp_debug_set_config(optarg);
             mrp_debug_enable(TRUE);
             break;
@@ -272,8 +271,6 @@ int mrp_parse_cmdline(mrp_context_t *ctx, int argc, char **argv)
             print_usage(argv[0], EINVAL, "invalid option '%c'", opt);
         }
     }
-
-    return TRUE;
 }
 
 
