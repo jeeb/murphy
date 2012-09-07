@@ -27,10 +27,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
+
 #include <murphy/common/macros.h>
 #include <murphy/core/plugin.h>
 #include <murphy/core/console.h>
 #include <murphy/core/event.h>
+
+#include <murphy-db/mql.h>
+#include <murphy-db/mqi.h>
 
 
 typedef struct {
@@ -56,6 +61,8 @@ void one_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
 void two_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
 void three_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
 void four_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
+void db_script_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
+void db_cmd_cb(mrp_console_t *c, void *user_data, int argc, char **argv);
 
 MRP_CONSOLE_GROUP(test_group, "test", NULL, NULL, {
         MRP_TOKENIZED_CMD("one"  , one_cb  , TRUE,
@@ -65,7 +72,14 @@ MRP_CONSOLE_GROUP(test_group, "test", NULL, NULL, {
         MRP_TOKENIZED_CMD("three", three_cb, FALSE,
                           "three [args]", "command 3", "description 3"),
         MRP_TOKENIZED_CMD("four" , four_cb , TRUE,
-                          "four [args]", "command 4", "description 4")
+                          "four [args]", "command 4", "description 4"),
+
+        MRP_TOKENIZED_CMD("db-script" , db_script_cb , TRUE,
+                          "db-script <file>", "run DB script", "run DB script"),
+
+        MRP_TOKENIZED_CMD("db-cmd" , db_cmd_cb , TRUE,
+                          "db-cmd <DB command>", "run DB command", "run DB command"),
+
 });
 
 
@@ -119,6 +133,57 @@ void four_cb(mrp_console_t *c, void *user_data, int argc, char **argv)
         mrp_console_printf(c, "%s(): #%d: '%s'\n", __FUNCTION__, i, argv[i]);
     }
 }
+
+
+void db_script_cb(mrp_console_t *c, void *user_data, int argc, char **argv)
+{
+    mqi_handle_t tx;
+    int          i;
+
+    MRP_UNUSED(user_data);
+
+    tx = mqi_begin_transaction();
+    for (i = 2; i < argc; i++) {
+        tx = mqi_begin_transaction();
+        if (mql_exec_file(argv[i]) < 0)
+            mrp_console_printf(c, "failed to execute DB script: %s\n",
+                               strerror(errno));
+        else
+            mrp_console_printf(c, "DB script executed OK\n");
+        mqi_commit_transaction(tx);
+    }
+}
+
+
+void db_cmd_cb(mrp_console_t *c, void *user_data, int argc, char **argv)
+{
+    mql_result_t *r;
+    mqi_handle_t  tx;
+    char          buf[1024], *p;
+    int           i, n, l;
+
+    MRP_UNUSED(user_data);
+
+    p = buf;
+    n = sizeof(buf);
+
+    for (i = 2; i < argc; i++) {
+        l = snprintf(p, n, "%s ", argv[i]);
+        p += l;
+        n -= l;
+
+        tx = mqi_begin_transaction();
+        r = mql_exec_string(mql_result_string, buf);
+
+        if (!mql_result_is_success(r))
+            mrp_console_printf(c, "failed to execute DB command '%s'\n",
+                               buf);
+        else
+            mrp_console_printf(c, "DB command executed OK\n");
+        mqi_commit_transaction(tx);
+    }
+}
+
 
 MRP_EXPORTABLE(static char *, method1, (int arg1, char *arg2, double arg3))
 {
