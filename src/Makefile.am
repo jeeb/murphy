@@ -1,4 +1,4 @@
-SUBDIRS         = . murphy-db \
+SUBDIRS         = murphy-db . \
 		  common/tests core/tests daemon/tests resolver/tests
 AM_CFLAGS       = $(WARNING_CFLAGS) -I$(top_builddir) -DLIBDIR=\"@LIBDIR@\"
 MURPHY_CFLAGS   = 
@@ -14,6 +14,7 @@ QUIET_GEN       = $(Q:@=@echo '  GEN   '$@;)
 LEXCOMPILE      = $(LEX) $(LFLAGS) $(AM_LFLAGS)
 YACCCOMPILE     = $(YACC) $(YFLAGS) $(AM_YFLAGS)
 
+INCLUDES        = -Isrc/murphy-db/include
 
 ###################################
 # murphy common library
@@ -281,8 +282,8 @@ libmurphy_resolver_la_REGULAR_SOURCES =				\
 		resolver/scanner.c      			\
 		resolver/target.c				\
 		resolver/target-sorter.c			\
-		resolver/db.c					\
 		resolver/fact.c					\
+		resolver/events.c				\
 		$(SIMPLE_SCRIPT_SOURCES)
 
 libmurphy_resolver_la_SOURCES =			\
@@ -296,13 +297,19 @@ libmurphy_resolver_la_LDFLAGS =			\
 		-Wl,-version-script=linker-script.resolver \
 		-version-info @MURPHY_VERSION_INFO@
 
-libmurphy_resolver_la_LIBADD =	    \
-		libmurphy-core.la   \
-		libmurphy-common.la
+libmurphy_resolver_la_LIBADD =	    	\
+		libmurphy-core.la   	\
+		libmurphy-common.la 	\
+	        murphy-db/mql/libmql.la \
+		murphy-db/mqi/libmqi.la \
+		murphy-db/mdb/libmdb.la
 
-libmurphy_resolver_la_DEPENDENCIES = linker-script.resolver \
-				     libmurphy-core.la      \
-				     libmurphy-common.la
+libmurphy_resolver_la_DEPENDENCIES = linker-script.resolver  \
+				     libmurphy-core.la       \
+				     libmurphy-common.la     \
+				     murphy-db/mql/libmql.la \
+				     murphy-db/mqi/libmqi.la \
+				     murphy-db/mdb/libmdb.la
 
 # resolver lexical analyser and parser generation
 RESOLVER_PARSER_PREFIX = yy_res_
@@ -473,10 +480,10 @@ murphyd_CFLAGS  =			\
 		$(BUILTIN_CFLAGS)
 
 murphyd_LDADD  =			\
+		$(BUILTIN_LIBS)         \
 		libmurphy-resolver.la	\
 		libmurphy-core.la	\
-		libmurphy-common.la	\
-		$(BUILTIN_LIBS)
+		libmurphy-common.la
 
 murphyd_LDFLAGS = -rdynamic
 
