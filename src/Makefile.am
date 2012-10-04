@@ -62,8 +62,7 @@ libmurphy_common_la_REGULAR_SOURCES =		\
 		common/transport.c		\
 		common/stream-transport.c	\
 		common/internal-transport.c	\
-		common/dgram-transport.c	\
-		common/core-transport.c
+		common/dgram-transport.c
 
 libmurphy_common_la_SOURCES =				\
 		$(libmurphy_common_la_REGULAR_SOURCES)	\
@@ -408,6 +407,8 @@ BUILTIN_PLUGINS    =
 BUILTIN_CFLAGS     = -D__MURPHY_BUILTIN_PLUGIN__ $(AM_CFLAGS)
 BUILTIN_LIBS       =
 
+LINKEDIN_PLUGINS   =
+
 plugin_LTLIBRARIES = 
 plugindir          = $(libdir)/murphy/plugins
 
@@ -541,21 +542,60 @@ plugin_LTLIBRARIES    += plugin-signalling.la
 endif
 
 # decision plugin
-DECISION_PLUGIN_SOURCES = plugins/decision/plugin-decision.c \
-			  plugins/decision/pdp.c	     \
-			  plugins/decision/pep.c	     \
-			  plugins/decision/table.c	     \
-			  plugins/decision/transport.c       \
-			  plugins/decision/message.c
+DECISION_PLUGIN_SOURCES = plugins/decision-proto/plugin-decision.c \
+			  plugins/decision-proto/decision.c	     \
+			  plugins/decision-proto/proxy.c	     \
+			  plugins/decision-proto/table.c	     \
+			  plugins/decision-proto/message.c         \
+			  plugins/decision-proto/notify.c
 
 DECISION_PLUGIN_CFLAGS  =
 DECISION_PLUGIN_LIBS    =
 
 if !DISABLED_PLUGIN_DECISION
 if BUILTIN_PLUGIN_DECISION
-BUILTIN_PLUGINS += $(DECISION_PLUGIN_SOURCES)
-BUILTIN_CFLAGS  += $(DECISION_PLUGIN_CFLAGS)
-BUILTIN_LIBS    += $(DECISION_PLUGIN_LIBS)
+LINKEDIN_PLUGINS       += libmurphy-plugin-decision.la
+lib_LTLIBRARIES        += libmurphy-plugin-decision.la
+DECISION_PLUGIN_LOADER  = linkedin-decision-loader.c
+DECISION_PLUGIN_CFLAGS += $(BUILTIN_CFLAGS)
+
+
+libmurphy_plugin_decision_ladir =				\
+		$(includedir)/murphy/decision-proto
+
+libmurphy_plugin_decision_la_SOURCES =				\
+		$(DECISION_PLUGIN_SOURCES)			\
+		$(DECISION_PLUGIN_LOADER)
+
+libmurphy_plugin_decision_la_CFLAGS =				\
+		$(DECISION_PLUGIN_CFLAGS)			\
+		$(AM_CFLAGS)
+
+libmurphy_plugin_decision_la_LDFLAGS =				\
+		-Wl,-version-script=linker-script.decision	\
+		-version-info @MURPHY_VERSION_INFO@
+
+libmurphy_plugin_decision_la_LIBADD =		\
+		libmurphy-core.la   		\
+		libmurphy-common.la 		\
+		murphy-db/mql/libmql.la		\
+		murphy-db/mqi/libmqi.la		\
+		murphy-db/mdb/libmdb.la
+
+libmurphy_plugin_decision_la_DEPENDENCIES =	\
+		linker-script.decision		\
+		libmurphy-core.la		\
+		libmurphy-common.la		\
+		murphy-db/mql/libmql.la		\
+		murphy-db/mqi/libmqi.la		\
+		murphy-db/mdb/libmdb.la
+
+# linkedin decision plugin linker script generation
+linker-script.decision: $(DECISION_PLUGIN_LOADER:%.c=%.h)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linker-script -q -o $@ $^
+
+clean-linker-script::
+	-rm -f linker-script.decision
 else
 plugin_decision_la_SOURCES = $(DECISION_PLUGIN_SOURCES)
 plugin_decision_la_CFLAGS  = $(DECISION_PLUGIN_CFLAGS) \
@@ -566,28 +606,27 @@ plugin_decision_la_LIBADD  = $(DECISION_PLUGIN_LIBS)
 plugin_LTLIBRARIES    += plugin-decision.la
 endif
 
-lib_LTLIBRARIES   += libpep.la
-libpep_la_SOURCES  = plugins/decision/pep-client.c \
-		     plugins/decision/pep-db.c
-libpep_la_CFLAGS   =
-libpep_la_LIBADD   = libmurphy-common.la
+
+lib_LTLIBRARIES          += libmurphy-pep.la
+libmurphy_pep_la_SOURCES  = plugins/decision-proto/client.c \
+		            plugins/decision-proto/table-common.c  \
+			    plugins/decision-proto/message.c
+libmurphy_pep_la_CFLAGS   =
+libmurphy_pep_la_LIBADD   = libmurphy-common.la     \
+			    murphy-db/mql/libmql.la \
+			    murphy-db/mqi/libmqi.la \
+			    murphy-db/mdb/libmdb.la
+
 
 # enforcement point test client
-bin_PROGRAMS += test-ep test-pep
+bin_PROGRAMS += test-client
 
-test_ep_SOURCES = plugins/decision/test-ep.c
-test_ep_CFLAGS  = $(AM_CFLAGS)
-test_ep_LDADD   = libmurphy-core.la   \
-		  libmurphy-common.la \
-		  -lreadline
-
-test_pep_SOURCES = plugins/decision/test-pep.c
-test_pep_CFLAGS  = $(AM_CFLAGS)
-test_pep_LDADD   = libpep.la    \
-		   libmurphy-common.la \
-		  -lreadline
+test_client_SOURCES = plugins/decision-proto/test-client.c
+test_client_CFLAGS  = $(AM_CFLAGS)
+test_client_LDADD   = libmurphy-pep.la    \
+		      libmurphy-common.la \
+		      -lreadline
 endif
-
 
 ###################################
 # murphy daemon
@@ -601,7 +640,8 @@ config_DATA   = daemon/murphy.conf
 murphyd_SOURCES =			\
 		daemon/daemon.c		\
 		daemon/config.c		\
-		$(BUILTIN_PLUGINS)
+		$(BUILTIN_PLUGINS)	\
+		load-linkedin-plugins.c
 
 murphyd_CFLAGS  =			\
 		$(AM_CFLAGS)		\
@@ -609,11 +649,36 @@ murphyd_CFLAGS  =			\
 
 murphyd_LDADD  =			\
 		$(BUILTIN_LIBS)         \
+		$(LINKEDIN_PLUGINS)	\
 		libmurphy-resolver.la	\
 		libmurphy-core.la	\
 		libmurphy-common.la
 
 murphyd_LDFLAGS = -rdynamic
+
+
+
+###################################
+# linkedin (DSO) loader generation
+#
+
+linkedin-%-loader.c:
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linkedin-loader \
+	    -p $(shell echo $@ | \
+	        sed 's/linkedin-//g;s/-loader.c//g') -o $@
+
+linkedin-%-loader.h:
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linkedin-loader \
+	    -p $(shell echo $@ | \
+	        sed 's/linkedin-//g;s/-loader.h//g') -o $@
+
+load-linkedin-plugins.c:
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linkedin-loader \
+	    -o $@ $(shell echo $(LINKEDIN_PLUGINS) | \
+	             sed 's/.*-//g;s/\.[^\.]*$$//g')
+
+clean-local::
+	-rm -f linkedin-*-loader.[hc] load-linkedin-plugins.c
 
 ###################################
 # murphy console client
