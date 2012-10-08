@@ -702,6 +702,7 @@ plugin_decision_la_CFLAGS  = $(DECISION_PLUGIN_CFLAGS) \
 			     $(MURPHY_CFLAGS) $(AM_CFLAGS)
 plugin_decision_la_LDFLAGS = -module -avoid-version
 plugin_decision_la_LIBADD  = $(DECISION_PLUGIN_LIBS)
+plugin_LTLIBRARIES        += plugin-decision.la
 
 
 # decision/enforcement point client library
@@ -723,6 +724,7 @@ test_client_CFLAGS  = $(AM_CFLAGS)
 test_client_LDADD   = libmurphy-pep.la    \
 		      libmurphy-common.la \
 		      -lreadline
+endif
 endif
 
 ###################################
