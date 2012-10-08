@@ -336,7 +336,8 @@ libmurphy_resolver_la_SOURCES =			\
 		resolver-func-info.c
 
 libmurphy_resolver_la_CFLAGS =			\
-		$(AM_CFLAGS)
+		$(AM_CFLAGS)                    \
+		$(INCLUDES)
 
 libmurphy_resolver_la_LDFLAGS =			\
 		-Wl,-version-script=linker-script.resolver \
@@ -398,6 +399,68 @@ resolver/scripting/simple/simple-parser.c:	\
 	$(YACCCOMPILE) -p $(SIMPLE_PARSER_PREFIX) $<
 	mv -f y.tab.h resolver/scripting/simple/simple-parser.h
 	mv -f y.tab.c resolver/scripting/simple/simple-parser.c
+
+###################################
+# murphy resource library
+#
+
+lib_LTLIBRARIES += libmurphy-resource.la
+EXTRA_DIST      += resource/murphy-resource.pc
+pkgconfig_DATA  += resource/murphy-resource.pc
+
+libmurphy_resource_ladir =			\
+		$(includedir)/murphy/resource
+
+libmurphy_resource_la_HEADERS =			\
+		resource/data-types.h           \
+		resource/common-api.h           \
+		resource/client-api.h           \
+		resource/manager-api.h          \
+		resource/config-api.h           \
+		resource/protocol.h
+
+libmurphy_resource_la_REGULAR_SOURCES =		\
+		resource/attribute.c		\
+		resource/resource.c		\
+		resource/resource-set.c		\
+		resource/application-class.c	\
+		resource/resource-owner.c	\
+		resource/resource-client.c	\
+		resource/zone.c
+
+libmurphy_resource_la_SOURCES =			\
+		$(libmurphy_resource_la_REGULAR_SOURCES)	\
+		resource-func-info.c
+
+libmurphy_resource_la_CFLAGS =			\
+		$(AM_CFLAGS)			\
+		$(INCLUDES)
+
+libmurphy_resource_la_LDFLAGS =			\
+		-Wl,-version-script=linker-script.resource \
+		-version-info @MURPHY_VERSION_INFO@
+
+libmurphy_resource_la_LIBADD =	    \
+		libmurphy-core.la   \
+		libmurphy-common.la
+
+libmurphy_resource_la_DEPENDENCIES = linker-script.resource \
+				     libmurphy-core.la      \
+				     libmurphy-common.la
+
+# debug file:line-function mapping generation
+resource-func-info.c: $(libmurphy_resource_la_REGULAR_SOURCES)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-debug-table -o $@ $^
+
+clean-func-infos::
+	-rm resource-func-info.c
+
+# resource linker script generation
+linker-script.resource: $(libmurphy_resource_la_HEADERS)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-linker-script -q -o $@ $^
+
+clean-linker-script::
+	-rm -f linker-script.resource
 
 
 ###################################
@@ -540,53 +603,43 @@ plugin_signalling_ladir      = $(SIGNALLING_PLUGINdir)
 plugin_LTLIBRARIES    += plugin-signalling.la
 endif
 
-# decision plugin
-DECISION_PLUGIN_SOURCES = plugins/decision/plugin-decision.c \
-			  plugins/decision/pdp.c	     \
-			  plugins/decision/pep.c	     \
-			  plugins/decision/table.c	     \
-			  plugins/decision/transport.c       \
-			  plugins/decision/message.c
+# native resource plugin
+PLUGIN_RESOURCE_NATIVE_REGULAR_SOURCES = 				\
+		plugins/resource-native/plugin-resource-native.c
+PLUGIN_RESOURCE_NATIVE_SOURCES = 					\
+		$(PLUGIN_RESOURCE_NATIVE_REGULAR_SOURCES)		\
+                plugin-resource-native-func-info.c
+PLUGIN_RESOURCE_NATIVE_CFLAGS =						\
+		$(INCLUDES)
+PLUGIN_RESOURCE_NATIVE_LIBS =       					\
+		libmurphy-core.la					\
+		libmurphy-common.la					\
+		murphy-db/mqi/libmqi.la					\
+		murphy-db/mdb/libmdb.la					\
+		libmurphy-resource.la
 
-DECISION_PLUGIN_CFLAGS  =
-DECISION_PLUGIN_LIBS    =
+plugin_resource_native_la_SOURCES = $(PLUGIN_RESOURCE_NATIVE_SOURCES)
+plugin_resource_native_la_CFLAGS  = $(PLUGIN_RESOURCE_NATIVE_CFLAGS)	\
+				    $(MURPHY_CFLAGS) $(AM_CFLAGS)
+plugin_resource_native_la_LDFLAGS = -module -avoid-version
+plugin_resource_native_la_LIBADD  = $(PLUGIN_RESOURCE_NATIVE_LIBS)
 
-if !DISABLED_PLUGIN_DECISION
-if BUILTIN_PLUGIN_DECISION
-BUILTIN_PLUGINS += $(DECISION_PLUGIN_SOURCES)
-BUILTIN_CFLAGS  += $(DECISION_PLUGIN_CFLAGS)
-BUILTIN_LIBS    += $(DECISION_PLUGIN_LIBS)
-else
-plugin_decision_la_SOURCES = $(DECISION_PLUGIN_SOURCES)
-plugin_decision_la_CFLAGS  = $(DECISION_PLUGIN_CFLAGS) \
-			     $(MURPHY_CFLAGS) $(AM_CFLAGS)
-plugin_decision_la_LDFLAGS = -module -avoid-version
-plugin_decision_la_LIBADD  = $(DECISION_PLUGIN_LIBS)
+plugin_LTLIBRARIES += plugin-resource-native.la
 
-plugin_LTLIBRARIES    += plugin-decision.la
-endif
+# resource-client
+bin_PROGRAMS += resource-client
 
-lib_LTLIBRARIES   += libpep.la
-libpep_la_SOURCES  = plugins/decision/pep-client.c \
-		     plugins/decision/pep-db.c
-libpep_la_CFLAGS   =
-libpep_la_LIBADD   = libmurphy-common.la
+resource_client_SOURCES = plugins/resource-native/resource-client.c
+resource_client_CFLAGS  = $(AM_CFLAGS) $(BUILTIN_CFLAGS)
+resource_client_LDADD   = $(BUILTIN_LIBS) libmurphy-common.la
 
-# enforcement point test client
-bin_PROGRAMS += test-ep test-pep
 
-test_ep_SOURCES = plugins/decision/test-ep.c
-test_ep_CFLAGS  = $(AM_CFLAGS)
-test_ep_LDADD   = libmurphy-core.la   \
-		  libmurphy-common.la \
-		  -lreadline
+# debug file:line-function mapping generation
+plugin-resource-native-func-info.c: $(PLUGIN_RESOURCE_NATIVE_REGULAR_SOURCES)
+	$(QUIET_GEN)$(top_builddir)/build-aux/gen-debug-table -o $@ $^
 
-test_pep_SOURCES = plugins/decision/test-pep.c
-test_pep_CFLAGS  = $(AM_CFLAGS)
-test_pep_LDADD   = libpep.la    \
-		   libmurphy-common.la \
-		  -lreadline
-endif
+clean-func-infos::
+	-rm plugin-resource-native-func-info.c
 
 
 ###################################
@@ -609,6 +662,7 @@ murphyd_CFLAGS  =			\
 
 murphyd_LDADD  =			\
 		$(BUILTIN_LIBS)         \
+		libmurphy-resource.la   \
 		libmurphy-resolver.la	\
 		libmurphy-core.la	\
 		libmurphy-common.la
