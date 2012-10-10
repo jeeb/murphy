@@ -1,1 +1,64 @@
+
+ -- Installing dependencies on a vanilla Fedora.
  
+sudo yum install actools autoconf automake libtool m4 intltool libtool-ltdl
+sudo yum install flex flex-devel bison bison-devel
+sudo yum install glib-2.0 glib2-devel pkg-config gcc make libstdc++ gcc-c++
+sudo yum install pulseaudio-libs-devel sqlite 
+
+sudo yum whatprovides /usr/lib64/pkgconfig/libudev.pc
+sudo yum install libudev-devel
+sudo yum install systemd-devel
+
+sudo yum install mobile-broadband-provider-info 
+sudo yum install mobile-broadband-provider-info-devel
+
+ -- Configuration, compilation and installation with DBUS and console.
+
+./bootstrap
+./configure --enable-gpl --enable-dbus --enable-console  
+make
+sudo make install
+
+ -- Running Murphy daemon
+ 
+murphyd -V -f -c src/daemon/murphy.conf 
+murphyd -v -f -c src/daemon/murphy.conf -t stdout
+murphyd -v -f -d "*" -c src/daemon/murphy.conf -t stdout -q
+
+ -- Running Murphy console
+ 
+ murphy-console --help
+ murphy-console 
+
+ -- Compiling ofono and phonesim
+ 
+sudo yum install ctags
+sudo yum install /usr/lib64/pkgconfig/bluez.pc
+sudo yum install qt qt-devel
+
+git clone git://git.kernel.org/pub/scm/network/ofono/phonesim.git
+git clone git://git.kernel.org/pub/scm/network/ofono/ofono.git
+configure, make, install
+
+ -- Running ofono 
+ 
+su root
+# export OFONO_AT_DEBUG=1
+# ofonod -nd
+
+ -- Running phonesim
+
+dbus-monitor --system
+
+cd $phonesim_dir
+phonesim -p 12345 -gui src/default.xml
+ 
+cd $ofono_dir/test
+./list-modems
+./enable-modem /phonesim
+./online-modem /phonesim
+
+Now you can make phone calls from the phonesim UI. 
+
+

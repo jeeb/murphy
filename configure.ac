@@ -322,6 +322,7 @@ AM_CONDITIONAL(DISABLED_PLUGIN_CONSOLE,  [check_if_disabled console])
 AM_CONDITIONAL(DISABLED_PLUGIN_SIGNALLING, [check_if_disabled signalling])
 AM_CONDITIONAL(DISABLED_PLUGIN_DECISION, [check_if_disabled decision])
 AM_CONDITIONAL(DISABLED_PLUGIN_RESOURCE_DBUS, [check_if_disabled resource-dbus])
+AM_CONDITIONAL(DISABLED_PLUGIN_TELEPHONY, [check_if_disabled telephony])
 
 AM_CONDITIONAL(BUILTIN_PLUGIN_TEST,     [check_if_internal test])
 AM_CONDITIONAL(BUILTIN_PLUGIN_DBUS,     [check_if_internal dbus])
@@ -330,6 +331,7 @@ AM_CONDITIONAL(BUILTIN_PLUGIN_CONSOLE,  [check_if_internal console])
 AM_CONDITIONAL(BUILTIN_PLUGIN_SIGNALLING, [check_if_internal signalling])
 AM_CONDITIONAL(BUILTIN_PLUGIN_DECISION, [check_if_internal decision])
 AM_CONDITIONAL(BUILTIN_PLUGIN_RESOURCE_DBUS, [check_if_internal resource-dbus])
+AM_CONDITIONAL(BUILTIN_PLUGIN_TELEPHONY, [check_if_internal telephony])
 
 # Check for Check (unit test framework).
 PKG_CHECK_MODULES(CHECK, 

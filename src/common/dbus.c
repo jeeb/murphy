@@ -513,7 +513,7 @@ static handler_t *handler_alloc(const char *sender, const char *path,
         h->interface = mrp_strdup(interface);
         h->member    = mrp_strdup(member);
 
-        if (!h->path || !h->interface || !h->member) {
+        if ((path && !h->path) || !h->interface || !h->member) {
             handler_free(h);
             return NULL;
         }
@@ -643,7 +643,8 @@ static handler_t *handler_list_lookup(handler_list_t *l, const char *path,
 static handler_t *handler_list_find(handler_list_t *l, const char *path,
                                     const char *interface, const char *member)
 {
-#define MATCHES(h, field) (!*field || !*h->field || !strcmp(field, h->field))
+#define MATCHES(h, field) (!*field || !h->field || !*h->field || \
+                           !strcmp(field, h->field))
     mrp_list_hook_t *p, *n;
     handler_t       *h;
 
@@ -977,7 +978,8 @@ static DBusHandlerResult dispatch_method(DBusConnection *c,
 static DBusHandlerResult dispatch_signal(DBusConnection *c,
                                          DBusMessage *msg, void *data)
 {
-#define MATCHES(h, field) (!*field || !*h->field || !strcmp(field, h->field))
+#define MATCHES(h, field) (!*field || !h->field || !*h->field || \
+                           !strcmp(field, h->field))
     const char *path      = dbus_message_get_path(msg);
     const char *interface = dbus_message_get_interface(msg);
     const char *member    = dbus_message_get_member(msg);
