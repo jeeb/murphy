@@ -84,17 +84,16 @@ void tel_watcher(int event, tel_call_t *call, void *data);
  */
 
 #define CHECK_PTR(ptr, retval, err, args...) \
-    do { if ((ptr) == NULL) { \
+    do { if (MRP_UNLIKELY((ptr) == NULL)) { \
             if ((err) != NULL) mrp_log_error(err, ## args); \
             return retval; \
        } } while(0)
 
 #define FAIL_IF(cond, retval, err, args...) \
-    do { if (cond) { \
+    do { if (MRP_UNLIKELY(cond)) { \
             if ((err) != NULL) mrp_log_error(err, ## args); \
             return retval; \
        } } while(0)
-
 
 
 #endif /* __MURPHY_TELEPHONY_H__ */

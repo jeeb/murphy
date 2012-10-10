@@ -55,6 +55,7 @@
 
 #define DUMP_STR(f)         (f) ? (f)   : ""
 #define DUMP_YESNO(f)       (f) ? "yes" : "no"
+#define FREE(p)             if((p) != NULL) mrp_free(p)
 
 typedef void *(*array_cb_t) (DBusMessageIter *it, void *user_data);
 
@@ -74,6 +75,7 @@ static void modem_query_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static int modem_added_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static int modem_removed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static int modem_changed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
+static int call_endreason_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static void *parse_modem(DBusMessageIter *it, void *user_data);
 static void *parse_modem_property(DBusMessageIter *it, void *user_data);
 static void purge_modems(ofono_t *ofono);
@@ -190,7 +192,7 @@ static int install_ofono_handlers(ofono_t *ofono)
         goto fail;
     }
 
-    if (!mrp_dbus_subscribe_signal(ofono->dbus, call_changed_cb, ofono,
+    if (!mrp_dbus_subscribe_signal(ofono->dbus, call_endreason_cb, ofono,
             OFONO_SERVICE, NULL, OFONO_CALL, "DisconnectReason", NULL)) {
         mrp_log_error("error watching DisconnectReason on %s", OFONO_CALL);
         goto fail;
@@ -490,6 +492,8 @@ ofono_modem_t *ofono_online_modem(ofono_t *ofono)
 static int modem_has_interface(ofono_modem_t *modem, const char *interface)
 {
     (void)modem_has_feature; /* ugh, yuck ... */
+    mrp_debug("checking interface %s on modem %s, with interfaces",
+              interface, modem->modem_id, modem->interfaces);
 
     return strarr_contains(modem->interfaces, interface);
 }
@@ -607,7 +611,7 @@ static int modem_removed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
 
     (void)dbus;
 
-    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
                               DBUS_TYPE_INVALID)) {
         mrp_debug("modem '%s' was removed", path);
 
@@ -973,6 +977,7 @@ static int call_added_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
             dump_call((ofono_call_t*)call);
 #endif
             mrp_debug("new oFono call added: %s", call->call_id);
+            dump_modem(modem);
             return TRUE;
         }
     }
@@ -989,19 +994,19 @@ static int call_removed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
     ofono_call_t    *call;
     const char      *path;
 
-
     (void)dbus;
 
     ofono = (ofono_t *)user_data;
     CHECK_PTR(ofono, FALSE, "ofono is NULL");
 
-    modem = find_modem(ofono, dbus_message_get_path (msg));
-    CHECK_PTR(modem, FALSE, "modem is NULL");
+    path = dbus_message_get_path (msg);
+    modem = find_modem(ofono, path);
+    CHECK_PTR(modem, FALSE, "modem is not found based on path %s", path);
     FAIL_IF(modem->ofono != ofono, FALSE, "corrupted modem data");
 
-    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
+    if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
                               DBUS_TYPE_INVALID)) {
-        mrp_debug("call '%s' signaled having been removed", path);
+        mrp_debug("call '%s' signaled to be removed", path);
         call = find_call(modem, path);
         if (call) {
             CHECK_PTR(ofono->notify, FALSE, "notify is NULL");
@@ -1014,11 +1019,13 @@ static int call_removed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
 #endif
             mrp_debug("oFono call removed: %s", call->call_id);
             free_call(call);
+            dump_modem(modem);
             return TRUE;
-        }
-    }
+        } else
+            mrp_log_error("could not find call based on path %s", path);
+    } else
+        mrp_log_error("removing oFono call failed: could not get DBUS path");
 
-    mrp_log_error("removing oFono call failed");
     return FALSE;
 }
 
@@ -1083,10 +1090,74 @@ static int call_changed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
             dump_call((ofono_call_t*)call);
 #endif
             mrp_debug("oFono call changed: %s", call->call_id);
-        }
-    }
+            dump_modem(modem);
+            return TRUE;
+        } else
+            mrp_debug("parsing error in call change callback for %s",
+                      call->call_id);
+    } else
+        mrp_debug("dbus iterator error in call change callback for %s",
+                  call->call_id);
 
-    return TRUE;
+    return FALSE;
+}
+
+
+static int call_endreason_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
+{
+    char            *path, *modem_id;
+    DBusMessageIter  it;
+    ofono_t         *ofono;
+    ofono_modem_t   *modem;
+    ofono_call_t    *call;
+
+    (void)dbus;
+
+    ofono = (ofono_t *)user_data;
+    CHECK_PTR(ofono, FALSE, "ofono is NULL");
+
+    path = (char *) dbus_message_get_path(msg); /* contains call object path */
+    get_modem_from_call_path(path, &modem_id);  /* get modem from modem path */
+    modem = find_modem(ofono, modem_id);        /* modem path is modem_id    */
+    CHECK_PTR(modem, FALSE, "modem is NULL");
+    FAIL_IF(modem->ofono != ofono, FALSE, "corrupted modem data");
+
+    call = find_call(modem, path);
+    CHECK_PTR(call, FALSE, "call not found based on path %s", path);
+
+    if (dbus_message_iter_init(msg, &it)) {
+        if(dbus_message_iter_get_arg_type(&it) != DBUS_TYPE_STRING) {
+            mrp_debug("wrong dbus argument type in call change callback for %s",
+                       call->call_id);
+            return FALSE;
+        }
+
+        dbus_message_iter_get_basic(&it, path);
+        call->end_reason = mrp_strdup(path);
+
+        if(MRP_UNLIKELY(call->end_reason == NULL)) {
+            mrp_log_error("failed in mrp_strdup %s", path);
+            return FALSE;
+        }
+        mrp_debug("disconnect reason in call '%s': %s",
+                  call->call_id, call->end_reason);
+
+        CHECK_PTR(ofono->notify, FALSE, "notify is NULL");
+        mrp_debug("calling notify TEL_CALL_CHANGED on call %s, modem %s",
+                  (tel_call_t*)call->call_id, modem->modem_id);
+#if _NOTIFY_MDB
+        ofono->notify(TEL_CALL_CHANGED, (tel_call_t*)call, modem->modem_id);
+#else
+        dump_call((ofono_call_t*)call);
+#endif
+        mrp_debug("oFono call end reason changed: %s", call->call_id);
+        dump_modem(modem);
+        return TRUE;
+    } else
+        mrp_debug("dbus iterator error in call end reason callback for %s",
+                  call->call_id);
+
+    return FALSE;
 }
 
 
