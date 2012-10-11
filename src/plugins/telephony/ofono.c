@@ -87,10 +87,15 @@ static int call_added_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static int call_removed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static int call_changed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data);
 static void *parse_call(DBusMessageIter *it, void *user_data);
-static void *parse_call_property(DBusMessageIter *it, void *user_data);
+static void *parse_call_property(DBusMessageIter *it, void *target);
 static void dump_call(ofono_call_t *call);
 static void cancel_call_query(ofono_modem_t *modem);
 static void purge_calls(ofono_modem_t *modem);
+
+static int parse_dbus_field(DBusMessageIter * iter,
+                            const char * token, const char * key,
+                            int dbus_type, void * valptr);
+
 
 /******************************************************************************
  * The public methods of this file: ofono_watch, ofono_unwatch
@@ -256,7 +261,7 @@ static void ofono_init_cb(mrp_dbus_t *dbus, const char *name, int running,
 }
 
 
-static int array_foreach(DBusMessageIter *it, array_cb_t callback,
+static int dbus_array_foreach(DBusMessageIter *it, array_cb_t callback,
                          void *user_data)
 {
     DBusMessageIter arr;
@@ -539,7 +544,7 @@ static void modem_query_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
     mrp_debug("modem query response on oFono");
 
     if (dbus_message_iter_init(msg, &it)) {
-        if (array_foreach(&it, parse_modem, ofono)) {
+        if (dbus_array_foreach(&it, parse_modem, ofono)) {
             /* array_foreach successfully fetched all modems into the list */
             mrp_list_foreach(&ofono->modems, p, n) {
                 modem = mrp_list_entry(p, ofono_modem_t, hook);
@@ -641,13 +646,18 @@ static int modem_changed_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
 
 static void *parse_modem(DBusMessageIter *msg, void *user_data)
 {
-    ofono_t         *ofono = (ofono_t *)user_data;
+    ofono_t         *ofono;
     ofono_modem_t   *modem;
     char            *path;
     DBusMessageIter  mdm, *it;
     int              type;
 
+    ofono = (ofono_t *)user_data;
+    FAIL_IF_NULL(ofono, FALSE, "ofono is NULL");
+
     modem = NULL;
+
+    mrp_debug("parsing ofono modem");
 
     /*
      * We can be called from an initial modem query callback
@@ -692,10 +702,11 @@ static void *parse_modem(DBusMessageIter *msg, void *user_data)
 
     mrp_list_append(&ofono->modems, &modem->hook);
 
-    if (!array_foreach(it, parse_modem_property, modem))
+    /* iterate over all properties and try to match to our data */
+    if (!dbus_array_foreach(it, parse_modem_property, modem))
         goto malformed;
 
-    mrp_debug("found modem %s", modem->modem_id);
+    mrp_debug("finished parsing modem %s", modem->modem_id);
 
     return (void *)modem;
 
@@ -703,21 +714,41 @@ malformed:
     mrp_log_error("malformed modem entry");
 
 fail:
-    mrp_log_error("parsing modem entry failed");
     free_modem(modem);
 
     return NULL;
 }
 
 
-static void *parse_modem_property(DBusMessageIter *it, void *user_data)
+
+static void *parse_modem_property(DBusMessageIter *it, void *target)
 {
-    ofono_modem_t   *modem = (ofono_modem_t *)user_data;
-    DBusMessageIter  dict, vrnt, arr, *prop;
+    ofono_modem_t   *modem = (ofono_modem_t *)target;
+    DBusMessageIter  dict, iter, *prop;
     const char      *key;
-    int              expected, t, n;
-    char           **strarr, *str;
-    void            *valptr;
+    int              t, i;
+
+    /* The properties of interest of the DBUS message to be parsed. */
+    struct _field {
+        const char *field;
+        int         type;
+        void       *valptr;
+    } spec [] = {
+        { "Type",         DBUS_TYPE_STRING,  &modem->type         },
+        { "Powered",      DBUS_TYPE_BOOLEAN, &modem->powered      },
+        { "Online",       DBUS_TYPE_BOOLEAN, &modem->online       },
+        { "Lockdown",     DBUS_TYPE_BOOLEAN, &modem->lockdown     },
+        { "Emergency",    DBUS_TYPE_BOOLEAN, &modem->emergency    },
+        { "Name",         DBUS_TYPE_STRING,  &modem->name         },
+        { "Manufacturer", DBUS_TYPE_STRING,  &modem->manufacturer },
+        { "Model",        DBUS_TYPE_STRING,  &modem->model        },
+        { "Revision",     DBUS_TYPE_STRING,  &modem->revision     },
+        { "Serial",       DBUS_TYPE_STRING,  &modem->serial       },
+        { "Interfaces",   DBUS_TYPE_ARRAY,   &modem->interfaces   },
+        { "Features",     DBUS_TYPE_ARRAY,   &modem->features     }
+        /* other properties are ignored */
+    };
+    int spec_size = 12;
 
     key = NULL;
     t   = dbus_message_iter_get_arg_type(it);
@@ -733,110 +764,35 @@ static void *parse_modem_property(DBusMessageIter *it, void *user_data)
     if (t == DBUS_TYPE_DICT_ENTRY) {
         dbus_message_iter_recurse(it, &dict);
 
-        if (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_STRING)
-            goto malformed;
-        else
-            prop = &dict;
+        FAIL_IF(dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_STRING,
+                NULL, "malformed call entry");
+
+        prop = &dict;
     }
     else {
-        if (t == DBUS_TYPE_STRING)
-            prop = it;
-        else
-            goto malformed;
+        FAIL_IF(t != DBUS_TYPE_STRING,
+                NULL, "malformed call entry, string expected");
+        prop = it;
     }
 
     dbus_message_iter_get_basic(prop, &key);
     dbus_message_iter_next(prop);
 
-    if (dbus_message_iter_get_arg_type(prop) != DBUS_TYPE_VARIANT)
-        goto malformed;
+    FAIL_IF(dbus_message_iter_get_arg_type(prop) != DBUS_TYPE_VARIANT,
+            NULL,"malformed call entry for key %s", key);
 
-    dbus_message_iter_recurse(prop, &vrnt);
+    dbus_message_iter_recurse(prop, &iter);
 
-#define HANDLE_TYPE(_key, _type, _field) \
-    if (!strcmp(key, _key)) {			 \
-        expected = _type;					 \
-        valptr   = &modem->_field;			 \
-        if (_type == DBUS_TYPE_STRING || _type == DBUS_TYPE_OBJECT_PATH) \
-            mrp_free(*(char **)valptr);			 \
-        goto getval;						 \
-    }
-
-    /* one of the HANDLE_TYPE calls will match */
-    HANDLE_TYPE("Type"        , DBUS_TYPE_STRING , type);
-    HANDLE_TYPE("Powered"     , DBUS_TYPE_BOOLEAN, powered);
-    HANDLE_TYPE("Online"      , DBUS_TYPE_BOOLEAN, online);
-    HANDLE_TYPE("Lockdown"    , DBUS_TYPE_BOOLEAN, lockdown);
-    HANDLE_TYPE("Emergency"   , DBUS_TYPE_BOOLEAN, emergency);
-    HANDLE_TYPE("Name"        , DBUS_TYPE_STRING , name);
-    HANDLE_TYPE("Manufacturer", DBUS_TYPE_STRING , manufacturer);
-    HANDLE_TYPE("Model"       , DBUS_TYPE_STRING , model);
-    HANDLE_TYPE("Revision"    , DBUS_TYPE_STRING , revision);
-    HANDLE_TYPE("Serial"      , DBUS_TYPE_STRING , serial);
-    HANDLE_TYPE("Interfaces"  , DBUS_TYPE_ARRAY  , interfaces);
-    HANDLE_TYPE("Features"    , DBUS_TYPE_ARRAY  , features);
-
-    return modem;                        /* an ignored property */
-#undef HANDLE_TYPE
-
-getval:
-    if (expected != DBUS_TYPE_ARRAY) {
-        if (dbus_message_iter_get_arg_type(&vrnt) != expected)
-            goto malformed;
-        else
-            dbus_message_iter_get_basic(&vrnt, valptr);
-
-        if (expected == DBUS_TYPE_STRING ||
-                expected == DBUS_TYPE_OBJECT_PATH) {
-            *(char **)valptr = mrp_strdup(*(char **)valptr);
-
-            if (*(char **)valptr == NULL) {
-                mrp_log_error("failed to allocate modem field %s", key);
-                return NULL;
-            }
-        }
-    }
-    else {
-        dbus_message_iter_recurse(&vrnt, &arr);
-        strarr = NULL;
-        n      = 1;
-
-        while ((t = dbus_message_iter_get_arg_type(&arr)) == DBUS_TYPE_STRING) {
-            dbus_message_iter_get_basic(&arr, &str);
-
-            if (mrp_reallocz(strarr, n, n + 1) != NULL) {
-                if ((strarr[n-1] = mrp_strdup(str)) == NULL)
-                    goto arrfail;
-                n++;
-            }
-
-            dbus_message_iter_next(&arr);
-        }
-
-        if (t == DBUS_TYPE_INVALID) {
-            free_strarr(*(char ***)valptr);
-            *(char ***)valptr = strarr;
-        }
-        else {
-            mrp_log_error("malformed array entry for key %s", key);
-            goto arrfail;
-        }
-    }
+    /*
+     * there will be maximum 1 match for the given key
+     * error is returned only if a field is matched, but value fetching fails
+     */
+    for (i = 0, t = -1; i < spec_size && t < 0; i++)
+        if ((t = parse_dbus_field(&iter, spec[i].field, key,
+                                  spec[i].type, spec[i].valptr)) == 0)
+            return NULL;
 
     return modem;
-
-malformed:
-    if (key != NULL)
-        mrp_log_error("malformed modem entry for key %s", key);
-    else
-        mrp_log_error("malformed modem entry");
-
-    return NULL;
-
-arrfail:
-    free_strarr(strarr);
-
-    return NULL;
 }
 
 
@@ -916,7 +872,7 @@ static void call_query_cb(mrp_dbus_t *dbus, DBusMessage *msg, void *user_data)
     modem->call_qry = 0;
 
     if (dbus_message_iter_init(msg, &it)) {
-        if (!array_foreach(&it, parse_call, modem)) {
+        if (!dbus_array_foreach(&it, parse_call, modem)) {
             mrp_log_error("failed processing call query response");
             return;
         }
@@ -1159,10 +1115,10 @@ static void *parse_call(DBusMessageIter *msg, void *user_data)
     DBusMessageIter  sub, *it;
     int              type;
 
-    call = NULL;
-
     modem = (ofono_modem_t *)user_data;
     FAIL_IF_NULL(modem, FALSE, "modem is NULL");
+
+    call = NULL;
 
     mrp_debug("parsing call in modem '%s'...", modem->modem_id);
 
@@ -1212,12 +1168,11 @@ static void *parse_call(DBusMessageIter *msg, void *user_data)
 
     mrp_list_append(&modem->calls, &call->hook);
 
-    if (!array_foreach(it, parse_call_property, call))
+    /* iterate over all properties and try to match to our data */
+    if (!dbus_array_foreach(it, parse_call_property, call))
         goto malformed;
 
-
-
-    mrp_debug("returning from parsing call %s", call->call_id);\
+    mrp_debug("finished parsing call %s", call->call_id);\
     return (void *)call;
 
 malformed:
@@ -1229,16 +1184,32 @@ fail:
 }
 
 
-static void *parse_call_property(DBusMessageIter *it, void *user_data)
+static void *parse_call_property(DBusMessageIter *it, void *target)
 {
-    ofono_call_t    *call;
-    DBusMessageIter  dict, vrnt, *prop;
+    DBusMessageIter  dict, iter, *prop;
     const char      *key;
-    int              expected, t;
-    void            *valptr;
+    int              i, t;
+    ofono_call_t    *call = (ofono_call_t *) target;
 
-    call = (ofono_call_t *)user_data;
-    FAIL_IF_NULL(call, FALSE, "call is NULL");
+    /* The properties of interest of the DBUS message to be parsed. */
+    struct _field {
+        const char *field;
+        int         type;
+        void       *valptr;
+    } spec [] = {
+        { "IncomingLine", DBUS_TYPE_STRING,  &call->incoming_line },
+        { "Name",         DBUS_TYPE_STRING,  &call->name          },
+        { "Multiparty",   DBUS_TYPE_BOOLEAN, &call->multiparty    },
+        { "State",        DBUS_TYPE_STRING,  &call->state         },
+        { "StartTime",    DBUS_TYPE_STRING,  &call->start_time    },
+        { "Information",  DBUS_TYPE_STRING,  &call->info          },
+        { "Icon",         DBUS_TYPE_BYTE,    &call->icon_id       },
+        { "Emergency",    DBUS_TYPE_BOOLEAN, &call->emergency     },
+        { "RemoteHeld",   DBUS_TYPE_BOOLEAN, &call->remoteheld    }
+        /* other properties are ignored */
+    };
+    int spec_size = 10;
+
 
     key = NULL;
     t   = dbus_message_iter_get_arg_type(it);
@@ -1254,74 +1225,105 @@ static void *parse_call_property(DBusMessageIter *it, void *user_data)
     if (t == DBUS_TYPE_DICT_ENTRY) {
         dbus_message_iter_recurse(it, &dict);
 
-        if (dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_STRING)
-            goto malformed;
-        else
-            prop = &dict;
+        FAIL_IF(dbus_message_iter_get_arg_type(&dict) != DBUS_TYPE_STRING,
+                NULL, "malformed call entry");
+
+        prop = &dict;
     }
     else {
-        if (t == DBUS_TYPE_STRING)
-            prop = it;
-        else
-            goto malformed;
+        FAIL_IF(t != DBUS_TYPE_STRING,
+                NULL, "malformed call entry, string expected");
+        prop = it;
     }
 
     dbus_message_iter_get_basic(prop, &key);
     dbus_message_iter_next(prop);
 
-    if (dbus_message_iter_get_arg_type(prop) != DBUS_TYPE_VARIANT)
-        goto malformed;
+    FAIL_IF(dbus_message_iter_get_arg_type(prop) != DBUS_TYPE_VARIANT,
+            NULL,"malformed call entry for key %s", key);
 
-    dbus_message_iter_recurse(prop, &vrnt);
+    dbus_message_iter_recurse(prop, &iter);
 
-#define HANDLE_TYPE(_key, _type, _field) \
-    if (!strcmp(key, _key)) {			 \
-        mrp_debug("parsing call property %s", key);\
-        expected = _type;					 \
-        valptr   = &call->_field;			 \
-        if (_type == DBUS_TYPE_STRING || _type == DBUS_TYPE_OBJECT_PATH) \
-            mrp_free(*(char **)valptr);			 \
-        goto getval;						 \
-    }
-
-    /* one of the HANDLE_TYPE calls will match */
-    HANDLE_TYPE("LineIdentification", DBUS_TYPE_STRING  , line_id);
-    HANDLE_TYPE("IncomingLine",       DBUS_TYPE_STRING  , incoming_line);
-    HANDLE_TYPE("Name",               DBUS_TYPE_STRING  , name);
-    HANDLE_TYPE("Multiparty",         DBUS_TYPE_BOOLEAN , multiparty);
-    HANDLE_TYPE("State",              DBUS_TYPE_STRING  , state);
-    HANDLE_TYPE("StartTime",          DBUS_TYPE_STRING  , start_time);
-    HANDLE_TYPE("Information",        DBUS_TYPE_STRING  , info);
-    HANDLE_TYPE("Icon",               DBUS_TYPE_BYTE    , icon_id);
-    HANDLE_TYPE("Emergency",          DBUS_TYPE_BOOLEAN , emergency);
-    HANDLE_TYPE("RemoteHeld",         DBUS_TYPE_BOOLEAN , remoteheld);
-
-    return call;                      /* other properties ignored */
-#undef HANDLE_TYPE
-
-getval:
-    if (dbus_message_iter_get_arg_type(&vrnt) != expected)
-        goto malformed;
-    else
-        dbus_message_iter_get_basic(&vrnt, valptr);
-
-    if (expected == DBUS_TYPE_STRING ||
-            expected == DBUS_TYPE_OBJECT_PATH) {
-        *(char **)valptr = mrp_strdup(*(char **)valptr);
-
-        if (*(char **)valptr == NULL) {
-            mrp_log_error("failed to allocate modem field %s", key);
+    /*
+     * there will be maximum 1 match for the given key
+     * error is returned only if a field is matched, but value fetching fails
+     */
+    for (i = 0, t = -1; i < spec_size && t < 0; i++)
+        if ((t = parse_dbus_field(&iter, spec[i].field, key,
+                                  spec[i].type, spec[i].valptr)) == 0)
             return NULL;
+
+    return call;
+}
+
+
+/**
+ * Match the current field against the given property,
+ * and if matched, fetch the value.
+ */
+static int parse_dbus_field(DBusMessageIter * iter,
+                            const char * field, const char * prop,
+                            int dbus_type, void * valptr)
+{
+    int t, n;
+    DBusMessageIter arr;
+    char ** strarr, *str;
+
+    if (strcmp(field, prop))
+        return -1; /* no match, but not an error */
+
+    mrp_debug("matched property %s", field);
+
+    if (dbus_type == DBUS_TYPE_STRING || dbus_type == DBUS_TYPE_OBJECT_PATH)
+        mrp_free(*(char **)valptr);
+
+    if (dbus_type == DBUS_TYPE_ARRAY)
+    {
+        dbus_message_iter_recurse(iter, &arr);
+        strarr = NULL;
+        n = 1;
+
+        while ((t = dbus_message_iter_get_arg_type(&arr)) == DBUS_TYPE_STRING) {
+            dbus_message_iter_get_basic(&arr, &str);
+
+            if (mrp_reallocz(strarr, n, n + 1) != NULL) {
+                if ((strarr[n-1] = mrp_strdup(str)) == NULL) {
+                    free_strarr(strarr);
+                    return 0;
+                }
+                n++;
+            }
+
+            dbus_message_iter_next(&arr);
+        }
+
+        if (t == DBUS_TYPE_INVALID) {
+            free_strarr(*(char ***)valptr);
+            *(char ***)valptr = strarr;
+        }
+        else {
+            mrp_log_error("malformed array entry for property %s", prop);
+            free_strarr(strarr);
+            return 0;
+        }
+    } else {
+
+        if (dbus_message_iter_get_arg_type(iter) != dbus_type) {
+            mrp_log_error("malformed modem entry for property %s", prop);
+            return 0;
+        } else
+            dbus_message_iter_get_basic(iter, valptr);
+
+        if (dbus_type == DBUS_TYPE_STRING ||
+                dbus_type == DBUS_TYPE_OBJECT_PATH) {
+            *(char **)valptr = mrp_strdup(*(char **)valptr);
+
+            if (*(char **)valptr == NULL) {
+                mrp_log_error("failed to allocate property %s", prop);
+                return 0;
+            }
         }
     }
 
-    return call;
-
-malformed:
-    if (key != NULL)
-        mrp_log_error("malformed call entry for key %s", key);
-    else
-        mrp_log_error("malformed call entry");
-
-    return NULL;
+    return 1; /* successful match and value fetch */
 }
