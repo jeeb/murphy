@@ -1,0 +1,52 @@
+aal "first_test" {
+    language "C++" {
+        extern "C" {
+            #include <murphy/core.h>
+        }
+    }
+
+    variables {
+        mrp_context_t *test_ctx;
+    }
+
+    initial_state {
+        test_ctx = nullptr;
+    }
+
+    input "create_context" {
+        guard() { return test_ctx == nullptr; }
+        adapter() {
+            test_ctx = mrp_context_create();
+            ASSERT_NEQ(test_ctx, nullptr);
+        }
+    }
+
+    input "set_context_running" {
+        guard() {
+             return (test_ctx != nullptr) && (test_ctx->state == MRP_STATE_INITIAL); }
+        adapter() {
+            mrp_context_setstate(test_ctx, MRP_STATE_RUNNING);
+            ASSERT_EQ(test_ctx->state, MRP_STATE_RUNNING);
+        }
+    }
+
+    tag "system_is_running" {
+        guard() {
+            return (test_ctx != nullptr) &&
+                   (test_ctx->state == MRP_STATE_RUNNING);
+        }
+        adapter() {
+            ASSERT_EQ(test_ctx->state, MRP_STATE_RUNNING);
+        }
+    }
+
+#    action "iCloseContext" {
+#        guard() {
+#            return (test_ctx != nullptr) &&
+#                   (test_ctx->state == MRP_STATE_RUNNING);
+#        }
+#        adapter() {
+#            mrp_context_setstate
+#        }
+#    }
+}
