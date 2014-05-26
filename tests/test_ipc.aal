@@ -1,0 +1,64 @@
+aal "noname" {
+    language "python" { }
+
+    # preview-show-vars: ipc_type, ipc_status, status
+    # preview-depth: 20
+    variables {
+        ipc_list, ipc_type, ipc_status, status
+    }
+    initial_state {
+        ipc_list = []
+        ipc_list.append('native')
+        ipc_list.append('dbus')
+        ipc_list.append('websocket')
+
+        ipc_type = None
+        ipc_status = 'uninitialized'
+        status = 'shut_down'
+    }
+
+    input "init_murphy" {
+        guard { return status == 'shut_down' }
+        body  {
+            status = 'running'
+            ipc_type = ipc_list[0]
+        }
+    }
+
+    input "shut_down_murphy" {
+        guard { return status == 'running' }
+        body  {
+            status = 'shut_down'
+
+	    # reset all internal model variables
+            ipc_type = None
+            ipc_status = 'uninitialized'
+        }
+    }
+
+    input "init_ipc" {
+        guard {
+            return status == 'running' and ipc_status == 'uninitialized'
+	}
+        body { ipc_status = 'initialized' }
+    }
+
+    input "uninit_ipc" {
+        guard { return status == 'running' and ipc_status == 'initialized' }
+        body { ipc_status = 'uninitialized' }
+    }
+
+    input "select_next_ipc" {
+        guard { return ipc_status != 'initialized' and ipc_type and ipc_list.index(ipc_type)+1 < len(ipc_list) }
+        body {
+            ipc_type = ipc_list[( ipc_list.index(ipc_type) + 1 )]
+        }
+    }
+
+    input "select_previous_ipc" {
+        guard { return ipc_status != 'initialized' and ipc_type and ipc_list.index(ipc_type) > 0 }
+        body {
+            ipc_type = ipc_list[ipc_list.index(ipc_type) - 1]
+        }
+    }
+}
