@@ -5,7 +5,6 @@ from ctypes import (Structure, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char_p, c_void_p,
                     c_bool, CDLL, py_object)
 import threading
-import time
 
 
 # Murphy resource-native API related defines
@@ -120,6 +119,12 @@ mrp_resource.mrp_res_get_resource_by_name.argtypes = [POINTER(Mrp_resource_ctx),
                                                       c_char_p]
 mrp_resource.mrp_res_get_resource_by_name.restype  = POINTER(Mrp_resource)
 
+mrp_resource.mrp_res_destroy.argtypes = [POINTER(Mrp_resource_ctx)]
+mrp_resource.mrp_res_destroy.restype  = None
+
+mrp_common.mrp_mainloop_destroy.restype = None
+
+
 # Create the resource context callback
 RES_CTX_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
                                  c_uint, c_void_p)
@@ -193,6 +198,8 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
     if checked_resource:
         print("ResCallBack: Resouce 'audio playback' is: %s" % (res_state_to_str(checked_resource.contents.state)))
 
+    userdata.event.set()
+
 res_callback = RES_CALLBACKFUNC(res_callback_func)
 
 
@@ -223,11 +230,13 @@ def first_test(udata):
 
     print('FirstTest acquired status: %d' % (acquired_status))
 
-    time.sleep(10)
+    udata.event.wait()
+    print('FirstTest finishing')
 
 
 if __name__ == "__main__":
-    udata = Userdata(None, None, None)
+    event = threading.Event()
+    udata = Userdata(None, None, event)
 
     # Create a mainloop since the resource API needs one
     mainloop = mrp_common.mrp_mainloop_create()
@@ -240,9 +249,15 @@ if __name__ == "__main__":
     mainloop_thread = mainLoopThread(1, "mrp_mainloop_thread", mainloop)
     mainloop_thread.start()
 
-    # FIXME: A hack to try and make sure mainloop_thread has gotten somewhere
-    time.sleep(0.1)
+    worker_thread = threading.Thread(name="worker_thread", target=first_test,
+                                     args=(udata,))
+    worker_thread.start()
 
-    first_test(udata)
+    event.wait()
 
-    print(udata.ctx)
+    # Destroy the resource context
+    mrp_resource.mrp_res_destroy(udata.ctx)
+
+    # Quit and shut down the Murphy main loop
+    mrp_common.mrp_mainloop_quit(mainloop, 0)
+    mrp_common.mrp_mainloop_destroy(mainloop)
