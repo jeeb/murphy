@@ -262,16 +262,25 @@ def first_test(udata):
     print('FirstTest finishing')
 
 
+def connect(udata):
+    """
+    Connects to the resource-native IPC
+
+    @param udata Userdata object
+    """
+    ml = mrp_common.mrp_mainloop_create()
+    if not ml:
+        return (None, None)
+
+    return (ml,
+            mrp_reslib.mrp_res_create(ml, res_ctx_callback,
+                                      pointer(udata)))
+
 if __name__ == "__main__":
     event = threading.Event()
     udata = Userdata(None, None, event)
 
-    # Create a mainloop since the resource API needs one
-    mainloop = mrp_common.mrp_mainloop_create()
-
-    # Create the resource context
-    udata.ctx = mrp_reslib.mrp_res_create(mainloop, res_ctx_callback,
-                                          pointer(udata))
+    (mainloop, udata.ctx) = connect(udata)
 
     # Set up a second thread for the mainloop
     mainloop_thread = mainLoopThread(1, "mrp_mainloop_thread", mainloop)
