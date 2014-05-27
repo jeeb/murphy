@@ -170,6 +170,7 @@ class mainLoopThread(threading.Thread):
         self.threadID = threadID
         self.name     = name
         self.mainloop = ml
+        self.daemon   = True
 
     def run(self):
         mrp_common.mrp_mainloop_run(mainloop)
