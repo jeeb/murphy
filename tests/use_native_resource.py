@@ -3,7 +3,7 @@
 from os.path import (dirname, realpath)
 from ctypes import (Structure, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char_p, c_void_p,
-                    c_bool, CDLL)
+                    c_bool, CDLL, py_object)
 import threading
 import time
 
@@ -84,7 +84,8 @@ class Mrp_resource(Structure):
 
 class Userdata(Structure):
     _fields_ = [("ctx",     POINTER(Mrp_resource_ctx)),
-                ("res_set", POINTER(Mrp_resource_set))]
+                ("res_set", POINTER(Mrp_resource_set)),
+                ("event",   py_object)]
 
 # Set the arguments/return value types for used variables
 mrp_resource.mrp_res_create.restype = POINTER(Mrp_resource_ctx)
@@ -168,7 +169,6 @@ class mainLoopThread(threading.Thread):
     def run(self):
         mrp_common.mrp_mainloop_run(mainloop)
 
-
 # Create a python callback for resources
 RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
                              POINTER(Mrp_resource_set),
@@ -227,13 +227,14 @@ def first_test(udata):
 
 
 if __name__ == "__main__":
-    udata = Userdata(None, None)
+    udata = Userdata(None, None, None)
 
     # Create a mainloop since the resource API needs one
     mainloop = mrp_common.mrp_mainloop_create()
 
     # Create the resource context
-    udata.ctx = mrp_resource.mrp_res_create(mainloop, res_ctx_callback, pointer(udata))
+    udata.ctx = mrp_resource.mrp_res_create(mainloop, res_ctx_callback,
+                                            pointer(udata))
 
     # Set up a second thread for the mainloop
     mainloop_thread = mainLoopThread(1, "mrp_mainloop_thread", mainloop)
