@@ -256,19 +256,47 @@ def check_tests_results(udata):
         return True
 
 
-def connect(udata):
-    """
-    Initiates the connection to Murphy
+class reslib_connection():
+    def __init__(self, udata):
+        self.udata    = udata
+        self.mainloop = None
 
-    @param udata Userdata object
-    """
-    ml = mrp_common.mrp_mainloop_create()
-    if not ml:
-        return (None, None)
+    def connect(self):
+        status = self.udata.py_obj
 
-    return (ml,
-            mrp_reslib.mrp_res_create(ml, res_ctx_callback,
-                                      pointer(udata)))
+        self.mainloop = mrp_common.mrp_mainloop_create()
+        if not self.mainloop:
+            self.disconnect()
+            return False
+
+        self.udata.ctx = mrp_reslib.mrp_res_create(self.mainloop,
+                                                   res_ctx_callback,
+                                                   pointer(udata))
+        if not self.udata.ctx:
+            self.disconnect()
+            return False
+
+        while mrp_common.mrp_mainloop_iterate(self.mainloop):
+            if not status.res_ctx_callback_called:
+                continue
+            else:
+                connected = status.connected_to_murphy
+                if not connected:
+                    self.disconnect()
+
+                return connected
+
+    def iterate(self):
+        if self.mainloop:
+            return mrp_common.mrp_mainloop_iterate(self.mainloop)
+
+    def disconnect(self):
+        if self.udata.ctx:
+            mrp_reslib.mrp_res_destroy(self.udata.ctx)
+
+        if self.mainloop:
+            mrp_common.mrp_mainloop_quit(self.mainloop, 0)
+            mrp_common.mrp_mainloop_destroy(self.mainloop)
 
 
 class status_obj():
@@ -280,43 +308,38 @@ class status_obj():
 
 
 if __name__ == "__main__":
+    # Basic statuses
+    test_run       = False
+    check_run      = False
+    test_succeeded = False
+
+    # Create the general status object (passed on as opaque)
     status = status_obj()
     udata = Userdata(None, None, status)
 
-    (mainloop, udata.ctx) = connect(udata)
+    # Create a connection object and try to connect to Murphy
+    connection = reslib_connection(udata)
+    connected = connection.connect()
+    if not connected:
+        print("Main: Couldn't connect")
+        sys.exit(2)
 
-    run_tests       = False
-    run_checks      = False
-    tests_succeeded = False
+    # Run the actual changes
+    finished_test = actual_test_steps(udata)
+    if not finished_test:
+        print("Main: Test not finished")
+        connection.disconnect()
+        sys.exit(3)
 
-    while mrp_common.mrp_mainloop_iterate(mainloop):
+    # Check the results of the changes done
+    while connection.iterate():
         print("res_set_changed: %s" % (status.res_set_changed))
 
-        if not status.res_ctx_callback_called:
-            continue
-        elif not status.connected_to_murphy:
+        if not check_run and status.res_set_changed:
+            test_succeeded = check_tests_results(udata)
+            check_run = True
             break
 
-        if not run_tests:
-            if not actual_test_steps(udata):
-                break
+    connection.disconnect()
 
-            run_tests = True
-            continue
-
-        elif not run_checks and status.res_set_changed:
-            tests_succeeded = check_tests_results(udata)
-            run_checks = True
-            break
-
-        else:
-            continue
-
-    # Destroy the resource context
-    mrp_reslib.mrp_res_destroy(udata.ctx)
-
-    # Quit and shut down the Murphy main loop
-    mrp_common.mrp_mainloop_quit(mainloop, 0)
-    mrp_common.mrp_mainloop_destroy(mainloop)
-
-    sys.exit(not (run_tests and run_checks and tests_succeeded))
+    sys.exit(not (check_run and test_succeeded))
