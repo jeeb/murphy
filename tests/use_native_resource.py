@@ -220,30 +220,24 @@ res_callback = RES_CALLBACKFUNC(res_callback_func)
 
 
 def actual_test_steps(udata):
+    connection = udata.py_obj.connection
     # Create a clean, empty new resource set
-    udata.res_set = mrp_reslib.mrp_res_create_resource_set(udata.ctx,
-                                                           "player",
-                                                           res_callback,
-                                                           pointer(udata))
-    if not udata.res_set:
+    res_set = connection.create_resource_set("player")
+    if not res_set:
         print("Failed to create a resource set")
         return False
 
+    udata.res_set = res_set.res_set
+
     # Add the audio_playback resource to the empty set
-    resource = mrp_reslib.mrp_res_create_resource(udata.ctx,
-                                                  udata.res_set,
-                                                  "audio_playback",
-                                                  True, False)
+    resource = res_set.create_resource("audio_playback").res
     if not resource:
         print("Can has no resource")
         return False
 
-    acquired_status = mrp_reslib.mrp_res_acquire_resource_set(udata.ctx,
-                                                              udata.res_set)
-    if acquired_status:
-        return False
+    acquired_status = res_set.acquire()
 
-    return True
+    return not acquired_status
 
 
 def check_tests_results(udata):
@@ -256,10 +250,44 @@ def check_tests_results(udata):
         return True
 
 
+class resource():
+    def __init__(self, conn, res_set, name, mandatory=True, shared=False):
+        self.res = \
+            mrp_reslib.mrp_res_create_resource(conn.udata.ctx,
+                                               res_set.res_set,
+                                               name, mandatory,
+                                               shared)
+
+
+class resource_set():
+    def __init__(self, conn, mrp_class):
+        self.connection = conn
+        self.mrp_class  = mrp_class
+
+        self.res_set = \
+            mrp_reslib.mrp_res_create_resource_set(conn.udata.ctx,
+                                                   mrp_class,
+                                                   res_callback,
+                                                   pointer(conn.udata))
+
+        if not self.res_set:
+            __del__(self)
+
+    def acquire(self):
+        return \
+            mrp_reslib.mrp_res_acquire_resource_set(self.connection.udata.ctx,
+                                                    self.res_set)
+
+    def create_resource(self, name, mandatory=True, shared=False):
+        return resource(self.connection, self, name, mandatory, shared)
+
+
 class reslib_connection():
     def __init__(self, udata):
         self.udata    = udata
         self.mainloop = None
+
+        self.udata.py_obj.connection = self
 
     def connect(self):
         status = self.udata.py_obj
@@ -298,9 +326,14 @@ class reslib_connection():
             mrp_common.mrp_mainloop_quit(self.mainloop, 0)
             mrp_common.mrp_mainloop_destroy(self.mainloop)
 
+    def create_resource_set(self, mrp_class):
+        return resource_set(self, mrp_class)
+
 
 class status_obj():
     def __init__(self):
+        self.connection = None
+
         self.res_ctx_callback_called = False
         self.connected_to_murphy     = False
         self.res_set_changed         = False
