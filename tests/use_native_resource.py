@@ -82,9 +82,8 @@ class Mrp_resource(Structure):
 
 
 class Userdata(Structure):
-    _fields_ = [("ctx",     POINTER(Mrp_resource_ctx)),
-                ("res_set", POINTER(Mrp_resource_set)),
-                ("py_obj",  py_object)]
+    _fields_ = [("conn",   py_object),
+                ("opaque", py_object)]
 
 # Set the arguments/return value types for used variables
 mrp_reslib.mrp_res_create.restype = POINTER(Mrp_resource_ctx)
@@ -142,8 +141,8 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
     res_ctx     = res_ctx_p.contents
     app_classes = None
 
-    status = cast(userdata_p, POINTER(Userdata)).contents.py_obj
-    status.res_ctx_callback_called = True
+    conn = cast(userdata_p, POINTER(Userdata)).contents.conn
+    conn.res_ctx_callback_called = True
 
     if res_ctx.state == MRP_RES_CONNECTED:
         print("We are connected!\n")
@@ -168,9 +167,9 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
                 for i in xrange(res_names.contents.num_strings):
                     print('Resource %d: %s' % (i, res_names.contents.strings[i]))
 
-        status.connected_to_murphy = True
+        conn.connected_to_murphy = True
     else:
-        status.connected_to_murphy = False
+        conn.connected_to_murphy = False
 
     print('ResCtxCallback ErrCode: %d' % (error_code))
     return
@@ -187,17 +186,23 @@ RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
 def res_callback_func(res_ctx_p, res_set_p, userdata_p):
     print("ResCallBack: Entered")
 
-    userdata = cast(userdata_p, POINTER(Userdata)).contents
+    opaque  = cast(userdata_p, POINTER(Userdata)).contents.opaque
+    res_set = opaque.res_set
 
     # Check if this callback is for the resource set we have in userdata
-    if not mrp_reslib.mrp_res_equal_resource_set(res_set_p, userdata.res_set):
-        print("ResCallBack: Callback not for carried userdata")
+    if not res_set:
+        print("ResCallBack: No resource set yet set")
+        return
+    elif not res_set.equals(res_set_p):
+        print("ResCallBack: Callback not for carried resource set")
         return
 
-    print("ResCallBack: Prev status -> " + res_state_to_str(userdata.res_set.contents.state))
+    # Print information about the old resource set state
+    print("ResCallBack: Previously resource set was: %s" %
+          (res_state_to_str(res_set.res_set.contents.state)))
 
     # Print information about the new resource set state
-    print("ResCallBack: Resource set is: %s" %
+    print("ResCallBack: Resource set now is: %s" %
           (res_state_to_str(res_set_p.contents.state)))
 
     # Print information about the resource itself
@@ -210,27 +215,28 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
               (res_state_to_str(checked_resource.contents.state)))
 
     # Remove and switch the userdata resource set to a new one
-    mrp_reslib.mrp_res_delete_resource_set(res_ctx_p, userdata.res_set)
-    userdata.res_set = mrp_reslib.mrp_res_copy_resource_set(res_ctx_p,
-                                                            res_set_p)
+    mrp_reslib.mrp_res_delete_resource_set(res_ctx_p, res_set.res_set)
+    res_set.res_set = mrp_reslib.mrp_res_copy_resource_set(res_ctx_p,
+                                                                  res_set_p)
 
-    userdata.py_obj.res_set_changed = True
+    opaque.res_set_changed = True
 
 res_callback = RES_CALLBACKFUNC(res_callback_func)
 
 
-def actual_test_steps(udata):
-    connection = udata.py_obj.connection
+def actual_test_steps(conn):
     # Create a clean, empty new resource set
-    res_set = connection.create_resource_set("player")
+    res_set = conn.create_resource_set("player")
     if not res_set:
         print("Failed to create a resource set")
         return False
 
-    udata.res_set = res_set.res_set
+    # We hold the currently worked upon res_set
+    # in the opaque data
+    conn.udata.opaque.res_set = res_set
 
     # Add the audio_playback resource to the empty set
-    resource = res_set.create_resource("audio_playback").res
+    resource = res_set.create_resource("audio_playback")
     if not resource:
         print("Can has no resource")
         return False
@@ -240,9 +246,10 @@ def actual_test_steps(udata):
     return not acquired_status
 
 
-def check_tests_results(udata):
+def check_tests_results(conn):
     # Check new status
-    if udata.res_set.contents.state != MRP_RES_RESOURCE_ACQUIRED:
+    res_set = conn.udata.opaque.res_set
+    if res_set.state() != MRP_RES_RESOURCE_ACQUIRED:
         print("FirstTest: Something went wrong, resource set's not ours")
         return False
     else:
@@ -253,19 +260,22 @@ def check_tests_results(udata):
 class resource():
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
         self.res = \
-            mrp_reslib.mrp_res_create_resource(conn.udata.ctx,
+            mrp_reslib.mrp_res_create_resource(conn.res_ctx,
                                                res_set.res_set,
                                                name, mandatory,
                                                shared)
 
+        if not self.res:
+            __del__(self)
+
 
 class resource_set():
     def __init__(self, conn, mrp_class):
-        self.connection = conn
+        self.conn = conn
         self.mrp_class  = mrp_class
 
         self.res_set = \
-            mrp_reslib.mrp_res_create_resource_set(conn.udata.ctx,
+            mrp_reslib.mrp_res_create_resource_set(conn.res_ctx,
                                                    mrp_class,
                                                    res_callback,
                                                    pointer(conn.udata))
@@ -275,40 +285,47 @@ class resource_set():
 
     def acquire(self):
         return \
-            mrp_reslib.mrp_res_acquire_resource_set(self.connection.udata.ctx,
+            mrp_reslib.mrp_res_acquire_resource_set(self.conn.res_ctx,
                                                     self.res_set)
 
     def create_resource(self, name, mandatory=True, shared=False):
-        return resource(self.connection, self, name, mandatory, shared)
+        return resource(self.conn, self, name, mandatory, shared)
+
+    def state(self):
+        return self.res_set.contents.state
+
+    def equals(self, other):
+        return mrp_reslib.mrp_res_equal_resource_set(self.res_set,
+                                                     other)
 
 
 class reslib_connection():
-    def __init__(self, udata):
-        self.udata    = udata
+    def __init__(self, opaque_data):
+        self.udata    = Userdata(self, opaque_data)
         self.mainloop = None
+        self.res_ctx  = None
 
-        self.udata.py_obj.connection = self
+        self.res_ctx_callback_called = False
+        self.connected_to_murphy     = False
 
     def connect(self):
-        status = self.udata.py_obj
-
         self.mainloop = mrp_common.mrp_mainloop_create()
         if not self.mainloop:
             self.disconnect()
             return False
 
-        self.udata.ctx = mrp_reslib.mrp_res_create(self.mainloop,
-                                                   res_ctx_callback,
-                                                   pointer(udata))
-        if not self.udata.ctx:
+        self.res_ctx = mrp_reslib.mrp_res_create(self.mainloop,
+                                                 res_ctx_callback,
+                                                 pointer(self.udata))
+        if not self.res_ctx:
             self.disconnect()
             return False
 
-        while mrp_common.mrp_mainloop_iterate(self.mainloop):
-            if not status.res_ctx_callback_called:
+        while self.iterate():
+            if not self.res_ctx_callback_called:
                 continue
             else:
-                connected = status.connected_to_murphy
+                connected = self.connected_to_murphy
                 if not connected:
                     self.disconnect()
 
@@ -319,8 +336,8 @@ class reslib_connection():
             return mrp_common.mrp_mainloop_iterate(self.mainloop)
 
     def disconnect(self):
-        if self.udata.ctx:
-            mrp_reslib.mrp_res_destroy(self.udata.ctx)
+        if self.res_ctx:
+            mrp_reslib.mrp_res_destroy(self.res_ctx)
 
         if self.mainloop:
             mrp_common.mrp_mainloop_quit(self.mainloop, 0)
@@ -333,6 +350,7 @@ class reslib_connection():
 class status_obj():
     def __init__(self):
         self.connection = None
+        self.res_set = None
 
         self.res_ctx_callback_called = False
         self.connected_to_murphy     = False
@@ -348,31 +366,30 @@ if __name__ == "__main__":
 
     # Create the general status object (passed on as opaque)
     status = status_obj()
-    udata = Userdata(None, None, status)
 
     # Create a connection object and try to connect to Murphy
-    connection = reslib_connection(udata)
-    connected = connection.connect()
+    conn = reslib_connection(status)
+    connected = conn.connect()
     if not connected:
         print("Main: Couldn't connect")
         sys.exit(2)
 
     # Run the actual changes
-    finished_test = actual_test_steps(udata)
+    finished_test = actual_test_steps(conn)
     if not finished_test:
         print("Main: Test not finished")
-        connection.disconnect()
+        conn.disconnect()
         sys.exit(3)
 
     # Check the results of the changes done
-    while connection.iterate():
+    while conn.iterate():
         print("res_set_changed: %s" % (status.res_set_changed))
 
         if not check_run and status.res_set_changed:
-            test_succeeded = check_tests_results(udata)
+            test_succeeded = check_tests_results(conn)
             check_run = True
             break
 
-    connection.disconnect()
+    conn.disconnect()
 
     sys.exit(not (check_run and test_succeeded))
