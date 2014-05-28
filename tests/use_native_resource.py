@@ -4,7 +4,7 @@ from os.path import (dirname, realpath)
 from ctypes import (Structure, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char_p, c_void_p,
                     c_bool, CDLL, py_object)
-import threading
+import sys
 
 
 # Murphy resource-native API related defines
@@ -84,7 +84,7 @@ class Mrp_resource(Structure):
 class Userdata(Structure):
     _fields_ = [("ctx",     POINTER(Mrp_resource_ctx)),
                 ("res_set", POINTER(Mrp_resource_set)),
-                ("event",   py_object)]
+                ("py_obj",  py_object)]
 
 # Set the arguments/return value types for used variables
 mrp_reslib.mrp_res_create.restype = POINTER(Mrp_resource_ctx)
@@ -138,9 +138,12 @@ RES_CTX_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
                                  c_uint, c_void_p)
 
 
-def res_ctx_callback_func(res_ctx_p, error_code, userdata):
+def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
     res_ctx     = res_ctx_p.contents
     app_classes = None
+
+    status = cast(userdata_p, POINTER(Userdata)).contents.py_obj
+    status.res_ctx_callback_called = True
 
     if res_ctx.state == MRP_RES_CONNECTED:
         print("We are connected!\n")
@@ -165,23 +168,15 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata):
                 for i in xrange(res_names.contents.num_strings):
                     print('Resource %d: %s' % (i, res_names.contents.strings[i]))
 
+        status.connected_to_murphy = True
+    else:
+        status.connected_to_murphy = False
+
     print('ResCtxCallback ErrCode: %d' % (error_code))
     return
 
 res_ctx_callback = RES_CTX_CALLBACKFUNC(res_ctx_callback_func)
 
-
-# Define a thread for the Murphy mainloop
-class mainLoopThread(threading.Thread):
-    def __init__(self, threadID, name, ml):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name     = name
-        self.mainloop = ml
-        self.daemon   = True
-
-    def run(self):
-        mrp_common.mrp_mainloop_run(mainloop)
 
 # Create a python callback for resources
 RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
@@ -199,6 +194,8 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
         print("ResCallBack: Callback not for carried userdata")
         return
 
+    print("ResCallBack: Prev status -> " + res_state_to_str(userdata.res_set.contents.state))
+
     # Print information about the new resource set state
     print("ResCallBack: Resource set is: %s" %
           (res_state_to_str(res_set_p.contents.state)))
@@ -212,21 +209,17 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
         print("ResCallBack: Resouce 'audio playback' is: %s" %
               (res_state_to_str(checked_resource.contents.state)))
 
-    print("ResCallBack: " + res_state_to_str(userdata.res_set.contents.state))
-
     # Remove and switch the userdata resource set to a new one
     mrp_reslib.mrp_res_delete_resource_set(res_ctx_p, userdata.res_set)
     userdata.res_set = mrp_reslib.mrp_res_copy_resource_set(res_ctx_p,
                                                             res_set_p)
 
-    # Send the event to continue the main thread (AKA the actual test)
-    userdata.event.set()
+    userdata.py_obj.res_set_changed = True
 
 res_callback = RES_CALLBACKFUNC(res_callback_func)
 
 
-# First test
-def first_test(udata):
+def actual_test_steps(udata):
     # Create a clean, empty new resource set
     udata.res_set = mrp_reslib.mrp_res_create_resource_set(udata.ctx,
                                                            "player",
@@ -234,7 +227,7 @@ def first_test(udata):
                                                            pointer(udata))
     if not udata.res_set:
         print("Failed to create a resource set")
-        return
+        return False
 
     # Add the audio_playback resource to the empty set
     resource = mrp_reslib.mrp_res_create_resource(udata.ctx,
@@ -243,28 +236,29 @@ def first_test(udata):
                                                   True, False)
     if not resource:
         print("Can has no resource")
-        return
+        return False
 
     acquired_status = mrp_reslib.mrp_res_acquire_resource_set(udata.ctx,
                                                               udata.res_set)
     if acquired_status:
-        return
+        return False
 
-    # Wait until we get our callback
-    udata.event.wait()
+    return True
 
+
+def check_tests_results(udata):
     # Check new status
     if udata.res_set.contents.state != MRP_RES_RESOURCE_ACQUIRED:
         print("FirstTest: Something went wrong, resource set's not ours")
+        return False
     else:
         print("FirstTest: Yay, checked that we now own the resource")
-
-    print('FirstTest finishing')
+        return True
 
 
 def connect(udata):
     """
-    Connects to the resource-native IPC
+    Initiates the connection to Murphy
 
     @param udata Userdata object
     """
@@ -276,21 +270,47 @@ def connect(udata):
             mrp_reslib.mrp_res_create(ml, res_ctx_callback,
                                       pointer(udata)))
 
+
+class status_obj():
+    def __init__(self):
+        self.res_ctx_callback_called = False
+        self.connected_to_murphy     = False
+        self.res_set_changed         = False
+        self.tests_successful        = False
+
+
 if __name__ == "__main__":
-    event = threading.Event()
-    udata = Userdata(None, None, event)
+    status = status_obj()
+    udata = Userdata(None, None, status)
 
     (mainloop, udata.ctx) = connect(udata)
 
-    # Set up a second thread for the mainloop
-    mainloop_thread = mainLoopThread(1, "mrp_mainloop_thread", mainloop)
-    mainloop_thread.start()
+    run_tests       = False
+    run_checks      = False
+    tests_succeeded = False
 
-    worker_thread = threading.Thread(name="worker_thread", target=first_test,
-                                     args=(udata,))
-    worker_thread.start()
+    while mrp_common.mrp_mainloop_iterate(mainloop):
+        print("res_set_changed: %s" % (status.res_set_changed))
 
-    event.wait()
+        if not status.res_ctx_callback_called:
+            continue
+        elif not status.connected_to_murphy:
+            break
+
+        if not run_tests:
+            if not actual_test_steps(udata):
+                break
+
+            run_tests = True
+            continue
+
+        elif not run_checks and status.res_set_changed:
+            tests_succeeded = check_tests_results(udata)
+            run_checks = True
+            break
+
+        else:
+            continue
 
     # Destroy the resource context
     mrp_reslib.mrp_res_destroy(udata.ctx)
@@ -298,3 +318,5 @@ if __name__ == "__main__":
     # Quit and shut down the Murphy main loop
     mrp_common.mrp_mainloop_quit(mainloop, 0)
     mrp_common.mrp_mainloop_destroy(mainloop)
+
+    sys.exit(not (run_tests and run_checks and tests_succeeded))
