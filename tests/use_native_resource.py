@@ -616,10 +616,12 @@ class reslib_connection():
     def disconnect(self):
         if self.res_ctx:
             mrp_reslib.mrp_res_destroy(self.res_ctx)
+            self.res_ctx = None
 
         if self.mainloop:
             mrp_common.mrp_mainloop_quit(self.mainloop, 0)
             mrp_common.mrp_mainloop_destroy(self.mainloop)
+            self.mainloop = None
 
     def create_resource_set(self, res_cb, mrp_class):
         return resource_set(res_cb, self, mrp_class)
