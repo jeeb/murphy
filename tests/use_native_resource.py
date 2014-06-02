@@ -175,8 +175,7 @@ mrp_reslib.mrp_res_delete_resource_by_name.argtypes = [POINTER(Mrp_resource_set)
 mrp_reslib.mrp_res_delete_resource_by_name.restype  = c_bool
 
 mrp_reslib.mrp_res_list_attribute_names.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_resource),
-                                                    c_char_p]
+                                                    POINTER(Mrp_resource)]
 mrp_reslib.mrp_res_list_attribute_names.restype  = POINTER(Mrp_string_array)
 
 mrp_reslib.mrp_res_get_attribute_by_name.argtypes = [POINTER(Mrp_resource_ctx),
@@ -603,13 +602,13 @@ class reslib_connection():
         class_list = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_application_classes(self.res_ctx).contents
+            mrp_reslib.mrp_res_list_application_classes(self.res_ctx)
 
         if mrp_list:
-            for i in xrange(mrp_list.num_strings):
-                class_list.append(mrp_list.strings[i])
+            for i in xrange(mrp_list.contents.num_strings):
+                class_list.append(mrp_list.contents.strings[i])
 
-            mrp_reslib.mrp_res_free_string_array(mrp_list)
+            mrp_list = None
 
         return class_list
 
