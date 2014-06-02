@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from use_native_resource import (reslib_connection)
+from mrp_resource_native import (reslib_connection)
 import sys
 
 
