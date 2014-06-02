@@ -210,17 +210,17 @@ mrp_reslib.mrp_res_free_string_array.restype  = None
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
-# Create the resource context callback
-RES_CTX_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
+# Create the connection status callback
+CONN_STATUS_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
                                  c_uint, c_void_p)
 
 
-def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
+def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
     res_ctx     = res_ctx_p.contents
     app_classes = None
 
     conn = cast(userdata_p, POINTER(Userdata)).contents.conn
-    conn.res_ctx_callback_called = True
+    conn.conn_status_callback_called = True
 
     if res_ctx.state == MRP_RES_CONNECTED:
         conn.connected_to_murphy = True
@@ -255,7 +255,7 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
     print('ResCtxCallback ErrCode: %d' % (error_code))
     return
 
-res_ctx_callback = RES_CTX_CALLBACKFUNC(res_ctx_callback_func)
+conn_status_callback = CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
 
 
 # Create a python callback for resources
@@ -573,7 +573,7 @@ class reslib_connection():
         self.mainloop = None
         self.res_ctx  = None
 
-        self.res_ctx_callback_called = False
+        self.conn_status_callback_called = False
         self.connected_to_murphy     = False
 
     def connect(self):
@@ -583,14 +583,14 @@ class reslib_connection():
             return False
 
         self.res_ctx = mrp_reslib.mrp_res_create(self.mainloop,
-                                                 res_ctx_callback,
+                                                 conn_status_callback,
                                                  pointer(self.udata))
         if not self.res_ctx:
             self.disconnect()
             return False
 
         while self.iterate():
-            if not self.res_ctx_callback_called:
+            if not self.conn_status_callback_called:
                 continue
             else:
                 connected = self.connected_to_murphy
@@ -642,7 +642,7 @@ class status_obj():
         self.connection = None
         self.res_set = None
 
-        self.res_ctx_callback_called = False
+        self.conn_status_callback_called = False
         self.connected_to_murphy     = False
         self.res_set_changed         = False
         self.tests_successful        = False
