@@ -223,6 +223,8 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
     conn.res_ctx_callback_called = True
 
     if res_ctx.state == MRP_RES_CONNECTED:
+        conn.connected_to_murphy = True
+
         print("We are connected!\n")
 
         print("Infodump:\n")
@@ -234,17 +236,19 @@ def res_ctx_callback_func(res_ctx_p, error_code, userdata_p):
             print('Class: %s' % (app_class))
 
         # Let's try getting all the resources
-        res_set = mrp_reslib.mrp_res_list_resources(res_ctx_p)
+        res_set = conn.list_resources()
+        res_names = res_set.list_resource_names()
 
-        if res_set:
-            res_names = mrp_reslib.mrp_res_list_resource_names(res_ctx_p,
-                                                               res_set)
+        for name in res_names:
+            res = res_set.get_resource_by_name(name)
+            attr_list = res.list_attribute_names()
 
-            if res_names:
-                for i in xrange(res_names.contents.num_strings):
-                    print('Resource %d: %s' % (i, res_names.contents.strings[i]))
+            print('Resource: %s' % (name))
+            for attr_name in attr_list:
+                attr = res.get_attribute_by_name(attr_name)
+                print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
-        conn.connected_to_murphy = True
+
     else:
         conn.connected_to_murphy = False
 
