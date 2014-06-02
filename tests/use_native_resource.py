@@ -210,21 +210,8 @@ mrp_reslib.mrp_res_free_string_array.restype  = None
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
-# Create the connection status callback
-CONN_STATUS_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
-                                 c_uint, c_void_p)
-
-
-def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
-    res_ctx     = res_ctx_p.contents
-    app_classes = None
-
-    conn = cast(userdata_p, POINTER(Userdata)).contents.conn
-    conn.conn_status_callback_called = True
-
-    if res_ctx.state == MRP_RES_CONNECTED:
-        conn.connected_to_murphy = True
-
+def py_status_callback(conn, error_code, opaque):
+    if conn.get_state() == "connected":
         print("We are connected!\n")
 
         print("Infodump:\n")
@@ -248,36 +235,20 @@ def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
                 attr = res.get_attribute_by_name(attr_name)
                 print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
-
-    else:
-        conn.connected_to_murphy = False
-
     print('ResCtxCallback ErrCode: %d' % (error_code))
-    return
-
-conn_status_callback = CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
 
 
-# Create a python callback for resources
-RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
-                             POINTER(Mrp_resource_set),
-                             c_void_p)
-
-
-def res_callback_func(res_ctx_p, res_set_p, userdata_p):
+def py_res_callback(new_res_set, opaque):
     print("ResCallBack: Entered")
 
-    opaque  = cast(userdata_p, POINTER(Userdata)).contents.opaque
+    # Get the old res set from the opaque data
     res_set = opaque.res_set
 
-    passed_conn    = given_reslib_connection(res_ctx_p)
-    passed_res_set = given_resource_set(passed_conn, res_set_p)
-
     # Check if this callback is for the resource set we have in userdata
-    if not passed_res_set:
+    if not new_res_set:
         print("ResCallBack: No resource set yet set")
         return
-    elif not res_set.equals(passed_res_set):
+    elif not res_set.equals(new_res_set):
         print("ResCallBack: Callback not for carried resource set")
         return
 
@@ -287,12 +258,12 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
 
     # Print information about the new resource set state
     print("ResCallBack: Resource set now is: %s" %
-          (passed_res_set.get_state()))
+          (new_res_set.get_state()))
 
     # Compare the resources, and check which ones have changed
-    for resource in passed_res_set.list_resource_names():
+    for resource in new_res_set.list_resource_names():
         old_resource     = res_set.get_resource_by_name(resource)
-        checked_resource = passed_res_set.get_resource_by_name(resource)
+        checked_resource = new_res_set.get_resource_by_name(resource)
 
         if old_resource.get_state() != checked_resource.get_state():
             attr = checked_resource.get_attribute_by_name(checked_resource.list_attribute_names()[0])
@@ -302,16 +273,15 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
             print("ResCallBack: Attribute %s = %s" % (attr.get_name(), attr.get_value()))
 
     # Remove and switch the userdata resource set to a new one
-    res_set.update(passed_res_set)
+    res_set.update(new_res_set)
 
     opaque.res_set_changed = True
-
-res_callback = RES_CALLBACKFUNC(res_callback_func)
 
 
 def actual_test_steps(conn):
     # Create a clean, empty new resource set
-    res_set = conn.create_resource_set("player")
+    print("Entered actual test steps")
+    res_set = conn.create_resource_set(py_res_callback, "player")
     if not res_set:
         print("Failed to create a resource set")
         return False
@@ -445,14 +415,31 @@ class given_resource(resource):
 
 
 class resource_set():
-    def __init__(self, conn, mrp_class):
+    def __init__(self, res_cb, conn, mrp_class):
         self.conn = conn
         self.mrp_class = mrp_class
+        self.res_cb = res_cb
+
+        # Create a python callback for resources
+        RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
+                                     POINTER(Mrp_resource_set),
+                                     c_void_p)
+
+        def res_callback_func(res_ctx_p, res_set_p, userdata_p):
+            opaque = cast(userdata_p, POINTER(Userdata)).contents.opaque
+
+            passed_conn    = given_reslib_connection(res_ctx_p)
+            passed_res_set = given_resource_set(passed_conn, res_set_p)
+
+            # Call the actual higher-level python callback func
+            self.res_cb(passed_res_set, opaque)
+
+        self.res_callback = RES_CALLBACKFUNC(res_callback_func)
 
         self.res_set = \
             mrp_reslib.mrp_res_create_resource_set(conn.res_ctx,
                                                    mrp_class,
-                                                   res_callback,
+                                                   self.res_callback,
                                                    pointer(conn.udata))
 
         if not self.res_set:
@@ -574,13 +561,34 @@ class given_resource_set(resource_set):
 
 
 class reslib_connection():
-    def __init__(self, opaque_data):
+    def __init__(self, status_cb, opaque_data):
         self.udata    = Userdata(self, opaque_data)
         self.mainloop = None
         self.res_ctx  = None
+        self.status_cb = None
+        self.conn_status_callback = None
 
         self.conn_status_callback_called = False
         self.connected_to_murphy     = False
+
+        self.status_cb = status_cb
+
+        def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
+            self.conn_status_callback_called = True
+            conn = given_reslib_connection(res_ctx_p)
+            if error_to_str(error_code) == "none" and conn.get_state() == "connected":
+                self.connected_to_murphy = True
+
+            opaque = cast(userdata_p, POINTER(Userdata)).contents.opaque
+
+            # Call the actual Python-level callback func
+            self.status_cb(conn, error_code, opaque)
+
+        # Create the connection status callback
+        CONN_STATUS_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
+                                             c_uint, c_void_p)
+        self.conn_status_callback = \
+            CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
 
     def connect(self):
         self.mainloop = mrp_common.mrp_mainloop_create()
@@ -589,7 +597,7 @@ class reslib_connection():
             return False
 
         self.res_ctx = mrp_reslib.mrp_res_create(self.mainloop,
-                                                 conn_status_callback,
+                                                 self.conn_status_callback,
                                                  pointer(self.udata))
         if not self.res_ctx:
             self.disconnect()
@@ -617,8 +625,8 @@ class reslib_connection():
             mrp_common.mrp_mainloop_quit(self.mainloop, 0)
             mrp_common.mrp_mainloop_destroy(self.mainloop)
 
-    def create_resource_set(self, mrp_class):
-        return resource_set(self, mrp_class)
+    def create_resource_set(self, res_cb, mrp_class):
+        return resource_set(res_cb, self, mrp_class)
 
     def list_application_classes(self):
         class_list = []
@@ -636,6 +644,9 @@ class reslib_connection():
 
     def list_resources(self):
         return resource_listing(self)
+
+    def get_state(self):
+        return conn_state_to_str(self.res_ctx.contents.state)
 
 
 class given_reslib_connection(reslib_connection):
@@ -664,7 +675,7 @@ if __name__ == "__main__":
     status = status_obj()
 
     # Create a connection object and try to connect to Murphy
-    conn = reslib_connection(status)
+    conn = reslib_connection(py_status_callback, status)
     connected = conn.connect()
     if not connected:
         print("Main: Couldn't connect")
