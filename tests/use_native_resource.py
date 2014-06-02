@@ -447,8 +447,7 @@ class given_resource(resource):
 class resource_set():
     def __init__(self, conn, mrp_class):
         self.conn = conn
-        self.mrp_class  = mrp_class
-        self.resources = []
+        self.mrp_class = mrp_class
 
         self.res_set = \
             mrp_reslib.mrp_res_create_resource_set(conn.res_ctx,
@@ -476,9 +475,6 @@ class resource_set():
 
     def create_resource(self, name, mandatory=True, shared=False):
         res = resource(self.conn, self, name, mandatory, shared)
-
-        if res:
-            self.resources.append(res)
 
         return res
 
@@ -512,8 +508,6 @@ class resource_set():
         return resource
 
     def delete_resource(self, res):
-        self.resources.remove(res)
-
         return mrp_reslib.mrp_res_delete_resource(self.res_set, res.res)
 
     def delete_resource_by_name(self, name):
