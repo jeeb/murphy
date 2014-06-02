@@ -295,9 +295,11 @@ def res_callback_func(res_ctx_p, res_set_p, userdata_p):
         checked_resource = passed_res_set.get_resource_by_name(resource)
 
         if old_resource.get_state() != checked_resource.get_state():
+            attr = checked_resource.get_attribute_by_name(checked_resource.list_attribute_names()[0])
             print("ResCallBack: The status of resource '%s' has changed: %s -> %s" %
                   (resource, old_resource.get_state(),
                    checked_resource.get_state()))
+            print("ResCallBack: Attribute %s = %s" % (attr.get_name(), attr.get_value()))
 
     # Remove and switch the userdata resource set to a new one
     res_set.update(passed_res_set)
@@ -324,6 +326,9 @@ def actual_test_steps(conn):
         print("Can has no resource")
         return False
 
+    attr = resource.get_attribute_by_name(resource.list_attribute_names()[0])
+    attr.set_value_to("huehue")
+
     acquired_status = res_set.acquire()
 
     return not acquired_status
@@ -336,8 +341,12 @@ def check_tests_results(conn):
         print("FirstTest: Something went wrong, resource set's not ours")
         return False
     else:
-        print("FirstTest: Yay, checked that we now own the resource")
-        return True
+        print("FirstTest: Yay, checked that we now own the resource set")
+        res  = res_set.get_resource_by_name("audio_playback")
+        attr = res.get_attribute_by_name(res.list_attribute_names()[0])
+        if attr.get_value() == "huehue":
+            print("FirstTest: Yay, we have the first attribute set to 'huehue' now!")
+            return True
 
 
 class attribute():
@@ -376,6 +385,9 @@ class attribute():
             "s":  self.attr.contents.string,
             "\0": None,
         }.get(self.attr.contents.type, None)
+
+    def get_name(self):
+        return self.attr.contents.name
 
 
 class resource():
