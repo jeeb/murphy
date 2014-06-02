@@ -5,7 +5,6 @@ from os.path import (dirname, realpath)
 from ctypes import (Structure, Union, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char, c_char_p, c_void_p,
                     c_bool, c_double, CDLL, py_object)
-import sys
 
 
 # Murphy resource-native API related defines
