@@ -214,55 +214,57 @@ mrp_common.mrp_mainloop_destroy.restype = None
 class attribute():
     def __init__(self, res, mrp_attr):
         self.res  = res
-        self.attr = mrp_attr
+        self.attr = mrp_attr.contents
 
     def set_value_to(self, value, inttype="int"):
         if isinstance(value, int):
             if inttype == "int":
-                return mrp_reslib.mrp_res_set_attribute_int(self.res.res_set.conn.res_ctx,
-                                                            self.attr, value)
+                return mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
+                                                            pointer(self.attr), value)
             elif inttype == "uint":
                 if value < 0:
                     return -1
                 else:
-                    return mrp_reslib.mrp_res_set_attribute_uint(self.res.res_set.conn.res_ctx,
-                                                                 self.attr, value)
+                    return mrp_reslib.mrp_res_set_attribute_uint(pointer(self.res.res_set.conn.res_ctx),
+                                                                 pointer(self.attr), value)
             else:
                 return -1
 
         elif isinstance(value, float):
-            return mrp_reslib.mrp_res_set_attribute_double(self.res.res_set.conn.res_ctx,
-                                                           self.attr, value)
+            return mrp_reslib.mrp_res_set_attribute_double(pointer(self.res.res_set.conn.res_ctx),
+                                                           pointer(self.attr), value)
         elif isinstance(value, str):
-            return mrp_reslib.mrp_res_set_attribute_string(self.res.res_set.conn.res_ctx,
-                                                           self.attr, value)
+            return mrp_reslib.mrp_res_set_attribute_string(pointer(self.res.res_set.conn.res_ctx),
+                                                           pointer(self.attr), value)
         else:
             return -1
 
     def get_value(self):
         return {
-            "i":  self.attr.contents.integer,
-            "u":  self.attr.contents.unsignd,
-            "f":  self.attr.contents.floating,
-            "s":  self.attr.contents.string,
+            "i":  self.attr.integer,
+            "u":  self.attr.unsignd,
+            "f":  self.attr.floating,
+            "s":  self.attr.string,
             "\0": None,
-        }.get(self.attr.contents.type, None)
+        }.get(self.attr.type, None)
 
     def get_name(self):
-        return self.attr.contents.name
+        return self.attr.name
 
 
 class resource():
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
         self.res_set = res_set
-        self.res = \
+        res = \
             mrp_reslib.mrp_res_create_resource(conn.res_ctx,
                                                res_set.res_set,
                                                name, mandatory,
                                                shared)
 
-        if not self.res:
+        if not res:
             self.__del__()
+
+        self.res = res.contents
 
     def delete(self):
         return self.res_set.delete_resource(self)
@@ -271,8 +273,8 @@ class resource():
         attribute_list = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_attribute_names(self.res_set.conn.res_ctx,
-                                                    self.res)
+            mrp_reslib.mrp_res_list_attribute_names(pointer(self.res_set.conn.res_ctx),
+                                                    pointer(self.res))
 
         if mrp_list:
             for i in xrange(mrp_list.contents.num_strings):
@@ -287,8 +289,8 @@ class resource():
         attr = None
 
         mrp_attr = \
-            mrp_reslib.mrp_res_get_attribute_by_name(self.res_set.conn.res_ctx,
-                                                     self.res,
+            mrp_reslib.mrp_res_get_attribute_by_name(pointer(self.res_set.conn.res_ctx),
+                                                     pointer(self.res),
                                                      name)
 
         if mrp_attr:
@@ -297,13 +299,13 @@ class resource():
         return attr
 
     def get_state(self):
-        return res_state_to_str(self.res.contents.state)
+        return res_state_to_str(self.res.state)
 
 
 class given_resource(resource):
     def __init__(self, res_set, res):
         self.res_set = res_set
-        self.res     = res
+        self.res     = res.contents
 
 
 class resource_set():
@@ -328,29 +330,31 @@ class resource_set():
 
         self.res_callback = RES_CALLBACKFUNC(res_callback_func)
 
-        self.res_set = \
-            mrp_reslib.mrp_res_create_resource_set(conn.res_ctx,
+        res_set = \
+            mrp_reslib.mrp_res_create_resource_set(pointer(conn.res_ctx),
                                                    mrp_class,
                                                    self.res_callback,
                                                    pointer(conn.udata))
 
-        if not self.res_set:
+        if not res_set:
             self.__del__()
+
+        self.res_set = res_set.contents
 
     def acquire(self):
         return \
-            mrp_reslib.mrp_res_acquire_resource_set(self.conn.res_ctx,
-                                                    self.res_set)
+            mrp_reslib.mrp_res_acquire_resource_set(pointer(self.conn.res_ctx),
+                                                    pointer(self.res_set))
 
     def release(self):
         return \
-            mrp_reslib.mrp_res_release_resource_set(self.conn.res_ctx,
-                                                    self.res_set)
+            mrp_reslib.mrp_res_release_resource_set(pointer(self.conn.res_ctx),
+                                                    pointer(self.res_set))
 
     def get_id(self):
         return \
-            mrp_reslib.mrp_res_get_resource_set_id(self.conn.res_ctx,
-                                                   self.res_set)
+            mrp_reslib.mrp_res_get_resource_set_id(pointer(self.conn.res_ctx),
+                                                   pointer(self.res_set))
 
     def create_resource(self, name, mandatory=True, shared=False):
         res = resource(self.conn, self, name, mandatory, shared)
@@ -361,12 +365,12 @@ class resource_set():
         names = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_resource_names(self.conn.res_ctx,
-                                                   self.res_set).contents
+            mrp_reslib.mrp_res_list_resource_names(pointer(self.conn.res_ctx),
+                                                   pointer(self.res_set))
 
         if mrp_list:
-            for i in xrange(mrp_list.num_strings):
-                names.append(mrp_list.strings[i])
+            for i in xrange(mrp_list.contents.num_strings):
+                names.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
             mrp_list = None
@@ -377,8 +381,8 @@ class resource_set():
         resource = None
 
         mrp_res = \
-            mrp_reslib.mrp_res_get_resource_by_name(self.conn.res_ctx,
-                                                    self.res_set,
+            mrp_reslib.mrp_res_get_resource_by_name(pointer(self.conn.res_ctx),
+                                                    pointer(self.res_set),
                                                     name)
 
         if mrp_res:
@@ -387,36 +391,36 @@ class resource_set():
         return resource
 
     def delete_resource(self, res):
-        return mrp_reslib.mrp_res_delete_resource(self.res_set, res.res)
+        return mrp_reslib.mrp_res_delete_resource(pointer(self.res_set), pointer(res.res))
 
     def delete_resource_by_name(self, name):
-        return mrp_reslib.mrp_res_delete_resource_by_name(self.res_set,
+        return mrp_reslib.mrp_res_delete_resource_by_name(pointer(self.res_set),
                                                           name)
 
     def get_state(self):
-        return res_state_to_str(self.res_set.contents.state)
+        return res_state_to_str(self.res_set.state)
 
     def equals(self, other):
-        return mrp_reslib.mrp_res_equal_resource_set(self.res_set,
-                                                     other.res_set)
+        return mrp_reslib.mrp_res_equal_resource_set(pointer(self.res_set),
+                                                     pointer(other.res_set))
 
     def set_autorelease(self, status):
-        return mrp_reslib.mrp_res_set_autorelease(self.conn.res_ctx,
-                                                  status, self.res_set)
+        return mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
+                                                  status, pointer(self.res_set))
 
     def delete(self):
-        mrp_reslib.mrp_res_delete_resource_set(self.conn.res_ctx,
-                                               self.res_set)
+        mrp_reslib.mrp_res_delete_resource_set(pointer(self.conn.res_ctx),
+                                               pointer(self.res_set))
         self.res_set = None
 
     # FIXME: I think this might be quite bad,
     #        update the original with the new one until I clean this up
     def _copy(self):
         mrp_res_set = \
-            mrp_reslib.mrp_res_copy_resource_set(self.conn.res_ctx,
-                                                 self.res_set)
+            mrp_reslib.mrp_res_copy_resource_set(pointer(self.conn.res_ctx),
+                                                 pointer(self.res_set))
         if mrp_res_set:
-            return given_resource_set(self.conn, mrp_res_set)
+            return given_resource_set(self.conn, mrp_res_set.contents)
         else:
             return None
 
@@ -425,10 +429,10 @@ class resource_set():
             self.delete()
 
         mrp_res_set = \
-            mrp_reslib.mrp_res_copy_resource_set(other.conn.res_ctx,
-                                                 other.res_set)
+            mrp_reslib.mrp_res_copy_resource_set(pointer(other.conn.res_ctx),
+                                                 pointer(other.res_set))
         if mrp_res_set:
-            self.res_set = mrp_res_set
+            self.res_set = mrp_res_set.contents
             return True
         else:
             return False
@@ -438,32 +442,31 @@ class resource_listing(resource_set):
     def __init__(self, conn):
         self.conn = conn
 
-        self.res_set = \
+        res_set = \
             mrp_reslib.mrp_res_list_resources(self.conn.res_ctx)
 
-        if not self.res_set:
-            self.res_set = None
+        if not res_set:
             self.__del__()
+
+        self.res_set = res_set.contents
 
 
 class given_resource_set(resource_set):
     def __init__(self, conn, res_set):
         self.conn = conn
-        self.res_set = res_set
+        self.res_set = res_set.contents
 
 
 class reslib_connection():
     def __init__(self, status_cb, opaque_data):
         self.udata    = Userdata(self, opaque_data)
-        self.mainloop = None
-        self.res_ctx  = None
-        self.status_cb = None
+        self.mainloop = None  # not a pointer
+        self.res_ctx  = None  # not a pointer
+        self.status_cb = status_cb
         self.conn_status_callback = None
 
         self.conn_status_callback_called = False
         self.connected_to_murphy     = False
-
-        self.status_cb = status_cb
 
         def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
             self.conn_status_callback_called = True
@@ -483,17 +486,21 @@ class reslib_connection():
             CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
 
     def connect(self):
-        self.mainloop = mrp_common.mrp_mainloop_create()
-        if not self.mainloop:
+        mainloop = mrp_common.mrp_mainloop_create()
+        if not mainloop:
             self.disconnect()
             return False
 
-        self.res_ctx = mrp_reslib.mrp_res_create(self.mainloop,
-                                                 self.conn_status_callback,
-                                                 pointer(self.udata))
-        if not self.res_ctx:
+        self.mainloop = mainloop.contents
+
+        res_ctx = mrp_reslib.mrp_res_create(pointer(self.mainloop),
+                                            self.conn_status_callback,
+                                            pointer(self.udata))
+        if not res_ctx:
             self.disconnect()
             return False
+
+        self.res_ctx = res_ctx.contents
 
         while self.iterate():
             if not self.conn_status_callback_called:
@@ -506,17 +513,17 @@ class reslib_connection():
                 return connected
 
     def iterate(self):
-        if self.mainloop:
-            return mrp_common.mrp_mainloop_iterate(self.mainloop)
+        if pointer(self.mainloop):
+            return mrp_common.mrp_mainloop_iterate(pointer(self.mainloop))
 
     def disconnect(self):
         if self.res_ctx:
-            mrp_reslib.mrp_res_destroy(self.res_ctx)
+            mrp_reslib.mrp_res_destroy(pointer(self.res_ctx))
             self.res_ctx = None
 
         if self.mainloop:
-            mrp_common.mrp_mainloop_quit(self.mainloop, 0)
-            mrp_common.mrp_mainloop_destroy(self.mainloop)
+            mrp_common.mrp_mainloop_quit(pointer(self.mainloop), 0)
+            mrp_common.mrp_mainloop_destroy(pointer(self.mainloop))
             self.mainloop = None
 
     def create_resource_set(self, res_cb, mrp_class):
@@ -526,7 +533,7 @@ class reslib_connection():
         class_list = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_application_classes(self.res_ctx)
+            mrp_reslib.mrp_res_list_application_classes(pointer(self.res_ctx))
 
         if mrp_list:
             for i in xrange(mrp_list.contents.num_strings):
@@ -540,9 +547,9 @@ class reslib_connection():
         return resource_listing(self)
 
     def get_state(self):
-        return conn_state_to_str(self.res_ctx.contents.state)
+        return conn_state_to_str(self.res_ctx.state)
 
 
 class given_reslib_connection(reslib_connection):
     def __init__(self, res_ctx):
-        self.res_ctx = res_ctx
+        self.res_ctx = res_ctx.contents
