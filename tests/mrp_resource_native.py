@@ -485,6 +485,12 @@ class reslib_connection():
         self.conn_status_callback = \
             CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
 
+    def __deepcopy__(self, memo):
+        if isinstance(self, given_reslib_connection):
+            return given_reslib_connection(pointer(self.res_ctx))
+        else:
+            return reslib_connection(self.status_cb, self.udata.opaque)
+
     def connect(self):
         mainloop = mrp_common.mrp_mainloop_create()
         if not mainloop:
