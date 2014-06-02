@@ -59,10 +59,6 @@ mrp_reslib = CDLL(path + "/../src/.libs/libmurphy-resource.so")
 
 
 # Create general abstractions around the things we throw around
-class Mrp_mainloop(Structure):
-    pass
-
-
 class Mrp_resource_ctx(Structure):
     _fields_ = [("state", c_uint),
                 ("zone",  c_char_p),
