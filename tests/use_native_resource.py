@@ -364,6 +364,15 @@ class attribute():
         else:
             return -1
 
+    def get_value(self):
+        return {
+            "i":  self.attr.contents.integer,
+            "u":  self.attr.contents.unsignd,
+            "f":  self.attr.contents.floating,
+            "s":  self.attr.contents.string,
+            "\0": None,
+        }.get(self.attr.contents.type, None)
+
 
 class resource():
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
@@ -388,10 +397,11 @@ class resource():
                                                     self.res)
 
         if mrp_list:
-            for i in xrange(mrp_list.num_strings):
-                attribute_list.append(mrp_list.strings[i])
+            for i in xrange(mrp_list.contents.num_strings):
+                attribute_list.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
+            mrp_list = None
 
         return attribute_list
 
@@ -400,7 +410,7 @@ class resource():
 
         mrp_attr = \
             mrp_reslib.mrp_res_get_attribute_by_name(self.res_set.conn.res_ctx,
-                                                     self.res_set.res_set,
+                                                     self.res,
                                                      name)
 
         if mrp_attr:
@@ -468,6 +478,7 @@ class resource_set():
                 names.append(mrp_list.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
+            mrp_list = None
 
         return names
 
@@ -480,7 +491,7 @@ class resource_set():
                                                     name)
 
         if mrp_res:
-            resource = given_resource(self.res_set, mrp_res)
+            resource = given_resource(self, mrp_res)
 
         return resource
 
@@ -542,6 +553,7 @@ class resource_listing(resource_set):
             mrp_reslib.mrp_res_list_resources(self.conn.res_ctx)
 
         if not self.res_set:
+            self.res_set = None
             self.__del__()
 
 
