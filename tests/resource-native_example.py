@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from mrp_resource_native import (reslib_connection)
+from mrp_resource_native import (Connection)
 import sys
 
 
@@ -114,7 +114,7 @@ def check_tests_results(conn):
             return True
 
 
-class status_obj():
+class StatusObj():
     def __init__(self):
         self.res_set = None
 
@@ -131,10 +131,10 @@ if __name__ == "__main__":
     test_succeeded = False
 
     # Create the general status object (passed on as opaque)
-    status = status_obj()
+    status = StatusObj()
 
     # Create a connection object and try to connect to Murphy
-    conn = reslib_connection(py_status_callback, status)
+    conn = Connection(py_status_callback, status)
     connected = conn.connect()
     if not connected:
         print("Main: Couldn't connect")
