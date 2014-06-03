@@ -282,7 +282,6 @@ class Resource():
                 attribute_list.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
-            mrp_list = None
 
         return attribute_list
 
@@ -374,7 +373,6 @@ class ResourceSet():
                 names.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
-            mrp_list = None
 
         return names
 
@@ -544,8 +542,6 @@ class Connection():
         if mrp_list:
             for i in xrange(mrp_list.contents.num_strings):
                 class_list.append(mrp_list.contents.strings[i])
-
-            mrp_list = None
 
         return class_list
 
