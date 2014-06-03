@@ -562,6 +562,9 @@ class Connection():
         else:
             return conn_state_to_str(self.res_ctx.state)
 
+    def get_opaque_data(self):
+        return self.udata.opaque
+
 
 class GivenConnection(Connection):
     def __init__(self, res_ctx):

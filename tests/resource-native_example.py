@@ -101,7 +101,7 @@ def actual_test_steps(conn):
 
 def check_tests_results(conn):
     # Check new status
-    res_set = conn.udata.opaque.res_set
+    res_set = conn.get_opaque_data().res_set
     if res_set.get_state() != "acquired":
         print("FirstTest: Something went wrong, resource set's not ours")
         return False
