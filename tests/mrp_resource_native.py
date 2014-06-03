@@ -425,13 +425,12 @@ class resource_set():
             return None
 
     def update(self, other):
-        if self.res_set:
-            self.delete()
-
         mrp_res_set = \
             mrp_reslib.mrp_res_copy_resource_set(pointer(other.conn.res_ctx),
                                                  pointer(other.res_set))
         if mrp_res_set:
+            if self.res_set:
+                self.delete()
             self.res_set = mrp_res_set.contents
             return True
         else:
