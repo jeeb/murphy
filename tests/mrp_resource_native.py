@@ -108,7 +108,7 @@ class UserData(Structure):
 # Set the arguments/return value types for used variables
 mrp_common.mrp_mainloop_create.restype = POINTER(MrpMainloop)
 
-mrp_reslib.mrp_res_create.restype  = POINTER(MrpResourceCtx)
+mrp_reslib.mrp_res_create.restype = POINTER(MrpResourceCtx)
 
 mrp_reslib.mrp_res_destroy.argtypes = [POINTER(MrpResourceCtx)]
 mrp_reslib.mrp_res_destroy.restype  = None
@@ -207,7 +207,6 @@ mrp_reslib.mrp_res_set_attribute_double.restype  = c_int
 
 mrp_reslib.mrp_res_free_string_array.argtypes = [POINTER(MrpStringArray)]
 mrp_reslib.mrp_res_free_string_array.restype  = None
-
 
 mrp_common.mrp_mainloop_destroy.restype = None
 
@@ -310,9 +309,9 @@ class GivenResource(Resource):
 
 class ResourceSet():
     def __init__(self, res_cb, conn, mrp_class):
-        self.conn = conn
+        self.conn      = conn
         self.mrp_class = mrp_class
-        self.res_cb = res_cb
+        self.res_cb    = res_cb
 
         # Create a python callback for resources
         res_callbackfunc = CFUNCTYPE(None, POINTER(MrpResourceCtx),
@@ -464,7 +463,7 @@ class Connection():
         self.conn_status_callback = None
 
         self.conn_status_callback_called = False
-        self.connected_to_murphy     = False
+        self.connected_to_murphy = False
 
         def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
             self.conn_status_callback_called = True
