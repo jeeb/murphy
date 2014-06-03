@@ -263,7 +263,7 @@ class Resource():
                                                shared)
 
         if not res:
-            self.__del__()
+            raise MemoryError
 
         self.res = res.contents
 
@@ -338,7 +338,7 @@ class ResourceSet():
                                                    pointer(conn.udata))
 
         if not res_set:
-            self.__del__()
+            raise MemoryError
 
         self.res_set = res_set.contents
 
@@ -446,7 +446,7 @@ class ResourceListing(ResourceSet):
             mrp_reslib.mrp_res_list_resources(self.conn.res_ctx)
 
         if not res_set:
-            self.__del__()
+            raise MemoryError
 
         self.res_set = res_set.contents
 
