@@ -456,6 +456,12 @@ class GivenResourceSet(ResourceSet):
 
 class Connection():
     def __init__(self, status_cb, opaque_data):
+        """
+        Creates a new connection and sets the status callback as well as the opaque user data object
+
+        :param status_cb:   Function to call when a status callback is called
+        :param opaque_data: A python object that will be passed to the callbacks under this connection
+        """
         self.udata    = UserData(self, opaque_data)
         self.mainloop = None  # not a pointer
         self.res_ctx  = None  # not a pointer
