@@ -557,7 +557,10 @@ class Connection():
         return ResourceListing(self)
 
     def get_state(self):
-        return conn_state_to_str(self.res_ctx.state)
+        if not self.res_ctx:
+            return "disconnected"
+        else:
+            return conn_state_to_str(self.res_ctx.state)
 
 
 class GivenConnection(Connection):
