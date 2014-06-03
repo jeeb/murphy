@@ -6,6 +6,11 @@ from ctypes import (Structure, Union, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char, c_char_p, c_void_p,
                     c_bool, c_double, CDLL, py_object)
 
+# For basic Py2/Py3 compatibility
+try:
+    xrange
+except NameError:
+    xrange = range
 
 # Murphy resource-native API related defines
 (MRP_RES_CONNECTED, MRP_RES_DISCONNECTED) = (0, 1)
@@ -45,10 +50,6 @@ def error_to_str(error):
         MRP_RES_ERROR_MALFORMED:       "malformed",
     }.get(error, "unknown")
 
-
-def get_type(type):
-    pass
-
 # FIXME: This fails if run in an interpreter (since __file__ is not available)
 path = dirname(realpath(__file__))
 
@@ -58,160 +59,160 @@ mrp_reslib = CDLL(path + "/../src/.libs/libmurphy-resource.so")
 
 
 # Create general abstractions around the things we throw around
-class Mrp_mainloop(Structure):
+class MrpMainloop(Structure):
     pass
 
 
-class Mrp_resource_ctx(Structure):
+class MrpResourceCtx(Structure):
     _fields_ = [("state", c_uint),
                 ("zone",  c_char_p),
                 ("priv",  c_void_p)]
 
 
-class Mrp_resource_set(Structure):
+class MrpResourceSet(Structure):
     _fields_ = [("application_class", c_char_p),
                 ("state",             c_uint),
                 ("priv",              c_void_p)]
 
 
-class Mrp_string_array(Structure):
+class MrpStringArray(Structure):
     _fields_ = [("num_strings", c_int),
                 ("strings",     POINTER(c_char_p))]
 
 
-class Mrp_resource(Structure):
+class MrpResource(Structure):
     _fields_ = [("name",  c_char_p),
                 ("state", c_uint),
                 ("priv",  c_void_p)]
 
 
-class Mrp_attribute_union(Union):
+class MrpAttributeUnion(Union):
     _fields_ = [("string",   c_char_p),
                 ("integer",  c_int),
                 ("unsignd",  c_uint),
                 ("floating", c_double)]
 
 
-class Mrp_attribute(Structure):
+class MrpAttribute(Structure):
     _anonymous_ = ("u")
     _fields_    = [("name",  c_char_p),
                    ("type",  c_char),
-                   ("u",     Mrp_attribute_union)]
+                   ("u",     MrpAttributeUnion)]
 
 
-class Userdata(Structure):
+class UserData(Structure):
     _fields_ = [("conn",   py_object),
                 ("opaque", py_object)]
 
 
 # Set the arguments/return value types for used variables
-mrp_common.mrp_mainloop_create.restype = POINTER(Mrp_mainloop)
+mrp_common.mrp_mainloop_create.restype = POINTER(MrpMainloop)
 
-mrp_reslib.mrp_res_create.restype  = POINTER(Mrp_resource_ctx)
+mrp_reslib.mrp_res_create.restype  = POINTER(MrpResourceCtx)
 
-mrp_reslib.mrp_res_destroy.argtypes = [POINTER(Mrp_resource_ctx)]
+mrp_reslib.mrp_res_destroy.argtypes = [POINTER(MrpResourceCtx)]
 mrp_reslib.mrp_res_destroy.restype  = None
 
-mrp_reslib.mrp_res_list_application_classes.argtypes = [POINTER(Mrp_resource_ctx)]
-mrp_reslib.mrp_res_list_application_classes.restype  = POINTER(Mrp_string_array)
+mrp_reslib.mrp_res_list_application_classes.argtypes = [POINTER(MrpResourceCtx)]
+mrp_reslib.mrp_res_list_application_classes.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_list_resources.argtypes = [POINTER(Mrp_resource_ctx)]
-mrp_reslib.mrp_res_list_resources.restype  = POINTER(Mrp_resource_set)
+mrp_reslib.mrp_res_list_resources.argtypes = [POINTER(MrpResourceCtx)]
+mrp_reslib.mrp_res_list_resources.restype  = POINTER(MrpResourceSet)
 
-mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(Mrp_resource_ctx), POINTER(Mrp_resource_set)]
-mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(Mrp_string_array)
+mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_create_resource_set.argtypes = [POINTER(Mrp_resource_ctx),
+mrp_reslib.mrp_res_create_resource_set.argtypes = [POINTER(MrpResourceCtx),
                                                    c_char_p, c_void_p,
                                                    c_void_p]
-mrp_reslib.mrp_res_create_resource_set.restype  = POINTER(Mrp_resource_set)
+mrp_reslib.mrp_res_create_resource_set.restype  = POINTER(MrpResourceSet)
 
-mrp_reslib.mrp_res_set_autorelease.argtypes = [POINTER(Mrp_resource_ctx),
+mrp_reslib.mrp_res_set_autorelease.argtypes = [POINTER(MrpResourceCtx),
                                                c_bool,
-                                               POINTER(Mrp_resource_set)]
+                                               POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_set_autorelease.restype  = c_bool
 
-mrp_reslib.mrp_res_delete_resource_set.argtypes = [POINTER(Mrp_resource_ctx),
-                                                   POINTER(Mrp_resource_set)]
+mrp_reslib.mrp_res_delete_resource_set.argtypes = [POINTER(MrpResourceCtx),
+                                                   POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_delete_resource_set.restype  = None
 
-mrp_reslib.mrp_res_copy_resource_set.argtypes = [POINTER(Mrp_resource_ctx),
-                                                 POINTER(Mrp_resource_set)]
-mrp_reslib.mrp_res_copy_resource_set.restype  = POINTER(Mrp_resource_set)
+mrp_reslib.mrp_res_copy_resource_set.argtypes = [POINTER(MrpResourceCtx),
+                                                 POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_copy_resource_set.restype  = POINTER(MrpResourceSet)
 
-mrp_reslib.mrp_res_equal_resource_set.argtypes = [POINTER(Mrp_resource_set),
-                                                  POINTER(Mrp_resource_set)]
+mrp_reslib.mrp_res_equal_resource_set.argtypes = [POINTER(MrpResourceSet),
+                                                  POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_equal_resource_set.restype  = c_bool
 
-mrp_reslib.mrp_res_acquire_resource_set.argtypes = [POINTER(Mrp_resource_ctx), POINTER(Mrp_resource_set)]
+mrp_reslib.mrp_res_acquire_resource_set.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_acquire_resource_set.restype  = c_int
 
-mrp_reslib.mrp_res_release_resource_set.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_resource_set)]
+mrp_reslib.mrp_res_release_resource_set.argtypes = [POINTER(MrpResourceCtx),
+                                                    POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_release_resource_set.restype  = c_int
 
-mrp_reslib.mrp_res_get_resource_set_id.argtypes = [POINTER(Mrp_resource_ctx),
-                                                   POINTER(Mrp_resource_set)]
+mrp_reslib.mrp_res_get_resource_set_id.argtypes = [POINTER(MrpResourceCtx),
+                                                   POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_get_resource_set_id.restype  = c_int
 
-mrp_reslib.mrp_res_create_resource.argtypes = [POINTER(Mrp_resource_ctx), POINTER(Mrp_resource_set),
+mrp_reslib.mrp_res_create_resource.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet),
                                                c_char_p, c_bool, c_bool]
-mrp_reslib.mrp_res_create_resource.restype  = POINTER(Mrp_resource)
+mrp_reslib.mrp_res_create_resource.restype  = POINTER(MrpResource)
 
-mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(Mrp_resource_ctx),
-                                                   POINTER(Mrp_resource_set)]
-mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(Mrp_string_array)
+mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(MrpResourceCtx),
+                                                   POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_get_resource_by_name.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_resource_set),
+mrp_reslib.mrp_res_get_resource_by_name.argtypes = [POINTER(MrpResourceCtx),
+                                                    POINTER(MrpResourceSet),
                                                     c_char_p]
-mrp_reslib.mrp_res_get_resource_by_name.restype  = POINTER(Mrp_resource)
+mrp_reslib.mrp_res_get_resource_by_name.restype  = POINTER(MrpResource)
 
-mrp_reslib.mrp_res_delete_resource.argtypes = [POINTER(Mrp_resource_set),
-                                               POINTER(Mrp_resource)]
+mrp_reslib.mrp_res_delete_resource.argtypes = [POINTER(MrpResourceSet),
+                                               POINTER(MrpResource)]
 mrp_reslib.mrp_res_delete_resource.restype  = None
 
-mrp_reslib.mrp_res_delete_resource_by_name.argtypes = [POINTER(Mrp_resource_set),
+mrp_reslib.mrp_res_delete_resource_by_name.argtypes = [POINTER(MrpResourceSet),
                                                        c_char_p]
 mrp_reslib.mrp_res_delete_resource_by_name.restype  = c_bool
 
-mrp_reslib.mrp_res_list_attribute_names.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_resource)]
-mrp_reslib.mrp_res_list_attribute_names.restype  = POINTER(Mrp_string_array)
+mrp_reslib.mrp_res_list_attribute_names.argtypes = [POINTER(MrpResourceCtx),
+                                                    POINTER(MrpResource)]
+mrp_reslib.mrp_res_list_attribute_names.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_get_attribute_by_name.argtypes = [POINTER(Mrp_resource_ctx),
-                                                     POINTER(Mrp_resource),
+mrp_reslib.mrp_res_get_attribute_by_name.argtypes = [POINTER(MrpResourceCtx),
+                                                     POINTER(MrpResource),
                                                      c_char_p]
-mrp_reslib.mrp_res_get_attribute_by_name.restype  = POINTER(Mrp_attribute)
+mrp_reslib.mrp_res_get_attribute_by_name.restype  = POINTER(MrpAttribute)
 
-mrp_reslib.mrp_res_set_attribute_string.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_attribute),
+mrp_reslib.mrp_res_set_attribute_string.argtypes = [POINTER(MrpResourceCtx),
+                                                    POINTER(MrpAttribute),
                                                     c_char_p]
 mrp_reslib.mrp_res_set_attribute_string.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_uint.argtypes = [POINTER(Mrp_resource_ctx),
-                                                  POINTER(Mrp_attribute),
+mrp_reslib.mrp_res_set_attribute_uint.argtypes = [POINTER(MrpResourceCtx),
+                                                  POINTER(MrpAttribute),
                                                   c_uint]
 mrp_reslib.mrp_res_set_attribute_uint.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_int.argtypes = [POINTER(Mrp_resource_ctx),
-                                                 POINTER(Mrp_attribute),
+mrp_reslib.mrp_res_set_attribute_int.argtypes = [POINTER(MrpResourceCtx),
+                                                 POINTER(MrpAttribute),
                                                  c_int]
 mrp_reslib.mrp_res_set_attribute_int.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_double.argtypes = [POINTER(Mrp_resource_ctx),
-                                                    POINTER(Mrp_attribute),
+mrp_reslib.mrp_res_set_attribute_double.argtypes = [POINTER(MrpResourceCtx),
+                                                    POINTER(MrpAttribute),
                                                     c_double]
 mrp_reslib.mrp_res_set_attribute_double.restype  = c_int
 
-mrp_reslib.mrp_res_free_string_array.argtypes = [POINTER(Mrp_string_array)]
+mrp_reslib.mrp_res_free_string_array.argtypes = [POINTER(MrpStringArray)]
 mrp_reslib.mrp_res_free_string_array.restype  = None
 
 
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
-class attribute():
+class Attribute():
     def __init__(self, res, mrp_attr):
         self.res  = res
         self.attr = mrp_attr.contents
@@ -252,7 +253,7 @@ class attribute():
         return self.attr.name
 
 
-class resource():
+class Resource():
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
         self.res_set = res_set
         res = \
@@ -294,7 +295,7 @@ class resource():
                                                      name)
 
         if mrp_attr:
-            attr = attribute(self, mrp_attr)
+            attr = Attribute(self, mrp_attr)
 
         return attr
 
@@ -302,33 +303,33 @@ class resource():
         return res_state_to_str(self.res.state)
 
 
-class given_resource(resource):
+class GivenResource(Resource):
     def __init__(self, res_set, res):
         self.res_set = res_set
         self.res     = res.contents
 
 
-class resource_set():
+class ResourceSet():
     def __init__(self, res_cb, conn, mrp_class):
         self.conn = conn
         self.mrp_class = mrp_class
         self.res_cb = res_cb
 
         # Create a python callback for resources
-        RES_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
-                                     POINTER(Mrp_resource_set),
+        res_callbackfunc = CFUNCTYPE(None, POINTER(MrpResourceCtx),
+                                     POINTER(MrpResourceSet),
                                      c_void_p)
 
         def res_callback_func(res_ctx_p, res_set_p, userdata_p):
-            opaque = cast(userdata_p, POINTER(Userdata)).contents.opaque
+            opaque = cast(userdata_p, POINTER(UserData)).contents.opaque
 
-            passed_conn    = given_reslib_connection(res_ctx_p)
-            passed_res_set = given_resource_set(passed_conn, res_set_p)
+            passed_conn    = GivenConnection(res_ctx_p)
+            passed_res_set = GivenResourceSet(passed_conn, res_set_p)
 
             # Call the actual higher-level python callback func
             self.res_cb(passed_res_set, opaque)
 
-        self.res_callback = RES_CALLBACKFUNC(res_callback_func)
+        self.res_callback = res_callbackfunc(res_callback_func)
 
         res_set = \
             mrp_reslib.mrp_res_create_resource_set(pointer(conn.res_ctx),
@@ -357,7 +358,7 @@ class resource_set():
                                                    pointer(self.res_set))
 
     def create_resource(self, name, mandatory=True, shared=False):
-        res = resource(self.conn, self, name, mandatory, shared)
+        res = Resource(self.conn, self, name, mandatory, shared)
 
         return res
 
@@ -386,7 +387,7 @@ class resource_set():
                                                     name)
 
         if mrp_res:
-            resource = given_resource(self, mrp_res)
+            resource = GivenResource(self, mrp_res)
 
         return resource
 
@@ -420,7 +421,7 @@ class resource_set():
             mrp_reslib.mrp_res_copy_resource_set(pointer(self.conn.res_ctx),
                                                  pointer(self.res_set))
         if mrp_res_set:
-            return given_resource_set(self.conn, mrp_res_set.contents)
+            return GivenResourceSet(self.conn, mrp_res_set.contents)
         else:
             return None
 
@@ -437,7 +438,7 @@ class resource_set():
             return False
 
 
-class resource_listing(resource_set):
+class ResourceListing(ResourceSet):
     def __init__(self, conn):
         self.conn = conn
 
@@ -450,15 +451,15 @@ class resource_listing(resource_set):
         self.res_set = res_set.contents
 
 
-class given_resource_set(resource_set):
+class GivenResourceSet(ResourceSet):
     def __init__(self, conn, res_set):
         self.conn = conn
         self.res_set = res_set.contents
 
 
-class reslib_connection():
+class Connection():
     def __init__(self, status_cb, opaque_data):
-        self.udata    = Userdata(self, opaque_data)
+        self.udata    = UserData(self, opaque_data)
         self.mainloop = None  # not a pointer
         self.res_ctx  = None  # not a pointer
         self.status_cb = status_cb
@@ -469,26 +470,26 @@ class reslib_connection():
 
         def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
             self.conn_status_callback_called = True
-            conn = given_reslib_connection(res_ctx_p)
+            conn = GivenConnection(res_ctx_p)
             if error_to_str(error_code) == "none" and conn.get_state() == "connected":
                 self.connected_to_murphy = True
 
-            opaque = cast(userdata_p, POINTER(Userdata)).contents.opaque
+            opaque = cast(userdata_p, POINTER(UserData)).contents.opaque
 
             # Call the actual Python-level callback func
             self.status_cb(conn, error_code, opaque)
 
         # Create the connection status callback
-        CONN_STATUS_CALLBACKFUNC = CFUNCTYPE(None, POINTER(Mrp_resource_ctx),
+        conn_status_callbackfunc = CFUNCTYPE(None, POINTER(MrpResourceCtx),
                                              c_uint, c_void_p)
         self.conn_status_callback = \
-            CONN_STATUS_CALLBACKFUNC(conn_status_callback_func)
+            conn_status_callbackfunc(conn_status_callback_func)
 
     def __deepcopy__(self, memo):
-        if isinstance(self, given_reslib_connection):
-            return given_reslib_connection(pointer(self.res_ctx))
+        if isinstance(self, GivenConnection):
+            return GivenConnection(pointer(self.res_ctx))
         else:
-            return reslib_connection(self.status_cb, self.udata.opaque)
+            return Connection(self.status_cb, self.udata.opaque)
 
     def connect(self):
         mainloop = mrp_common.mrp_mainloop_create()
@@ -532,7 +533,7 @@ class reslib_connection():
             self.mainloop = None
 
     def create_resource_set(self, res_cb, mrp_class):
-        return resource_set(res_cb, self, mrp_class)
+        return ResourceSet(res_cb, self, mrp_class)
 
     def list_application_classes(self):
         class_list = []
@@ -549,12 +550,12 @@ class reslib_connection():
         return class_list
 
     def list_resources(self):
-        return resource_listing(self)
+        return ResourceListing(self)
 
     def get_state(self):
         return conn_state_to_str(self.res_ctx.state)
 
 
-class given_reslib_connection(reslib_connection):
+class GivenConnection(Connection):
     def __init__(self, res_ctx):
         self.res_ctx = res_ctx.contents
