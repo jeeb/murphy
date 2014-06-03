@@ -461,7 +461,8 @@ class Connection():
         The connect() function actually creates the mainloop and initiates the connection, and the
         disconnect() function will disconnect and clean up.
 
-        :param status_cb:   Function to call when a status callback is called
+        :param status_cb:   Function to call when a status callback is called. Will be called with three
+                            parameters: the connection, the Murphy error code (int) as well as the opaque data
         :param opaque_data: A python object that will be passed to the callbacks under this connection
         """
         self.udata    = UserData(self, opaque_data)
