@@ -83,7 +83,7 @@ def actual_test_steps(conn):
 
     # We hold the currently worked upon res_set
     # in the opaque data
-    conn.udata.opaque.res_set = res_set
+    conn.get_opaque_data().res_set = res_set
 
     # Add the audio_playback resource to the empty set
     resource = res_set.create_resource("audio_playback")
