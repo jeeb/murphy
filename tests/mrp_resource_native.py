@@ -531,6 +531,13 @@ class Connection(object):
             mrp_common.mrp_mainloop_destroy(pointer(self.mainloop))
             self.mainloop = None
 
+        self.reset_variables()
+
+
+    def reset_variables(self):
+        self.conn_status_callback_called = False
+        self.connected_to_murphy = False
+
     def create_resource_set(self, res_cb, mrp_class):
         return ResourceSet(res_cb, self, mrp_class)
 
