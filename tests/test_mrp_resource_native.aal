@@ -1,54 +1,79 @@
 aal "noname" {
     language "python" {
         from mrp_resource_native import (Connection)
-        from test_mrp_resource_native_callbacks import (py_status_callback,
+        from test_mrp_resource_native_helpers import (py_status_callback,
+                                                        StatusObj,
                                                         py_res_callback,
-                                                        StatusObj)
+                                                        py_grab_resource_set,
+                                                        py_check_result)
 
+        testing_string = "testing_testing"
+        status = StatusObj()
+        conn = Connection(py_status_callback, status)
+        res_set = None
     }
 
-    # preview-show-vars: conn, conn_state, status_object
+    # preview-show-vars: conn_state, resource_state
     # preview-depth: 5
     variables {
-        conn, conn_state, status_object, res_set, resource_state
+        conn_state, resource_state
     }
 
     initial_state {
-        status_object = StatusObj()
-        conn = Connection(py_status_callback, status_object)
         conn_state = "disconnected"
         resource_state = "not gotten"
     }
 
     input "connect" {
-        guard { return conn and conn_state != "connected" }
+        guard { return conn_state != "connected" }
         body  { conn_state = "connected" }
         adapter {
+            global conn
             conn.connect()
         }
     }
 
     input "disconnect" {
-        guard { return conn and conn_state == "connected" }
+        guard { return conn_state == "connected" and resource_state != "order issued" }
         body {
             conn_state = "disconnected"
-        }
-        adapter { conn.disconnect() }
-    }
-
-    input "get_resource" {
-        guard { return conn and conn_state == "connected" and resource_state == "not gotten" }
-        body {
-            resource_state = "gotten"
+            resource_state = "not gotten"
         }
         adapter {
-            res_set = conn.create_resource_set(py_res_callback, "player")
+            global conn
+            conn.get_opaque_data().res_set_changed = False
+            conn.disconnect()
+        }
+    }
+
+    input "issue_resource_order" {
+        guard { return conn and conn_state == "connected" and resource_state == "not gotten" }
+        body {
+            resource_state = "order issued"
+        }
+        adapter {
+            global conn
+            assert py_grab_resource_set(conn, py_res_callback)
+        }
+    }
+
+    input "check_for_order_completion" {
+        guard { return resource_state == "order issued" }
+        body { resource_state = "gotten" }
+        adapter {
+            global conn
+            while conn.iterate():
+                print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
+                if conn.get_opaque_data().res_set_changed:
+                    py_check_result(conn)
+                    return
         }
     }
 
     tag "connected" {
         guard { conn_state == "connected" }
         adapter {
+            global conn
             assert conn.get_state() == "connected"
         }
     }
