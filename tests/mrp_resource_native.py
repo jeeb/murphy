@@ -310,7 +310,6 @@ class GivenResource(Resource):
 class ResourceSet():
     def __init__(self, res_cb, conn, mrp_class):
         self.conn      = conn
-        self.mrp_class = mrp_class
         self.res_cb    = res_cb
 
         # Create a python callback for resources
