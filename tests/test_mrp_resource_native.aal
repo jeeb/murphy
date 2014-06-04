@@ -1,11 +1,11 @@
 aal "noname" {
     language "python" {
         from mrp_resource_native import (Connection)
-        from test_mrp_resource_native_helpers import (py_status_callback,
-                                                        StatusObj,
-                                                        py_res_callback,
-                                                        py_grab_resource_set,
-                                                        py_check_result)
+        from test_mrp_resource_native_helpers import (StatusObj,
+                                                      py_status_callback,
+                                                      py_res_callback,
+                                                      py_grab_resource_set,
+                                                      py_check_result)
 
         testing_string = "testing_testing"
         status = StatusObj()
@@ -13,15 +13,16 @@ aal "noname" {
         res_set = None
     }
 
-    # preview-show-vars: conn_state, resource_state
+    # preview-show-vars: conn_state, resource_state, change_type
     # preview-depth: 5
     variables {
-        conn_state, resource_state
+        conn_state, resource_state, change_type
     }
 
     initial_state {
         conn_state = "disconnected"
         resource_state = "not gotten"
+        change_type = "no change"
     }
 
     input "connect" {
