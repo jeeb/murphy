@@ -67,6 +67,33 @@ def py_res_callback(new_res_set, opaque):
 
     opaque.res_set_changed = True
 
+def py_grab_resource_set(conn, callback):
+    print("Entered actual test steps")
+    res_set = conn.create_resource_set(callback, "player")
+    if not res_set:
+        print("Failed to create a resource set")
+        return False
+
+    # Set the res_set in opaque data
+    conn.get_opaque_data().res_set = res_set
+
+    resource = res_set.create_resource("audio_playback")
+    if not resource:
+        print("Can has no resource")
+        return False
+
+    acquired_status = res_set.acquire()
+    return not acquired_status
+
+def py_check_result(conn):
+    res_set = conn.get_opaque_data().res_set
+    if res_set.get_state() != "acquired":
+        print("FirstTest: Something went wrong, resource set's not ours")
+        return False
+    else:
+        print("FirstTest: Yay, checked that we now own the resource set")
+        return True
+
 class StatusObj():
     def __init__(self):
         self.res_set = None
