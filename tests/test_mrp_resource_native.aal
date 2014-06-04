@@ -44,6 +44,8 @@ aal "noname" {
             global conn
             conn.get_opaque_data().res_set_changed = False
             conn.disconnect()
+            print("We disconnect")
+            print("")
         }
     }
 
