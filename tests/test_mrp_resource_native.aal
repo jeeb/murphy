@@ -1,0 +1,55 @@
+aal "noname" {
+    language "python" {
+        from mrp_resource_native import (Connection)
+        from test_mrp_resource_native_callbacks import (py_status_callback,
+                                                        py_res_callback,
+                                                        StatusObj)
+
+    }
+
+    # preview-show-vars: conn, conn_state, status_object
+    # preview-depth: 5
+    variables {
+        conn, conn_state, status_object, res_set, resource_state
+    }
+
+    initial_state {
+        status_object = StatusObj()
+        conn = Connection(py_status_callback, status_object)
+        conn_state = "disconnected"
+        resource_state = "not gotten"
+    }
+
+    input "connect" {
+        guard { return conn and conn_state != "connected" }
+        body  { conn_state = "connected" }
+        adapter {
+            conn.connect()
+        }
+    }
+
+    input "disconnect" {
+        guard { return conn and conn_state == "connected" }
+        body {
+            conn_state = "disconnected"
+        }
+        adapter { conn.disconnect() }
+    }
+
+    input "get_resource" {
+        guard { return conn and conn_state == "connected" and resource_state == "not gotten" }
+        body {
+            resource_state = "gotten"
+        }
+        adapter {
+            res_set = conn.create_resource_set(py_res_callback, "player")
+        }
+    }
+
+    tag "connected" {
+        guard { conn_state == "connected" }
+        adapter {
+            assert conn.get_state() == "connected"
+        }
+    }
+}
