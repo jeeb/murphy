@@ -490,12 +490,6 @@ class Connection(object):
         self.conn_status_callback = \
             conn_status_callbackfunc(conn_status_callback_func)
 
-    def __deepcopy__(self, memo):
-        if isinstance(self, GivenConnection):
-            return GivenConnection(pointer(self.res_ctx))
-        else:
-            return Connection(self.status_cb, self.udata.opaque)
-
     def connect(self):
         mainloop = mrp_common.mrp_mainloop_create()
         if not mainloop:
