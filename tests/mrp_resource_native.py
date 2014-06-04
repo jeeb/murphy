@@ -211,7 +211,7 @@ mrp_reslib.mrp_res_free_string_array.restype  = None
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
-class Attribute():
+class Attribute(object):
     def __init__(self, res, mrp_attr):
         self.res  = res
         self.attr = mrp_attr.contents
@@ -252,7 +252,7 @@ class Attribute():
         return self.attr.name
 
 
-class Resource():
+class Resource(object):
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
         self.res_set = res_set
         res = \
@@ -307,7 +307,7 @@ class GivenResource(Resource):
         self.res     = res.contents
 
 
-class ResourceSet():
+class ResourceSet(object):
     def __init__(self, res_cb, conn, mrp_class):
         self.conn      = conn
         self.res_cb    = res_cb
@@ -453,7 +453,7 @@ class GivenResourceSet(ResourceSet):
         self.res_set = res_set.contents
 
 
-class Connection():
+class Connection(object):
     def __init__(self, status_cb, opaque_data):
         """
         Creates a new connection and sets the status callback as well as the opaque user data object.
