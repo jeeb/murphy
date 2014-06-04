@@ -67,23 +67,39 @@ def py_res_callback(new_res_set, opaque):
 
     opaque.res_set_changed = True
 
+def create_res_set(conn, callback):
+        conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
+        conn.get_opaque_data().res_set.create_resource("audio_playback")
+
 def py_grab_resource_set(conn, callback):
     print("Entered actual test steps")
-    res_set = conn.create_resource_set(callback, "player")
-    if not res_set:
-        print("Failed to create a resource set")
-        return False
 
-    # Set the res_set in opaque data
-    conn.get_opaque_data().res_set = res_set
+    # Create a resource set in case it doesn't exist
+    if not conn.get_opaque_data().res_set:
+        create_res_set(conn, callback)
 
-    resource = res_set.create_resource("audio_playback")
-    if not resource:
-        print("Can has no resource")
-        return False
+    res_set = conn.get_opaque_data().res_set
 
-    acquired_status = res_set.acquire()
-    return not acquired_status
+    if res_set.get_state() != "acquired":
+        return not res_set.acquire()
+    else:
+        return True
+
+def py_modify_attribute(conn, callback, name, value):
+    # Create a resource set in case it doesn't exist
+    if not conn.get_opaque_data().res_set:
+        create_res_set(conn, callback)
+
+    # Otherwise just use the resource set in the opaque data
+    res_set = conn.get_opaque_data().res_set
+    # If the resource set is already there, we probably have the res_set too
+    res = res_set.get_resource_by_name("audio_playback")
+    result = res.get_attribute_by_name(name).set_value_to(value)
+
+    if res_set.get_state() != "acquired":
+        return not res_set.acquire()
+    else:
+        return True
 
 def py_check_result(conn):
     res_set = conn.get_opaque_data().res_set
