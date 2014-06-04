@@ -5,9 +5,11 @@ aal "noname" {
                                                       py_status_callback,
                                                       py_res_callback,
                                                       py_grab_resource_set,
-                                                      py_check_result)
+                                                      py_check_result,
+                                                      py_modify_attribute)
 
-        testing_string = "testing_testing"
+        attr_name = "role"
+        attr_val = "testing_testing"
         status = StatusObj()
         conn = Connection(py_status_callback, status)
         res_set = None
@@ -43,6 +45,11 @@ aal "noname" {
         adapter {
             global conn
             conn.get_opaque_data().res_set_changed = False
+
+            if conn.get_opaque_data().res_set:
+                conn.get_opaque_data().res_set.delete()
+                conn.get_opaque_data().res_set = None
+
             conn.disconnect()
             print("We disconnect")
             print("")
@@ -50,13 +57,26 @@ aal "noname" {
     }
 
     input "issue_resource_order" {
-        guard { return conn and conn_state == "connected" and resource_state == "not gotten" }
+        guard { return conn_state == "connected" and resource_state == "not gotten" }
         body {
             resource_state = "order issued"
+            change_type = "resource"
         }
         adapter {
             global conn
             assert py_grab_resource_set(conn, py_res_callback)
+        }
+    }
+
+    input "issue_attribute_order" {
+        guard { return conn_state == "connected" and resource_state == "not gotten" or resource_state == "gotten" }
+        body {
+            resource_state = "order issued"
+            change_type = "attribute"
+        }
+        adapter {
+            global conn
+            assert py_modify_attribute(conn, py_res_callback, attr_name, attr_val)
         }
     }
 
@@ -65,6 +85,9 @@ aal "noname" {
         body { resource_state = "gotten" }
         adapter {
             global conn
+            if conn.get_opaque_data().res_set.get_state() == "acquired":
+                return
+
             while conn.iterate():
                 print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
                 if conn.get_opaque_data().res_set_changed:
