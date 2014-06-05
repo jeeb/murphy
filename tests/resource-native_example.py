@@ -156,6 +156,8 @@ if __name__ == "__main__":
             check_run = True
             break
 
+    status.res_set.delete()
+
     conn.disconnect()
 
     sys.exit(not (check_run and test_succeeded))
