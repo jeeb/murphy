@@ -51,7 +51,8 @@ def py_res_callback(new_res_set, opaque):
     dump = StateDump(res_set)
     dump.state = "acquired"
     dump.resources["audio_playback"].state = "acquired"
-    dump.resources["audio_playback"].attributes["role"].value = "huehue"
+    dump.resources["audio_playback"].attributes[res_set.get_resource_by_name("audio_playback"). \
+                                                list_attribute_names()[0]].value = "huehue"
 
     new_dump = StateDump(new_res_set)
     print("ResCallBack: Did my StateDump work? %s" % dump.equals(new_dump))
