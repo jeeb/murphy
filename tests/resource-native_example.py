@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from mrp_resource_native import (Connection)
+from test_mrp_resource_native_helpers import StateDump
 import sys
 
 
@@ -46,6 +47,14 @@ def py_res_callback(new_res_set, opaque):
     elif not res_set.equals(new_res_set):
         print("ResCallBack: Callback not for carried resource set")
         return
+
+    dump = StateDump(res_set)
+    dump.state = "acquired"
+    dump.resources["audio_playback"].state = "acquired"
+    dump.resources["audio_playback"].attributes["role"].value = "huehue"
+
+    new_dump = StateDump(new_res_set)
+    print("ResCallBack: Did my StateDump work? %s" % dump.equals(new_dump))
 
     # Print information about the old resource set state
     print("ResCallBack: Previously resource set was: %s" %
