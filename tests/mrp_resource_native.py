@@ -300,6 +300,9 @@ class Resource(object):
     def get_state(self):
         return res_state_to_str(self.res.state)
 
+    def get_name(self):
+        return self.res.name
+
 
 class GivenResource(Resource):
     def __init__(self, res_set, res):
