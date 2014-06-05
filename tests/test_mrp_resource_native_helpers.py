@@ -118,3 +118,50 @@ class StatusObj():
         self.connected_to_murphy     = False
         self.res_set_changed         = False
         self.tests_successful        = False
+
+class StateDumpAttribute(object):
+    def __init__(self, attr):
+        self.name  = attr.get_name()
+        self.value = attr.get_value()
+
+    def equals(self, other):
+        return self.name == other.name and self.value == other.value
+
+class StateDumpResource(object):
+    def __init__(self, res):
+        self.name = res.get_name()
+        self.state = res.get_state()
+        self.names        = []
+        self.attr_objects = []
+
+        for name in res.list_attribute_names():
+            self.names.append(name)
+            self.attr_objects.append(StateDumpAttribute(res.get_attribute_by_name(name)))
+
+        self.attributes = dict(zip(self.names, self.attr_objects))
+
+    def equals(self, other):
+        for attr in self.attr_objects:
+            if not attr.equals(other.attributes[attr.name]):
+                return False
+
+        return self.state == other.state
+
+class StateDump(object):
+    def __init__(self, res_set):
+        self.names     = []
+        self.res_objects = []
+        self.state = res_set.get_state()
+
+        for name in res_set.list_resource_names():
+            self.names.append(name)
+            self.res_objects.append(StateDumpResource(res_set.get_resource_by_name(name)))
+
+        self.resources = dict(zip(self.names, self.res_objects))
+
+    def equals(self, other):
+        for res in self.res_objects:
+            if not res.equals(other.resources[res.name]):
+                return False
+
+        return self.state == other.state
