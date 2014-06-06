@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+
 def py_status_callback(conn, error_code, opaque):
     if conn.get_state() == "connected":
         print("We are connected!\n")
@@ -27,6 +28,7 @@ def py_status_callback(conn, error_code, opaque):
                 print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
     print('ResCtxCallback ErrCode: %d' % (error_code))
+
 
 def py_res_callback(new_res_set, opaque):
     print("ResCallBack: Entered")
@@ -67,6 +69,7 @@ def py_res_callback(new_res_set, opaque):
 
     opaque.res_set_changed = True
 
+
 def create_res_set(conn, callback):
         conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
         conn.get_opaque_data().res_set.create_resource("audio_playback")
@@ -74,6 +77,7 @@ def create_res_set(conn, callback):
         # Create two state dumps of our resource set for current/expected state
         conn.get_opaque_data().res_set_state = StateDump(conn.get_opaque_data().res_set)
         conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
+
 
 def py_grab_resource_set(conn, callback):
     # Create a resource set in case it doesn't exist
@@ -88,6 +92,7 @@ def py_grab_resource_set(conn, callback):
         return not res_set.acquire()
     else:
         return True
+
 
 def py_modify_attribute(conn, callback, name, value):
     status = conn.get_opaque_data()
@@ -118,6 +123,7 @@ def py_modify_attribute(conn, callback, name, value):
     else:
         return True
 
+
 def py_check_result(conn):
     res_set = conn.get_opaque_data().res_set
 
@@ -133,6 +139,7 @@ def py_check_result(conn):
         print("CheckResult: State met expectations!")
         return True
 
+
 class StatusObj():
     def __init__(self):
         self.res_set = None
@@ -143,6 +150,7 @@ class StatusObj():
         self.connected_to_murphy     = False
         self.res_set_changed         = False
         self.tests_successful        = False
+
 
 class StateDumpAttribute(object):
     def __init__(self, attr):
@@ -155,6 +163,7 @@ class StateDumpAttribute(object):
     def print_differences(self, other):
         if self.value != other.value:
             print("\t\tAttribute %s: %s != %s" % (self.name, self.value, other.value))
+
 
 class StateDumpResource(object):
     def __init__(self, res):
@@ -187,7 +196,7 @@ class StateDumpResource(object):
 
 class StateDump(object):
     def __init__(self, res_set):
-        self.names     = []
+        self.names       = []
         self.res_objects = []
         self.state = res_set.get_state()
 
