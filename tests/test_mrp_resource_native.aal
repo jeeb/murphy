@@ -28,12 +28,12 @@
 aal "noname" {
     language "python" {
         from mrp_resource_native import (Connection)
-        from test_mrp_resource_native_helpers import (StatusObj,
-                                                      py_status_callback,
-                                                      py_res_callback,
-                                                      py_grab_resource_set,
-                                                      py_check_result,
-                                                      py_modify_attribute)
+        from mrp_resource_native_helpers import (StatusObj,
+                                                 py_status_callback,
+                                                 py_res_callback,
+                                                 py_grab_resource_set,
+                                                 py_check_result,
+                                                 py_modify_attribute)
 
         attr_name = "role"
         attr_val = "testing_testing"
