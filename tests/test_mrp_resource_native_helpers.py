@@ -76,19 +76,15 @@ def create_res_set(conn, callback):
         conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
 
 def py_grab_resource_set(conn, callback):
-    status = conn.get_opaque_data()
-
     # Create a resource set in case it doesn't exist
     if not conn.get_opaque_data().res_set:
         create_res_set(conn, callback)
 
+    state = conn.get_opaque_data().res_set_state
     res_set = conn.get_opaque_data().res_set
 
-    status.res_set_state.state = "acquired"
-    for res in status.res_set_state.resources.itervalues():
-        res.state = "acquired"
-
     if res_set.get_state() != "acquired":
+        state.set_acquired()
         return not res_set.acquire()
     else:
         return True
@@ -117,9 +113,7 @@ def py_modify_attribute(conn, callback, name, value):
         return False
 
     if res_set.get_state() != "acquired":
-        status.res_set_state.state = "acquired"
-        for res in status.res_set_state.resources.itervalues():
-            res.state = "acquired"
+        state.set_acquired()
         return not res_set.acquire()
     else:
         return True
@@ -217,3 +211,8 @@ class StateDump(object):
 
         for res in self.res_objects:
             res.print_differences(other.resources[res.name])
+
+    def set_acquired(self):
+        self.state = "acquired"
+        for res in self.resources.itervalues():
+            res.state = "acquired"
