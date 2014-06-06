@@ -4,9 +4,9 @@
 
 def py_status_callback(conn, error_code, opaque):
     if conn.get_state() == "connected":
-        print("We are connected!\n")
+        print("StatusCallback: We are connected!")
 
-        print("Infodump:\n")
+        print("StatusCallBack: Infodump:\n")
 
         # Let's try getting the classes
         app_classes = conn.list_application_classes()
@@ -27,7 +27,7 @@ def py_status_callback(conn, error_code, opaque):
                 attr = res.get_attribute_by_name(attr_name)
                 print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
-    print('ResCtxCallback ErrCode: %d' % (error_code))
+    print('StatusCallback ErrCode: %d\n' % (error_code))
 
 
 def py_res_callback(new_res_set, opaque):
@@ -122,11 +122,11 @@ def py_check_result(conn):
     curr_state = StateDump(res_set)
 
     if not desired_state.equals(curr_state):
-        print("CheckResult: State did not meet expectations!")
+        print("CheckResult: State did not meet expectations!\n")
         desired_state.print_differences(curr_state)
         return False
     else:
-        print("CheckResult: State met expectations!")
+        print("CheckResult: State met expectations!\n")
         return True
 
 
@@ -178,7 +178,7 @@ class StateDumpResource(object):
     def print_differences(self, other):
         print("\tResource %s:" % (self.name))
         if self.state != other.state:
-            print("\t\tstate: %s != %s" % (self.state, other.state))
+            print("\t\tState: %s != %s" % (self.state, other.state))
 
         for attr in self.attr_objects:
             attr.print_differences(other.attributes[attr.name])
@@ -206,7 +206,7 @@ class StateDump(object):
     def print_differences(self, other):
         print("Resource Set:")
         if self.state != other.state:
-            print("\tstate: %s != %s" % (self.state, other.state))
+            print("\tState: %s != %s" % (self.state, other.state))
 
         for res in self.res_objects:
             res.print_differences(other.resources[res.name])
