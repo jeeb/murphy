@@ -29,36 +29,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from mrp_resource_native import (Connection)
-from mrp_resource_native_helpers import py_res_callback
+from mrp_resource_native_helpers import (py_res_callback, py_status_callback, StatusObj)
 import sys
-
-
-def py_status_callback(conn, error_code, opaque):
-    if conn.get_state() == "connected":
-        print("We are connected!\n")
-
-        print("Infodump:\n")
-
-        # Let's try getting the classes
-        app_classes = conn.list_application_classes()
-
-        for app_class in app_classes:
-            print('Class: %s' % (app_class))
-
-        # Let's try getting all the resources
-        res_set = conn.list_resources()
-        res_names = res_set.list_resource_names()
-
-        for name in res_names:
-            res = res_set.get_resource_by_name(name)
-            attr_list = res.list_attribute_names()
-
-            print('Resource: %s' % (name))
-            for attr_name in attr_list:
-                attr = res.get_attribute_by_name(attr_name)
-                print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
-
-    print('ResCtxCallback ErrCode: %d' % (error_code))
 
 
 def actual_test_steps(conn):
@@ -100,16 +72,6 @@ def check_tests_results(conn):
         if attr.get_value() == "huehue":
             print("FirstTest: Yay, we have the first attribute set to 'huehue' now!")
             return True
-
-
-class StatusObj():
-    def __init__(self):
-        self.res_set = None
-
-        self.conn_status_callback_called = False
-        self.connected_to_murphy     = False
-        self.res_set_changed         = False
-        self.tests_successful        = False
 
 
 if __name__ == "__main__":
