@@ -71,14 +71,22 @@ def create_res_set(conn, callback):
         conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
         conn.get_opaque_data().res_set.create_resource("audio_playback")
 
+        # Create two state dumps of our resource set for current/expected state
+        conn.get_opaque_data().res_set_state = StateDump(conn.get_opaque_data().res_set)
+        conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
+
 def py_grab_resource_set(conn, callback):
-    print("Entered actual test steps")
+    status = conn.get_opaque_data()
 
     # Create a resource set in case it doesn't exist
     if not conn.get_opaque_data().res_set:
         create_res_set(conn, callback)
 
     res_set = conn.get_opaque_data().res_set
+
+    status.res_set_state.state = "acquired"
+    for res in status.res_set_state.resources.itervalues():
+        res.state = "acquired"
 
     if res_set.get_state() != "acquired":
         return not res_set.acquire()
@@ -86,33 +94,56 @@ def py_grab_resource_set(conn, callback):
         return True
 
 def py_modify_attribute(conn, callback, name, value):
+    status = conn.get_opaque_data()
+
     # Create a resource set in case it doesn't exist
-    if not conn.get_opaque_data().res_set:
+    if not status.res_set:
         create_res_set(conn, callback)
 
-    # Otherwise just use the resource set in the opaque data
-    res_set = conn.get_opaque_data().res_set
-    # If the resource set is already there, we probably have the res_set too
-    res = res_set.get_resource_by_name("audio_playback")
-    result = res.get_attribute_by_name(name).set_value_to(value)
+    # Bring the current res_set into local scope
+    res_set = status.res_set
+
+    # Update the current res_set state dump
+    status.res_set_state = StateDump(res_set)
+    state = status.res_set_state
+
+    # Do the simulated change to it
+    state.resources["audio_playback"].attributes[name].value = value
+
+    # Actually do the change
+    result = res_set.get_resource_by_name("audio_playback").get_attribute_by_name(name).set_value_to(value)
+
+    if result:
+        return False
 
     if res_set.get_state() != "acquired":
+        status.res_set_state.state = "acquired"
+        for res in status.res_set_state.resources.itervalues():
+            res.state = "acquired"
         return not res_set.acquire()
     else:
         return True
 
 def py_check_result(conn):
     res_set = conn.get_opaque_data().res_set
-    if res_set.get_state() != "acquired":
-        print("FirstTest: Something went wrong, resource set's not ours")
+
+    desired_state = conn.get_opaque_data().res_set_state
+
+    curr_state = StateDump(res_set)
+
+    if not desired_state.equals(curr_state):
+        print("CheckResult: State did not meet expectations!")
+        desired_state.print_differences(curr_state)
         return False
     else:
-        print("FirstTest: Yay, checked that we now own the resource set")
+        print("CheckResult: State met expectations!")
         return True
 
 class StatusObj():
     def __init__(self):
         self.res_set = None
+
+        self.res_set_state = None
 
         self.conn_status_callback_called = False
         self.connected_to_murphy     = False
@@ -126,6 +157,10 @@ class StateDumpAttribute(object):
 
     def equals(self, other):
         return self.name == other.name and self.value == other.value
+
+    def print_differences(self, other):
+        if self.value != other.value:
+            print("\t\tAttribute %s: %s != %s" % (self.name, self.value, other.value))
 
 class StateDumpResource(object):
     def __init__(self, res):
@@ -147,6 +182,15 @@ class StateDumpResource(object):
 
         return self.state == other.state
 
+    def print_differences(self, other):
+        print("\tResource %s:" % (self.name))
+        if self.state != other.state:
+            print("\t\tstate: %s != %s" % (self.state, other.state))
+
+        for attr in self.attr_objects:
+            attr.print_differences(other.attributes[attr.name])
+
+
 class StateDump(object):
     def __init__(self, res_set):
         self.names     = []
@@ -165,3 +209,11 @@ class StateDump(object):
                 return False
 
         return self.state == other.state
+
+    def print_differences(self, other):
+        print("Resource Set:")
+        if self.state != other.state:
+            print("\tstate: %s != %s" % (self.state, other.state))
+
+        for res in self.res_objects:
+            res.print_differences(other.resources[res.name])
