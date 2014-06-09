@@ -267,13 +267,18 @@ class Attribute(object):
             return -1
 
     def get_value(self):
-        return {
-            "i":  self.attr.integer,
-            "u":  self.attr.unsignd,
-            "f":  self.attr.floating,
-            "s":  self.attr.string,
-            "\0": None,
-        }.get(self.attr.type, None)
+        type = self.attr.type
+
+        if type == "i":
+            return self.attr.integer
+        elif type == "u":
+            return self.attr.unsignd
+        elif type == "f":
+            return self.attr.floating
+        elif type == "s":
+            return self.attr.string
+        else:
+            return None
 
     def get_name(self):
         return self.attr.name
