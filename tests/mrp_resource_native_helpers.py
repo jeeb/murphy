@@ -52,7 +52,8 @@ def py_status_callback(conn, error_code, opaque):
             print('Resource: %s' % (name))
             for attr_name in attr_list:
                 attr = res.get_attribute_by_name(attr_name)
-                print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
+                if attr:
+                    print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
     print('StatusCallback ErrCode: %d\n' % (error_code))
 
