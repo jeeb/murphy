@@ -238,17 +238,33 @@ mrp_reslib.mrp_res_free_string_array.restype  = None
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
+def map_attr_type_to_py_type(type):
+    return {
+        "i": int,
+        "u": int,
+        "f": float,
+        "s": str,
+    }.get(type)
+
 class Attribute(object):
     def __init__(self, res, mrp_attr):
         self.res  = res
         self.attr = mrp_attr.contents
 
-    def set_value_to(self, value, inttype="int"):
+    def set_value_to(self, value):
+        value_type = self.attr.type
+
+        if value_type == "\0":
+            return -1
+
+        if not isinstance(value, map_attr_type_to_py_type(value_type)):
+            return -1
+
         if isinstance(value, int):
-            if inttype == "int":
+            if value_type == "i":
                 return mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
                                                             pointer(self.attr), value)
-            elif inttype == "uint":
+            elif value_type == "u":
                 if value < 0:
                     return -1
                 else:
