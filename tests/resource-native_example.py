@@ -52,7 +52,8 @@ def actual_test_steps(conn):
         return False
 
     attr = resource.get_attribute_by_name(resource.list_attribute_names()[0])
-    attr.set_value_to("huehue")
+    if attr:
+        print("Setting attribute val retcode: %s" % attr.set_value_to("huehue") )
 
     acquired_status = res_set.acquire()
 
