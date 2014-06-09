@@ -446,9 +446,7 @@ class ResourceSet(object):
 
         :return: Resource object created according to the parameters given
         """
-        res = Resource(self.conn, self, name, mandatory, shared)
-
-        return res
+        return Resource(self.conn, self, name, mandatory, shared)
 
     def list_resource_names(self):
         """
@@ -496,7 +494,7 @@ class ResourceSet(object):
         :param res: Resource to be removed from this resource set
         :return: Void
         """
-        return mrp_reslib.mrp_res_delete_resource(pointer(self.res_set), pointer(res.res))
+        mrp_reslib.mrp_res_delete_resource(pointer(self.res_set), pointer(res.res))
 
     def delete_resource_by_name(self, name):
         """
