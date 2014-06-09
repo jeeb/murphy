@@ -61,7 +61,10 @@ resource.class {
      attributes = {
          role = { mdb.string, "music", "rw" },
          pid = { mdb.string, "<unknown>", "rw" },
-         policy = { mdb.string, "relaxed", "rw" }
+         policy = { mdb.string, "relaxed", "rw" },
+         uint   = { mdb.unsigned, 12, "rw" },
+         int    = { mdb.integer, -1337, "rw" },
+         floaty = { mdb.floating, 23.35, "rw" }
      }
 }
 
