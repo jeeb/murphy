@@ -360,6 +360,16 @@ class GivenResource(Resource):
 
 class ResourceSet(object):
     def __init__(self, res_cb, conn, mrp_class):
+        """
+        Creates a resource set, which is the basic unit of acquiring and releasing resources. Resources can be
+        acquired only partially or partially lost to other clients, but the client can only request and release
+        resource sets. Usually used via Connection.create_resource_set() and not directly.
+
+        :param res_cb:    Resource callback to be called when there is an update in this resource set
+        :param conn:      Connection to which this ResourceSet belongs
+        :param mrp_class: Application class to which this resource set belongs
+        :return: ResourceSet object created according to the parameters
+        """
         self.conn      = conn
         self.res_cb    = res_cb
 
@@ -391,26 +401,61 @@ class ResourceSet(object):
         self.res_set = res_set.contents
 
     def acquire(self):
+        """
+        Attempts to acquire the resources in this resource set. Success here only means that the call succeeded,
+        and actual changes to the resource set's status will only be visible within a related resource callback.
+
+        :return: Murphy error code that conveys the status of the message being sent to Murphy. Can be
+                 converted to a string with error_to_str(). Error states are nonzero.
+        """
         return \
             mrp_reslib.mrp_res_acquire_resource_set(pointer(self.conn.res_ctx),
                                                     pointer(self.res_set))
 
     def release(self):
+        """
+        Releases the resources in this resource set.
+
+        :return: Void
+        """
         return \
             mrp_reslib.mrp_res_release_resource_set(pointer(self.conn.res_ctx),
                                                     pointer(self.res_set))
 
     def get_id(self):
+        """
+        Gets the numeric ID of this resource set.
+
+        :return: Numeric ID of this resource set
+        """
         return \
             mrp_reslib.mrp_res_get_resource_set_id(pointer(self.conn.res_ctx),
                                                    pointer(self.res_set))
 
     def create_resource(self, name, mandatory=True, shared=False):
+        """
+        Creates (adds) a resource to this resource set. GivenR
+
+        :param name:      Name of the resource to add to this resource set
+        :param mandatory: Optional boolean parameter that notes whether or not this resource is
+                          mandatory for this resource set to work correctly. If set to True (default), in case
+                          this resource is not acquired, it will cause the acquisition process to fail instead
+                          of letting the user acquire a partial set of resources.
+        :param shared:    Optional boolean parameter that notes whether or not this resource can be shared
+                          with other clients. By default set to False.
+
+        :return: Resource object created according to the parameters given
+        """
         res = Resource(self.conn, self, name, mandatory, shared)
 
         return res
 
     def list_resource_names(self):
+        """
+        Creates a list of the names of available resources in this resource set
+
+        :return: List of the names of resources in this resource set
+        """
         names = []
 
         mrp_list = \
@@ -426,6 +471,12 @@ class ResourceSet(object):
         return names
 
     def get_resource_by_name(self, name):
+        """
+        Returns a resource object of the resource that carries the given name in this resource set
+
+        :param name: Name of the resource object to return
+        :return:     None in case of failure, a GivenResource object in case of success
+        """
         resource = None
 
         mrp_res = \
@@ -439,40 +490,78 @@ class ResourceSet(object):
         return resource
 
     def delete_resource(self, res):
+        """
+        Deletes (removes) a resource from this resource set.
+
+        :param res: Resource to be removed from this resource set
+        :return: Void
+        """
         return mrp_reslib.mrp_res_delete_resource(pointer(self.res_set), pointer(res.res))
 
     def delete_resource_by_name(self, name):
+        """
+        Deletes (removes) a resource from this resource set that carries the given name
+        in this resource set.
+
+        :param name: Name of the resource to be removed from this resource set
+        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
+                 1 in case of success.
+        """
         return mrp_reslib.mrp_res_delete_resource_by_name(pointer(self.res_set),
                                                           name)
 
     def get_state(self):
+        """
+        Returns the state of this resource set as a string
+
+        :return: String that represents the last updated state of this resource set
+                 * acquired
+                 * available
+                 * lost
+                 * pending
+        """
         return res_state_to_str(self.res_set.state)
 
     def equals(self, other):
+        """
+        Checks if this resource set in general equals another given resource set
+
+        :param other: Other ResourceSet object against which to compare
+        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
+                 1 in case of success.
+        """
         return mrp_reslib.mrp_res_equal_resource_set(pointer(self.res_set),
                                                      pointer(other.res_set))
 
     def set_autorelease(self, status):
+        """
+        Sets the automatic release flag for this resource set. If set to true, if this resource set is lost, it will
+        be automatically released instead of having Murphy re-acquire it for this client.
+
+        :param status: State to which to set this flag. By default False.
+        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
+                 1 in case of success.
+        """
         return mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
                                                   status, pointer(self.res_set))
 
     def delete(self):
+        """
+        Deletes this resource set.
+
+        :return: Void
+        """
         mrp_reslib.mrp_res_delete_resource_set(pointer(self.conn.res_ctx),
                                                pointer(self.res_set))
         self.res_set = None
 
-    # FIXME: I think this might be quite bad,
-    #        update the original with the new one until I clean this up
-    def _copy(self):
-        mrp_res_set = \
-            mrp_reslib.mrp_res_copy_resource_set(pointer(self.conn.res_ctx),
-                                                 pointer(self.res_set))
-        if mrp_res_set:
-            return GivenResourceSet(self.conn, mrp_res_set.contents)
-        else:
-            return None
-
     def update(self, other):
+        """
+        Updates the resource set with information from another resource set. Usually used in resource callbacks.
+
+        :param other: Other resource set from which the information will be copied from
+        :return: False in case of failure, True in case of success.
+        """
         mrp_res_set = \
             mrp_reslib.mrp_res_copy_resource_set(pointer(other.conn.res_ctx),
                                                  pointer(other.res_set))
@@ -542,6 +631,11 @@ class Connection(object):
             conn_status_callbackfunc(conn_status_callback_func)
 
     def connect(self):
+        """
+        Creates the Murphy mainloop and initiates the initial connection to Murphy
+
+        :return: Boolean that tells if you are connected or not
+        """
         mainloop = mrp_common.mrp_mainloop_create()
         if not mainloop:
             self.disconnect()
@@ -569,10 +663,22 @@ class Connection(object):
                 return connected
 
     def iterate(self):
+        """
+        Iterates the full Murphy mainloop once, usually results in callbacks being called and status
+        updated.
+
+        :return: Integer that can be parsed as a boolean, tells you if the mainloop was iterated successfully
+        """
         if pointer(self.mainloop):
             return mrp_common.mrp_mainloop_iterate(pointer(self.mainloop))
 
     def disconnect(self):
+        """
+        Disconnects from Murphy and destroys the mainloop, cleans up related things. Does not free resources or
+        resource sets and so forth. That has to be done separately.
+
+        :return: Void
+        """
         if self.res_ctx:
             mrp_reslib.mrp_res_destroy(pointer(self.res_ctx))
             self.res_ctx = None
@@ -585,13 +691,30 @@ class Connection(object):
         self.reset_variables()
 
     def reset_variables(self):
+        """
+        Resets the connection-related class variables. Called from disconnect()
+
+        :return: Void
+        """
         self.conn_status_callback_called = False
         self.connected_to_murphy = False
 
     def create_resource_set(self, res_cb, mrp_class):
+        """
+        Creates a new resource set to this connection
+
+        :param res_cb:    Resource callback to be called when there is an update in resource sets
+        :param mrp_class: Application class to which this resource set belongs
+        :return: ResourceSet object created according to the parameters
+        """
         return ResourceSet(res_cb, self, mrp_class)
 
     def list_application_classes(self):
+        """
+        Creates a list of the names of available application classes
+
+        :return: List of the names of available application classes in the system
+        """
         class_list = []
 
         mrp_list = \
@@ -604,18 +727,44 @@ class Connection(object):
         return class_list
 
     def list_resources(self):
+        """
+        Creates a resource set that contains all of the available resources
+
+        :return: Resource set containing all of the resources available in the system
+        """
         return ResourceListing(self)
 
     def get_state(self):
+        """
+        Returns the current connection state as a string
+
+        :return: String containing the current connection state
+                 * connected
+                 * disconnected
+                 * unknown
+        """
         if not self.res_ctx:
             return "disconnected"
         else:
             return conn_state_to_str(self.res_ctx.state)
 
     def get_opaque_data(self):
+        """
+        Returns the opaque user set data structure
+
+        :return: Object that was set as the opaque user set data when the connection was created
+        """
         return self.udata.opaque
 
 
 class GivenConnection(Connection):
     def __init__(self, res_ctx):
+        """
+        Creates a basic Connection object that contains the resource context from an available resource context.
+        Generally used in cases where there is a need for a basic (not all functionality available) version of a
+        Connection object.
+
+        :param res_ctx: Resource context around which this object will be created
+        :return: GivenConnection object that is a limited version of the Connection object
+        """
         self.res_ctx = res_ctx.contents
