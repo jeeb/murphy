@@ -239,6 +239,12 @@ mrp_common.mrp_mainloop_destroy.restype = None
 
 
 def map_attr_type_to_py_type(type):
+    """
+    Converts a Murphy attribute type to a Python basic type
+
+    :param type: Character that represents a given attribute's type
+    :return: Python basic type that represents the type of a given attribute
+    """
     return {
         "i": int,
         "u": int,
@@ -248,10 +254,24 @@ def map_attr_type_to_py_type(type):
 
 class Attribute(object):
     def __init__(self, res, mrp_attr):
+        """
+        Gets the according attribute out of a given resource. Usually called by a Resource object.
+
+        :param res:      Resource the attribute belongs to
+        :param mrp_attr: Murphy attribute pointer pointing towards the requested attribute
+        :return: Attribute object created according to the parameters
+        """
         self.res  = res
         self.attr = mrp_attr.contents
 
     def set_value_to(self, value):
+        """
+        Sets the value of this attribute according to the parameter
+
+        :param value: Value to be set in this attribute
+        :return: Murphy error code that conveys the status of the action being sent to Murphy.
+                 Error states are nonzero.
+        """
         value_type = self.attr.type
 
         if value_type == "\0":
@@ -283,6 +303,11 @@ class Attribute(object):
             return -1
 
     def get_value(self):
+        """
+        Returns the value currently set to this attribute.
+
+        :return: Value currently set to this attribute
+        """
         type = self.attr.type
 
         if type == "i":
@@ -297,11 +322,33 @@ class Attribute(object):
             return None
 
     def get_name(self):
+        """
+        Returns the name of this attribute.
+
+        :return: Name of this attribute
+        """
         return self.attr.name
 
 
 class Resource(object):
     def __init__(self, conn, res_set, name, mandatory=True, shared=False):
+        """
+        Creates (adds) a resource to a specific resource set. Has a name, status as well as an arbitrary amount of
+        attributes. The names and attributes are set in the Murphy configuration, and cannot be modified
+        on the fly. Attributes' values are application-specific, so there is no callback related to modification of
+        those.
+
+        :param conn:      Connection to which this resource will be added
+        :param res_set:   Resource set to which this resource will be added
+        :param name:      Name of the resource to be added
+        :param mandatory: Optional boolean parameter that notes whether or not this resource is
+                          mandatory for a given resource set to work correctly. If set to True (default), in case
+                          this resource is not acquired, it will cause the acquisition process to fail instead
+                          of letting the user acquire a partial set of resources.
+        :param shared:    Optional boolean parameter that notes whether or not this resource can be shared
+                          with other clients. By default set to False.
+        :return: Resource object created according to the parameters
+        """
         self.res_set = res_set
         res = \
             mrp_reslib.mrp_res_create_resource(conn.res_ctx,
@@ -315,9 +362,19 @@ class Resource(object):
         self.res = res.contents
 
     def delete(self):
-        return self.res_set.delete_resource(self)
+        """
+        Deletes (removes) this resource from a given resource set
+
+        :return: Void
+        """
+        self.res_set.delete_resource(self)
 
     def list_attribute_names(self):
+        """
+        Creates a list of the names of available attributes in this resource
+
+        :return: List of the names of attributes in this resource
+        """
         attribute_list = []
 
         mrp_list = \
@@ -333,6 +390,12 @@ class Resource(object):
         return attribute_list
 
     def get_attribute_by_name(self, name):
+        """
+        Returns an Attribute object of the attribute that carries the given name in this resource
+
+        :param name: Name of the attribute to return
+        :return: None in case of failure, an Attribute object in case of success
+        """
         attr = None
 
         mrp_attr = \
@@ -346,14 +409,35 @@ class Resource(object):
         return attr
 
     def get_state(self):
+        """
+        Returns the state of this resource as a string
+
+        :return: String that represents the last updated state of this resource
+                 * acquired
+                 * available
+                 * lost
+                 * pending
+        """
         return res_state_to_str(self.res.state)
 
     def get_name(self):
+        """
+        Returns the name of this resource as a string
+
+        :return: String that represents the name of this resource
+        """
         return self.res.name
 
 
 class GivenResource(Resource):
     def __init__(self, res_set, res):
+        """
+        Creates a basic Resource object based on the parameters given
+
+        :param res_set: Resource set under which this resource will be added
+        :param res:     Ctypes resource pointer pointed to the resource to be added
+        :return: GivenResource object created according to the parameters
+        """
         self.res_set = res_set
         self.res     = res.contents
 
@@ -405,8 +489,8 @@ class ResourceSet(object):
         Attempts to acquire the resources in this resource set. Success here only means that the call succeeded,
         and actual changes to the resource set's status will only be visible within a related resource callback.
 
-        :return: Murphy error code that conveys the status of the message being sent to Murphy. Can be
-                 converted to a string with error_to_str(). Error states are nonzero.
+        :return: Murphy error code that conveys the status of the message being sent to Murphy.
+                 Error states are nonzero.
         """
         return \
             mrp_reslib.mrp_res_acquire_resource_set(pointer(self.conn.res_ctx),
@@ -470,9 +554,9 @@ class ResourceSet(object):
 
     def get_resource_by_name(self, name):
         """
-        Returns a resource object of the resource that carries the given name in this resource set
+        Returns a Resource object of the resource that carries the given name in this resource set
 
-        :param name: Name of the resource object to return
+        :param name: Name of the resource to return
         :return:     None in case of failure, a GivenResource object in case of success
         """
         resource = None
@@ -574,6 +658,12 @@ class ResourceSet(object):
 
 class ResourceListing(ResourceSet):
     def __init__(self, conn):
+        """
+        Creates a basic ResourceSet object that contains all of the resources available in the system.
+
+        :param conn: Connection to which this resource set is to be created to
+        :return: ResourceListing object with the parameters you have given
+        """
         self.conn = conn
 
         res_set = \
@@ -587,6 +677,13 @@ class ResourceListing(ResourceSet):
 
 class GivenResourceSet(ResourceSet):
     def __init__(self, conn, res_set):
+        """
+        Creates a basic ResourceSet object based on the parameters given
+
+        :param conn:    Connection object to which this object will be connected
+        :param res_set: Murphy ctypes resource set around which this object will be made
+        :return: ResourceListing object with the parameters you have given
+        """
         self.conn = conn
         self.res_set = res_set.contents
 
