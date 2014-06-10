@@ -362,14 +362,13 @@ class Attribute(object):
 
 
 class Resource(object):
-    def __init__(self, conn, res_set, name, mandatory=True, shared=False):
+    def __init__(self, res_set, name, mandatory=True, shared=False):
         """
         Creates (adds) a resource to a specific resource set. Has a name, status as well as an arbitrary amount of
         attributes. The names and attributes are set in the Murphy configuration, and cannot be modified
         on the fly. Attributes' values are application-specific, so there is no callback related to modification of
         those.
 
-        :param conn:      Connection to which this resource will be added
         :param res_set:   Resource set to which this resource will be added
         :param name:      Name of the resource to be added
         :param mandatory: Optional boolean parameter that notes whether or not this resource is
@@ -382,7 +381,7 @@ class Resource(object):
         """
         self.res_set = res_set
         res = \
-            mrp_reslib.mrp_res_create_resource(conn.res_ctx,
+            mrp_reslib.mrp_res_create_resource(res_set.conn.res_ctx,
                                                res_set.res_set,
                                                name, mandatory,
                                                shared)
@@ -562,7 +561,7 @@ class ResourceSet(object):
 
         :return: Resource object created according to the parameters given
         """
-        return Resource(self.conn, self, name, mandatory, shared)
+        return Resource(self, name, mandatory, shared)
 
     def list_resource_names(self):
         """
