@@ -44,6 +44,15 @@ except NameError:
 
 
 def conn_state_to_str(state):
+    """
+    Returns the given Murphy connection status code as a string
+
+    :param state: Murphy connection status to be converted to a string
+    :return: String that represents the given connection status
+             * connected
+             * disconnected
+             * unknown
+    """
     return {
         MRP_RES_CONNECTED:    "connected",
         MRP_RES_DISCONNECTED: "disconnected",
@@ -56,6 +65,17 @@ def conn_state_to_str(state):
 
 
 def res_state_to_str(state):
+    """
+    Returns the given Murphy resource state as a string
+
+    :param state: Murphy resource/resource set state to be converted to a string
+    :return: String that represents the given resource state
+             * acquired
+             * available
+             * lost
+             * pending
+             * unknown
+    """
     return {
         MRP_RES_RESOURCE_ACQUIRED:  "acquired",
         MRP_RES_RESOURCE_AVAILABLE: "available",
@@ -70,6 +90,17 @@ def res_state_to_str(state):
 
 
 def error_to_str(error):
+    """
+    Returns the given Murphy connection error state as a string
+
+    :param error: Murphy connection error state to be converted to a string
+    :return: String that represents the given connection error state
+             * none
+             * connection lost
+             * internal
+             * malformed
+             * unknown
+    """
     return {
         MRP_RES_ERROR_NONE:            "none",
         MRP_RES_ERROR_CONNECTION_LOST: "connection lost",
@@ -417,6 +448,7 @@ class Resource(object):
                  * available
                  * lost
                  * pending
+                 * unknown
         """
         return res_state_to_str(self.res.state)
 
@@ -601,6 +633,7 @@ class ResourceSet(object):
                  * available
                  * lost
                  * pending
+                 * unknown
         """
         return res_state_to_str(self.res_set.state)
 
