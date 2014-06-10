@@ -269,11 +269,11 @@ mrp_reslib.mrp_res_free_string_array.restype  = None
 mrp_common.mrp_mainloop_destroy.restype = None
 
 
-def map_attr_type_to_py_type(type):
+def map_attr_type_to_py_type(attr_type):
     """
     Converts a Murphy attribute type to a Python basic type
 
-    :param type: Character that represents a given attribute's type
+    :param attr_type: Character that represents a given attribute's type
     :return: Python basic type that represents the type of a given attribute
     """
     return {
@@ -281,7 +281,7 @@ def map_attr_type_to_py_type(type):
         "u": int,
         "f": float,
         "s": str,
-    }.get(type)
+    }.get(attr_type)
 
 class Attribute(object):
     def __init__(self, res, mrp_attr):
@@ -339,15 +339,15 @@ class Attribute(object):
 
         :return: Value currently set to this attribute
         """
-        type = self.attr.type
+        attr_type = self.attr.type
 
-        if type == "i":
+        if attr_type == "i":
             return self.attr.integer
-        elif type == "u":
+        elif attr_type == "u":
             return self.attr.unsignd
-        elif type == "f":
+        elif attr_type == "f":
             return self.attr.floating
-        elif type == "s":
+        elif attr_type == "s":
             return self.attr.string
         else:
             return None
