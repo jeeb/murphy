@@ -102,10 +102,19 @@ class DbusConfig(object):
 
         self.object_path = path
 
+class Resource(object):
+    def __init__(self, bus, res_path):
+        self.bus = bus
+        self.res_path = res_path
+        self.res_id   = int(res_path.split("/")[-1])
+        self.res_obj  = bus.get_object("org.Murphy", res_path)
+        self.res_iface = dbus.Interface(self.res_obj, dbus_interface=resource_iface)
+
 
 class ResourceSet(object):
     def __init__(self, bus, set_path):
         self.set_path  = set_path
+        self.bus       = bus
         self.set_id    = int(set_path.split("/")[-1])
         self.set_obj   = bus.get_object('org.Murphy', set_path)
         self.set_iface = dbus.Interface(self.set_obj, dbus_interface=res_set_iface)
@@ -119,6 +128,35 @@ class ResourceSet(object):
                     res_list.append(str(val))
 
         return res_list
+
+    def add_resource(self, res):
+        res_path = self.set_iface.addResource(res)
+        if not res_path:
+            return None
+
+        return Resource(self.bus, res_path)
+
+    def request(self):
+        try:
+            self.set_iface.request()
+            return True
+        except:
+            return False
+
+    # TODO: Actually find out how you list the application classes
+    def list_application_classes(self):
+        app_classes = []
+        classes = self.set_iface.getProperties()[""]
+
+    def get_class(self):
+        return str(self.set_iface.getProperties()["class"])
+
+    def set_class(self, app_class):
+        try:
+            self.set_iface.setProperty("class", dbus.String(app_class, variant_level=1))
+            return True
+        except:
+            return False
 
 
 class Connection(object):
@@ -152,12 +190,20 @@ class Connection(object):
 
     def list_resource_sets(self):
         res_sets = []
+        listing = self.interface.getProperties()["resourceSets"]
+        for path in listing:
+            res_sets.append(str(path))
+
+        return res_sets
 
 
 
 if __name__ == "__main__":
     conn = Connection(DbusConfig())
     res_set = conn.create_resource_set()
-    print(res_set.list_available_resources())
-    print(pretty_str_dbus_dict(conn.interface.getProperties()))
-    print(conn)
+    if not res_set.set_class("player"):
+        print("Perkele")
+    res = res_set.add_resource(res_set.list_available_resources()[0])
+    if not res_set.request():
+        print("Perkele2")
+    print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
