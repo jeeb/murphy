@@ -137,6 +137,14 @@ class Resource(object):
         except:
             return False
 
+    def delete(self):
+        try:
+            self.res_iface.delete()
+            del(self)
+            return True
+        except:
+            return False
+
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
 
@@ -166,11 +174,7 @@ class ResourceSet(object):
         return Resource(self.bus, self.config, res_path)
 
     def remove_resource(self, resource):
-        try:
-            resource.res_iface.delete()
-            return True
-        except:
-            return False
+        return resource.delete()
 
     def request(self):
         try:
