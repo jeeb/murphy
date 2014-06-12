@@ -111,6 +111,35 @@ class Resource(object):
         self.res_obj  = bus.get_object(config.bus_name, res_path)
         self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
 
+    def get_state(self):
+        return str(self.res_iface.getProperties()["status"])
+
+    def get_name(self):
+        return str(self.res_iface.getProperties()["name"])
+
+    def is_mandatory(self):
+        return bool(self.res_iface.getProperties()["mandatory"])
+
+    def make_mandatory(self, bool=True):
+        try:
+            self.res_iface.setProperty("mandatory", dbus.Boolean(bool, variant_level=1))
+            return True
+        except:
+            return False
+
+    def is_shareable(self):
+        return bool(self.res_iface.getProperties()["shared"])
+
+    def make_shareable(self, bool=True):
+        try:
+            self.res_iface.setProperty("shared", dbus.Boolean(bool, variant_level=1))
+            return True
+        except:
+            return False
+
+    def pretty_print(self):
+        return pretty_str_dbus_dict(self.res_iface.getProperties())
+
 
 class ResourceSet(object):
     def __init__(self, bus, config, set_path):
@@ -177,6 +206,9 @@ class ResourceSet(object):
         except:
             return False
 
+    def pretty_print(self):
+        return pretty_str_dbus_dict(self.set_iface.getProperties())
+
 
 class Connection(object):
     def __init__(self, config):
@@ -224,12 +256,11 @@ if __name__ == "__main__":
     res = res_set.add_resource(res_set.list_available_resources()[0])
     if not res_set.request():
         print("Perkele2")
-    print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
-
-    print("ResSetState: %s" % res_set.get_state())
+    print(res.pretty_print())
+    print(res_set.pretty_print())
 
     res_set.remove_resource(res)
-    print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
+    print(res_set.pretty_print())
 
     print(conn.list_resource_sets())
     print(res_set.list_available_resources())
