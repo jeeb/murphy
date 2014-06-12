@@ -145,11 +145,6 @@ class ResourceSet(object):
         except:
             return False
 
-    # TODO: Actually find out how you list the application classes
-    def list_application_classes(self):
-        app_classes = []
-        classes = self.set_iface.getProperties()[""]
-
     def get_class(self):
         return str(self.set_iface.getProperties()["class"])
 
