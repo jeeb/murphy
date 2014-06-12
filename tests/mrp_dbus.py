@@ -192,7 +192,6 @@ class Connection(object):
         return res_sets
 
 
-
 if __name__ == "__main__":
     conn = Connection(DbusConfig())
     res_set = conn.create_resource_set()
