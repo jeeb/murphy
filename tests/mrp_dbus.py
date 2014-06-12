@@ -145,6 +145,14 @@ class Resource(object):
         except:
             return False
 
+    def list_attributes(self):
+        list = []
+        attributes = self.res_iface.getProperties()["attributes"].keys()
+        for attr in attributes:
+            list.append(str(attr))
+
+        return list
+
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
 
@@ -262,6 +270,8 @@ if __name__ == "__main__":
         print("Perkele2")
     print(res.pretty_print())
     print(res_set.pretty_print())
+    welp = res.list_attributes()
+    print(welp)
 
     res_set.remove_resource(res)
     print(res_set.pretty_print())
