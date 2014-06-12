@@ -75,6 +75,14 @@ def pretty_str_dbus_dict(d, level=0):
     s += prefix + "}"
     return s
 
+def dbus_type_to_py_type(val):
+    return {
+        dbus.String: str,
+        dbus.Int32:  int,
+        dbus.UInt32: int,
+        dbus.Double: float,
+    }.get(type(val))
+
 
 class DbusConfig(object):
     def __init__(self):
@@ -152,6 +160,14 @@ class Resource(object):
             list.append(str(attr))
 
         return list
+
+    def get_attribute_value(self, name):
+        attribute = self.res_iface.getProperties()["attributes"][name]
+        cast = dbus_type_to_py_type(attribute)
+        return cast(attribute)
+
+    def set_attribute_value(self, name, value):
+        pass
 
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
@@ -271,6 +287,7 @@ if __name__ == "__main__":
     print(res.pretty_print())
     print(res_set.pretty_print())
     welp = res.list_attributes()
+    print(res.get_attribute_value(welp[0]))
     print(welp)
 
     res_set.remove_resource(res)
