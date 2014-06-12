@@ -36,6 +36,7 @@ MRP_MGR_IFACE     = "org.murphy.manager"
 MRP_RES_SET_IFACE = "org.murphy.resourceset"
 MRP_RES_IFACE     = "org.murphy.resource"
 
+
 # Ismo's pretty printing functions
 def pretty_str_dbus_value(val, level=0, suppress=False):
     if type(val) == dbus.Array:
@@ -55,6 +56,7 @@ def pretty_str_dbus_value(val, level=0, suppress=False):
             s += str(val)
         return s
 
+
 def pretty_str_dbus_array(arr, level=0):
     prefix = level * "\t"
     s = "[\n"
@@ -63,6 +65,7 @@ def pretty_str_dbus_array(arr, level=0):
         s += "\n"
     s += prefix + "]"
     return s
+
 
 def pretty_str_dbus_dict(d, level=0):
     prefix = level * "\t"
@@ -74,6 +77,7 @@ def pretty_str_dbus_dict(d, level=0):
         s += "\n"
     s += prefix + "}"
     return s
+
 
 def dbus_type_to_py_type(val):
     return {
@@ -109,6 +113,7 @@ class DbusConfig(object):
             raise TypeError
 
         self.object_path = path
+
 
 class Resource(object):
     def __init__(self, bus, config, res_path):
