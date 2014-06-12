@@ -32,9 +32,9 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 import gobject
 
-manager_iface  = "org.murphy.manager"
-res_set_iface  = "org.murphy.resourceset"
-resource_iface = "org.murphy.resource"
+MRP_MGR_IFACE     = "org.murphy.manager"
+MRP_RES_SET_IFACE = "org.murphy.resourceset"
+MRP_RES_IFACE     = "org.murphy.resource"
 
 # Ismo's pretty printing functions
 def pretty_str_dbus_value(val, level=0, suppress=False):
@@ -108,7 +108,7 @@ class Resource(object):
         self.res_path = res_path
         self.res_id   = int(res_path.split("/")[-1])
         self.res_obj  = bus.get_object("org.Murphy", res_path)
-        self.res_iface = dbus.Interface(self.res_obj, dbus_interface=resource_iface)
+        self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
 
 
 class ResourceSet(object):
@@ -117,7 +117,7 @@ class ResourceSet(object):
         self.bus       = bus
         self.set_id    = int(set_path.split("/")[-1])
         self.set_obj   = bus.get_object('org.Murphy', set_path)
-        self.set_iface = dbus.Interface(self.set_obj, dbus_interface=res_set_iface)
+        self.set_iface = dbus.Interface(self.set_obj, dbus_interface=MRP_RES_SET_IFACE)
 
     def list_available_resources(self):
         res_list = []
@@ -179,7 +179,7 @@ class Connection(object):
             raise ValueError
 
         self.proxy = self.bus.get_object(self.config.bus_name, self.config.object_path)
-        self.interface = dbus.Interface(self.proxy, dbus_interface=manager_iface)
+        self.interface = dbus.Interface(self.proxy, dbus_interface=MRP_MGR_IFACE)
 
     def create_resource_set(self):
         set_path = self.interface.createResourceSet()
