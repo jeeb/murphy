@@ -150,6 +150,9 @@ class ResourceSet(object):
         except:
             return False
 
+    def get_state(self):
+        return str(self.set_iface.getProperties()["status"])
+
     def get_class(self):
         return str(self.set_iface.getProperties()["class"])
 
@@ -215,6 +218,8 @@ if __name__ == "__main__":
     if not res_set.request():
         print("Perkele2")
     print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
+
+    print("ResSetState: %s" % res_set.get_state())
 
     print(conn.list_resource_sets())
     print(res_set.list_available_resources())
