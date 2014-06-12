@@ -167,7 +167,20 @@ class Resource(object):
         return cast(attribute)
 
     def set_attribute_value(self, name, value):
-        pass
+        try:
+            attributes = self.res_iface.getProperties()["attributes"]
+            if name in attributes:
+                cast = type(attributes[name])
+                attributes[name] = cast(value)
+
+                self.res_iface.setProperty("attributes_conf", attributes)
+                return True
+            else:
+                return False
+        except dbus.DBusException:
+            raise
+        except:
+            return False
 
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
@@ -282,11 +295,16 @@ if __name__ == "__main__":
     if not res_set.set_class("player"):
         print("Perkele")
     res = res_set.add_resource(res_set.list_available_resources()[0])
+    welp = res.list_attributes()
+    print(res.get_attribute_value(welp[0]))
+    if not res.set_attribute_value(welp[0], -9001):
+        print("Perkele3")
+
     if not res_set.request():
         print("Perkele2")
     print(res.pretty_print())
     print(res_set.pretty_print())
-    welp = res.list_attributes()
+
     print(res.get_attribute_value(welp[0]))
     print(welp)
 
