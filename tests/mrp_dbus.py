@@ -136,6 +136,13 @@ class ResourceSet(object):
 
         return Resource(self.bus, self.config, res_path)
 
+    def remove_resource(self, resource):
+        try:
+            resource.res_iface.delete()
+            return True
+        except:
+            return False
+
     def request(self):
         try:
             self.set_iface.request()
@@ -220,6 +227,9 @@ if __name__ == "__main__":
     print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
 
     print("ResSetState: %s" % res_set.get_state())
+
+    res_set.remove_resource(res)
+    print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
 
     print(conn.list_resource_sets())
     print(res_set.list_available_resources())
