@@ -123,11 +123,9 @@ class ResourceSet(object):
 
     def list_available_resources(self):
         res_list = []
-        props = self.set_iface.getProperties()
-        for key, v in props.items():
-            if str(key) == "availableResources":
-                for val in v:
-                    res_list.append(str(val))
+        resources = self.set_iface.getProperties()["availableResources"]
+        for resource in resources:
+            res_list.append(str(resource))
 
         return res_list
 
@@ -204,3 +202,6 @@ if __name__ == "__main__":
     if not res_set.request():
         print("Perkele2")
     print(pretty_str_dbus_dict(res_set.set_iface.getProperties()))
+
+    print(conn.list_resource_sets())
+    print(res_set.list_available_resources())
