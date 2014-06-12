@@ -143,12 +143,26 @@ class ResourceSet(object):
         except:
             return False
 
+    def release(self):
+        try:
+            self.set_iface.release()
+            return True
+        except:
+            return False
+
     def get_class(self):
         return str(self.set_iface.getProperties()["class"])
 
     def set_class(self, app_class):
         try:
             self.set_iface.setProperty("class", dbus.String(app_class, variant_level=1))
+            return True
+        except:
+            return False
+
+    def delete(self):
+        try:
+            self.set_iface.delete()
             return True
         except:
             return False
