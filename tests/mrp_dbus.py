@@ -145,14 +145,6 @@ class Resource(object):
         except:
             return False
 
-    def delete(self):
-        try:
-            self.res_iface.delete()
-            del(self)
-            return True
-        except:
-            return False
-
     def list_attributes(self):
         list = []
         attributes = self.res_iface.getProperties()["attributes"].keys()
@@ -179,6 +171,14 @@ class Resource(object):
                 return False
         except dbus.DBusException:
             raise
+        except:
+            return False
+
+    def delete(self):
+        try:
+            self.res_iface.delete()
+            del(self)
+            return True
         except:
             return False
 
