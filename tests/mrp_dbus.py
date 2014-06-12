@@ -103,20 +103,22 @@ class DbusConfig(object):
         self.object_path = path
 
 class Resource(object):
-    def __init__(self, bus, res_path):
+    def __init__(self, bus, config, res_path):
         self.bus = bus
+        self.config = config
         self.res_path = res_path
         self.res_id   = int(res_path.split("/")[-1])
-        self.res_obj  = bus.get_object("org.Murphy", res_path)
+        self.res_obj  = bus.get_object(config.bus_name, res_path)
         self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
 
 
 class ResourceSet(object):
-    def __init__(self, bus, set_path):
+    def __init__(self, bus, config, set_path):
         self.set_path  = set_path
         self.bus       = bus
+        self.config    = config
         self.set_id    = int(set_path.split("/")[-1])
-        self.set_obj   = bus.get_object('org.Murphy', set_path)
+        self.set_obj   = bus.get_object(config.bus_name, set_path)
         self.set_iface = dbus.Interface(self.set_obj, dbus_interface=MRP_RES_SET_IFACE)
 
     def list_available_resources(self):
@@ -134,7 +136,7 @@ class ResourceSet(object):
         if not res_path:
             return None
 
-        return Resource(self.bus, res_path)
+        return Resource(self.bus, self.config, res_path)
 
     def request(self):
         try:
@@ -186,7 +188,7 @@ class Connection(object):
         if not set_path:
             return None
 
-        return ResourceSet(self.bus, set_path)
+        return ResourceSet(self.bus, self.config, set_path)
 
     def list_resource_sets(self):
         res_sets = []
