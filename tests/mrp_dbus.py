@@ -133,9 +133,12 @@ class Resource(object):
     def is_mandatory(self):
         return bool(self.res_iface.getProperties()["mandatory"])
 
-    def make_mandatory(self, bool=True):
+    def make_mandatory(self, mandatory=True):
+        if not isinstance(mandatory, bool):
+            raise TypeError
+
         try:
-            self.res_iface.setProperty("mandatory", dbus.Boolean(bool, variant_level=1))
+            self.res_iface.setProperty("mandatory", dbus.Boolean(mandatory, variant_level=1))
             return True
         except:
             return False
@@ -143,22 +146,28 @@ class Resource(object):
     def is_shareable(self):
         return bool(self.res_iface.getProperties()["shared"])
 
-    def make_shareable(self, bool=True):
+    def make_shareable(self, shareable=True):
+        if not isinstance(shareable, bool):
+            raise TypeError
+
         try:
-            self.res_iface.setProperty("shared", dbus.Boolean(bool, variant_level=1))
+            self.res_iface.setProperty("shared", dbus.Boolean(shareable, variant_level=1))
             return True
         except:
             return False
 
     def list_attributes(self):
-        list = []
+        attr_list = []
         attributes = self.res_iface.getProperties()["attributes"].keys()
         for attr in attributes:
-            list.append(str(attr))
+            attr_list.append(str(attr))
 
-        return list
+        return attr_list
 
     def get_attribute_value(self, name):
+        if not isinstance(name, str):
+            raise TypeError
+
         attribute = self.res_iface.getProperties()["attributes"][name]
         cast = dbus_type_to_py_type(attribute)
         return cast(attribute)
@@ -209,6 +218,9 @@ class ResourceSet(object):
         return res_list
 
     def add_resource(self, res):
+        if not isinstance(res, str):
+            raise TypeError
+
         res_path = self.set_iface.addResource(res)
         if not res_path:
             return None
@@ -217,6 +229,9 @@ class ResourceSet(object):
 
     @staticmethod
     def remove_resource(resource):
+        if not isinstance(resource, Resource):
+            raise TypeError
+
         return resource.delete()
 
     def request(self):
@@ -240,6 +255,9 @@ class ResourceSet(object):
         return str(self.set_iface.getProperties()["class"])
 
     def set_class(self, app_class):
+        if not isinstance(app_class, str):
+            raise TypeError
+
         try:
             self.set_iface.setProperty("class", dbus.String(app_class, variant_level=1))
             return True
