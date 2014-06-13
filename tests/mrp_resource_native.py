@@ -653,11 +653,10 @@ class ResourceSet(object):
         be automatically released instead of having Murphy re-acquire it for this client.
 
         :param status: State to which to set this flag. By default False.
-        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
-                 1 in case of success.
+        :return: Boolean that notes if the action was successful or not
         """
-        return mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
-                                                  status, pointer(self.res_set))
+        return bool(mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
+                                                  status, pointer(self.res_set)))
 
     def delete(self):
         """
