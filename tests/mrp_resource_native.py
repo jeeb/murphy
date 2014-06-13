@@ -300,38 +300,40 @@ class Attribute(object):
         Sets the value of this attribute according to the parameter
 
         :param value: Value to be set in this attribute
-        :return: Murphy error code that conveys the status of the action being sent to Murphy.
-                 Error states are nonzero.
+        :return: Boolean that notes if the action was successful or not
         """
         value_type = self.attr.type
+        ret_val = 1
 
         if value_type == "\0":
-            return -1
+            return False
 
         if not isinstance(value, map_attr_type_to_py_type(value_type)):
-            return -1
+            return False
 
         if isinstance(value, int):
             if value_type == "i":
-                return mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
+                ret_val = mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
                                                             pointer(self.attr), value)
             elif value_type == "u":
                 if value < 0:
-                    return -1
+                    return False
                 else:
-                    return mrp_reslib.mrp_res_set_attribute_uint(pointer(self.res.res_set.conn.res_ctx),
+                    ret_val = mrp_reslib.mrp_res_set_attribute_uint(pointer(self.res.res_set.conn.res_ctx),
                                                                  pointer(self.attr), value)
             else:
-                return -1
+                return False
 
         elif isinstance(value, float):
-            return mrp_reslib.mrp_res_set_attribute_double(pointer(self.res.res_set.conn.res_ctx),
+            ret_val = mrp_reslib.mrp_res_set_attribute_double(pointer(self.res.res_set.conn.res_ctx),
                                                            pointer(self.attr), value)
         elif isinstance(value, str):
-            return mrp_reslib.mrp_res_set_attribute_string(pointer(self.res.res_set.conn.res_ctx),
+            ret_val = mrp_reslib.mrp_res_set_attribute_string(pointer(self.res.res_set.conn.res_ctx),
                                                            pointer(self.attr), value)
         else:
-            return -1
+            return False
+
+        return bool(not ret_val)
 
     def get_value(self):
         """
