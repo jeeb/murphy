@@ -52,5 +52,8 @@ if __name__ == "__main__":
     res_set.remove_resource(res)
     print(res_set.pretty_print())
 
+    res_set2 = conn.get_resource_set(conn.list_resource_sets()[0])
+    print("ResSet2: %s" % res_set2.pretty_print())
+
     print(conn.list_resource_sets())
     print(res_set.list_available_resources())
