@@ -132,8 +132,8 @@ def py_modify_attribute(conn, callback, name, value):
     # Actually do the change
     result = res_set.get_resource_by_name("audio_playback").get_attribute_by_name(name).set_value_to(value)
 
-    if result:
-        return False
+    if not result:
+        return result
 
     if res_set.get_state() != "acquired":
         state.set_acquired()
