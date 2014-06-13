@@ -642,11 +642,10 @@ class ResourceSet(object):
         Checks if this resource set in general equals another given resource set
 
         :param other: Other ResourceSet object against which to compare
-        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
-                 1 in case of success.
+        :return: Boolean that notes if the resource sets were equal or not
         """
-        return mrp_reslib.mrp_res_equal_resource_set(pointer(self.res_set),
-                                                     pointer(other.res_set))
+        return bool(mrp_reslib.mrp_res_equal_resource_set(pointer(self.res_set),
+                                                     pointer(other.res_set)))
 
     def set_autorelease(self, status):
         """
