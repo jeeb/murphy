@@ -196,6 +196,9 @@ class Resource(object):
         except:
             return False
 
+    def register_cb_for_res_changes(self, cb, path_var_name):
+        self.res_iface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
+
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
 
@@ -271,6 +274,9 @@ class ResourceSet(object):
         except:
             return False
 
+    def register_cb_for_res_set_changes(self, cb, path_var_name):
+        self.set_iface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
+
     def pretty_print(self):
         return pretty_str_dbus_dict(self.set_iface.getProperties())
 
@@ -321,3 +327,6 @@ class Connection(object):
             return ResourceSet(self.bus, self.config, set_path)
         else:
             return None
+
+    def register_cb_for_connection_changes(self, cb, path_var_name):
+        self.interface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
