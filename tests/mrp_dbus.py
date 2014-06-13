@@ -311,3 +311,13 @@ class Connection(object):
             res_sets.append(str(path))
 
         return res_sets
+
+    def get_resource_set(self, set_path):
+        if not isinstance(set_path, str):
+            raise TypeError
+
+        listing = self.interface.getProperties()["resourceSets"]
+        if set_path in listing:
+            return ResourceSet(self.bus, self.config, set_path)
+        else:
+            return None
