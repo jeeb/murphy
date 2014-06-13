@@ -215,7 +215,8 @@ class ResourceSet(object):
 
         return Resource(self.bus, self.config, res_path)
 
-    def remove_resource(self, resource):
+    @staticmethod
+    def remove_resource(resource):
         return resource.delete()
 
     def request(self):
