@@ -619,11 +619,10 @@ class ResourceSet(object):
         in this resource set.
 
         :param name: Name of the resource to be removed from this resource set
-        :return: Integer that can be interpreted as boolean, returns 0 in case of failure, and
-                 1 in case of success.
+        :return: Boolean that notes if the action was successful or not
         """
-        return mrp_reslib.mrp_res_delete_resource_by_name(pointer(self.res_set),
-                                                          name)
+        return bool(mrp_reslib.mrp_res_delete_resource_by_name(pointer(self.res_set),
+                                                          name))
 
     def get_state(self):
         """
