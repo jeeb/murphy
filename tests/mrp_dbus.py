@@ -311,29 +311,3 @@ class Connection(object):
             res_sets.append(str(path))
 
         return res_sets
-
-
-if __name__ == "__main__":
-    conn = Connection(DbusConfig())
-    res_set = conn.create_resource_set()
-    if not res_set.set_class("player"):
-        print("Perkele")
-    res = res_set.add_resource(res_set.list_available_resources()[0])
-    welp = res.list_attributes()
-    print(res.get_attribute_value(welp[0]))
-    if not res.set_attribute_value(welp[0], -9001):
-        print("Perkele3")
-
-    if not res_set.request():
-        print("Perkele2")
-    print(res.pretty_print())
-    print(res_set.pretty_print())
-
-    print(res.get_attribute_value(welp[0]))
-    print(welp)
-
-    res_set.remove_resource(res)
-    print(res_set.pretty_print())
-
-    print(conn.list_resource_sets())
-    print(res_set.list_available_resources())
