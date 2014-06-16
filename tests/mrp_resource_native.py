@@ -28,6 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 from os.path import (dirname, realpath)
 from ctypes import (Structure, Union, POINTER, pointer, CFUNCTYPE,
                     cast, c_int, c_uint, c_char, c_char_p, c_void_p,
@@ -108,12 +109,33 @@ def error_to_str(error):
         MRP_RES_ERROR_MALFORMED:       "malformed",
     }.get(error, "unknown")
 
-# FIXME: This fails if run in an interpreter (since __file__ is not available)
-path = dirname(realpath(__file__))
+mrp_common = None
+mrp_reslib = None
 
-# Load the murphy resource API library as well as the common library
-mrp_common = CDLL(path + "/../src/.libs/libmurphy-common.so")
-mrp_reslib = CDLL(path + "/../src/.libs/libmurphy-resource.so")
+mrp_in_tree = None
+
+if os.environ.get("MRP_IN_TREE"):
+    mrp_in_tree = True
+
+
+def load_murphy():
+    global mrp_common
+    global mrp_reslib
+    global mrp_in_tree
+
+    if not mrp_common or not mrp_reslib:
+        if mrp_in_tree:
+            # FIXME: This fails if run in an interpreter (since __file__ is not available)
+            path = dirname(realpath(__file__))
+
+            # Load the murphy resource API library as well as the common library
+            mrp_common = CDLL(path + "/../src/.libs/libmurphy-common.so")
+            mrp_reslib = CDLL(path + "/../src/.libs/libmurphy-resource.so")
+        else:
+            mrp_common = CDLL("libmurphy-common.so")
+            mrp_reslib = CDLL("libmurphy-resource.so")
+
+load_murphy()
 
 
 # Create general abstractions around the things we throw around
