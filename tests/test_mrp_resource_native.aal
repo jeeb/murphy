@@ -27,6 +27,8 @@
 
 aal "noname" {
     language "python" {
+        import os
+        os.environ["MRP_IN_TREE"] = "1"
         from mrp_resource_native import (Connection)
         from mrp_resource_native_helpers import (StatusObj,
                                                  py_status_callback,
