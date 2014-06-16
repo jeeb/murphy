@@ -793,10 +793,10 @@ class Connection(object):
         Iterates the full Murphy mainloop once, usually results in callbacks being called and status
         updated.
 
-        :return: Integer that can be parsed as a boolean, tells you if the mainloop was iterated successfully
+        :return: Boolean that notes if the action was successful or not
         """
         if pointer(self.mainloop):
-            return mrp_common.mrp_mainloop_iterate(pointer(self.mainloop))
+            return bool(mrp_common.mrp_mainloop_iterate(pointer(self.mainloop)))
 
     def disconnect(self):
         """
