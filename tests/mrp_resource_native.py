@@ -283,6 +283,7 @@ def map_attr_type_to_py_type(attr_type):
         "s": str,
     }.get(attr_type)
 
+
 class Attribute(object):
     def __init__(self, res, mrp_attr):
         """
@@ -314,22 +315,22 @@ class Attribute(object):
         if isinstance(value, int):
             if value_type == "i":
                 ret_val = mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
-                                                            pointer(self.attr), value)
+                                                               pointer(self.attr), value)
             elif value_type == "u":
                 if value < 0:
                     return False
                 else:
                     ret_val = mrp_reslib.mrp_res_set_attribute_uint(pointer(self.res.res_set.conn.res_ctx),
-                                                                 pointer(self.attr), value)
+                                                                    pointer(self.attr), value)
             else:
                 return False
 
         elif isinstance(value, float):
             ret_val = mrp_reslib.mrp_res_set_attribute_double(pointer(self.res.res_set.conn.res_ctx),
-                                                           pointer(self.attr), value)
+                                                              pointer(self.attr), value)
         elif isinstance(value, str):
             ret_val = mrp_reslib.mrp_res_set_attribute_string(pointer(self.res.res_set.conn.res_ctx),
-                                                           pointer(self.attr), value)
+                                                              pointer(self.attr), value)
         else:
             return False
 
@@ -622,7 +623,7 @@ class ResourceSet(object):
         :return: Boolean that notes if the action was successful or not
         """
         return bool(mrp_reslib.mrp_res_delete_resource_by_name(pointer(self.res_set),
-                                                          name))
+                                                               name))
 
     def get_state(self):
         """
@@ -645,7 +646,7 @@ class ResourceSet(object):
         :return: Boolean that notes if the resource sets were equal or not
         """
         return bool(mrp_reslib.mrp_res_equal_resource_set(pointer(self.res_set),
-                                                     pointer(other.res_set)))
+                                                          pointer(other.res_set)))
 
     def set_autorelease(self, status):
         """
@@ -656,7 +657,7 @@ class ResourceSet(object):
         :return: Boolean that notes if the action was successful or not
         """
         return bool(mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
-                                                  status, pointer(self.res_set)))
+                                                       status, pointer(self.res_set)))
 
     def delete(self):
         """
