@@ -28,6 +28,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+os.environ["MRP_IN_TREE"] = "1"
 from mrp_resource_native import (Connection)
 from mrp_resource_native_helpers import (py_res_callback, py_status_callback, StatusObj)
 import sys
