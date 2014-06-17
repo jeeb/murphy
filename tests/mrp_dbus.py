@@ -324,7 +324,17 @@ class ResourceSet(object):
 
 
 class Connection(object):
+    """
+    Connection to Murphy via D-Bus, can use either the session or system bus. Administrates the resource sets in the
+    system. Primary configuration is done via the DbusConfig object fed when the object is constructed.
+    """
     def __init__(self, config):
+        """
+        Initializes the created Connection object.
+
+        :param config: DbusConfig object that contains the general configuration of the D-Bus connection.
+        :return: Connection object created according to the given parameters
+        """
         if not isinstance(config, DbusConfig):
             raise TypeError
 
@@ -355,6 +365,13 @@ class Connection(object):
         self.interface.connect_to_signal("propertyChanged", connection_internal_callback)
 
     def create_resource_set(self):
+        """
+        Creates a resource set, which is the basic unit of acquiring and releasing resources. Resources can be
+        acquired or lost independently if the configuration permits, but the client can only request and release
+        whole resource sets.
+
+        :return: None in case of failure, ResourceSet object if successful
+        """
         set_path = self.interface.createResourceSet()
         if not set_path:
             return None
@@ -362,6 +379,11 @@ class Connection(object):
         return ResourceSet(self.bus, self.config, set_path)
 
     def list_resource_sets(self):
+        """
+        Creates a list of the paths of available resource sets in this D-Bus connection
+
+        :return: List of the paths of resource sets in this D-Bus connection
+        """
         res_sets = []
         listing = self.interface.getProperties()["resourceSets"]
         for path in listing:
@@ -370,6 +392,12 @@ class Connection(object):
         return res_sets
 
     def get_resource_set(self, set_path):
+        """
+        Returns a ResourceSet object of the resource responds at the given path
+
+        :param set_path: Path of the resource set to return
+        :return:         None in case of failure, ResourceSet object if successful
+        """
         if not isinstance(set_path, str):
             raise TypeError
 
@@ -380,6 +408,21 @@ class Connection(object):
             return None
 
     def register_callback(self, cb, user_data=None):
+        """
+        Registers a function to be called when a change occurs in this D-Bus connection. A Connection object administers
+        resource sets, so this callback can be used to check for additions and removals of resource sets from the
+        connection.
+
+        :param cb:        Function to be called when a signal is received from Murphy via D-Bus. Must be callable.
+                          Function will get the following parameters:
+                          * Name of property (only "resourceSets" possible in case of a Connection object)
+                          * Value of the property (list of paths of the resource sets under this Connection object)
+                          * Object from which this signal callback was registered (Connection object)
+                          * User data; Object given to this function passed on to the callback, or
+                            None if one isn't set
+        :param user_data: Object that will be passed on to the callback, or None if one isn't passed
+        :return:          Void
+        """
         if not callable(cb):
             raise TypeError
 
@@ -387,7 +430,17 @@ class Connection(object):
         self.user_data = user_data
 
     def get_mainloop(self):
+        """
+        Returns the mainloop to which this object was created.
+
+        :return: GObject mainloop (gobject.MainLoop)
+        """
         return self.config.mainloop
 
     def pretty_print(self):
+        """
+        Returns the current contents of this object as received from D-Bus as a string
+
+        :return: String that describes the current contents of this object as received from D-Bus
+        """
         return pretty_str_dbus_dict(self.interface.getProperties())
