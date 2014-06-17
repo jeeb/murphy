@@ -32,20 +32,34 @@ from mrp_dbus import (Connection, DbusConfig, Resource)
 
 class TestObject():
     def __init__(self):
+        self.res_set_added     = False
         self.resource_added    = False
         self.value_modified    = False
         self.resource_acquired = False
         self.resource_removed  = False
+        self.res_set_removed   = False
+
+        self.res_set = None
 
     def all_true(self):
         return \
+            self.res_set_added and \
             self.resource_added and \
             self.value_modified and \
             self.resource_removed and \
-            self.resource_acquired
+            self.resource_acquired and \
+            self.res_set_removed
 
 def pythonic_callback(prop, value, original_thing, user_data):
-    if prop == "resources" and len(value) > 0:
+    print(">> PythonicCallback")
+
+    # Basic per-callback log
+    print("PythonicCallback: %s = %s" % (prop, value))
+
+    if prop == "resourceSets" and value.count(user_data.res_set) > 0:
+        print("PythonicCallback: Resource set is now added")
+        user_data.res_set_added = True
+    elif prop == "resources" and len(value) > 0:
         print("PythonicCallback: There is now resources!")
         user_data.resource_added = True
     elif prop == "attributes" and value.get("int") == -9001:
@@ -60,10 +74,15 @@ def pythonic_callback(prop, value, original_thing, user_data):
     elif prop == "resources" and len(value) == 0:
         print("PythonicCallback: The resource has been removed from the set!")
         user_data.resource_removed = True
+    elif prop == "resourceSets" and value.count(user_data.res_set) == 0:
+        print("PythonicCallback: The resource set has been cleaned up!")
+        user_data.res_set_removed = True
 
     if user_data.all_true():
-        print("PythonicCallBack: All Done!")
+        print("PythonicCallback: All Done!")
         original_thing.get_mainloop().quit()
+
+    print("<< PythonicCallback\n")
 
 
 if __name__ == "__main__":
@@ -71,6 +90,7 @@ if __name__ == "__main__":
     conn = Connection(DbusConfig())
     conn.register_callback(pythonic_callback, user_data)
     res_set = conn.create_resource_set()
+    user_data.res_set = res_set.set_path
     res_set.register_callback(pythonic_callback, user_data)
 
     res = res_set.add_resource(res_set.list_available_resources()[0])
@@ -83,5 +103,6 @@ if __name__ == "__main__":
         print("Perkele2")
 
     res_set.remove_resource(res)
+    res_set.delete()
 
     conn.config.mainloop.run()
