@@ -30,6 +30,7 @@
 
 from mrp_dbus import (Connection, DbusConfig, Resource)
 
+
 class TestObject():
     def __init__(self):
         self.res_set_added     = False
@@ -49,6 +50,7 @@ class TestObject():
             self.resource_removed and \
             self.resource_acquired and \
             self.res_set_removed
+
 
 def pythonic_callback(prop, value, original_thing, user_data):
     print(">> PythonicCallback")
