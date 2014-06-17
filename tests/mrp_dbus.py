@@ -231,7 +231,20 @@ class Resource(object):
 
 
 class ResourceSet(object):
+    """
+    The basic unit of acquiring and releasing resources. Resources can be acquired or lost independently if the
+    configuration permits, but the client can only request and release whole resource sets.
+    """
     def __init__(self, bus, config, set_path):
+        """
+        Initializes the created ResourceSet object.
+
+        :param bus:      D-Bus Bus that was connected to in order to create this resource set.
+        :param config:   DbusConfig object that contains the general configuration of the D-Bus connection.
+        :param set_path: The path of the newly created resource set. Is automatically created when
+                         Connection.create_resource_set() is called, which is the primary way of creating these
+                         objects
+        """
         self.set_path  = set_path
         self.bus       = bus
         self.config    = config
@@ -248,6 +261,11 @@ class ResourceSet(object):
         self.set_iface.connect_to_signal("propertyChanged", res_set_internal_callback)
 
     def list_available_resources(self):
+        """
+        Creates a list of the paths of available resources in this resource set.
+
+        :return: List of the paths of resources in this resource set
+        """
         res_list = []
         resources = self.set_iface.getProperties()["availableResources"]
         for resource in resources:
@@ -256,6 +274,14 @@ class ResourceSet(object):
         return res_list
 
     def add_resource(self, res):
+        """
+        Creates (adds) a resource to this resource set.
+
+        :param res: Resource to add to the resource set
+        :return:    None in case of failure, Resource object if successful
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
         if not isinstance(res, str):
             raise TypeError
 
@@ -267,12 +293,26 @@ class ResourceSet(object):
 
     @staticmethod
     def remove_resource(resource):
+        """
+        Removes (deletes) a resource from this resource set.
+
+        :param resource: Resource object of the resource to remove
+        :return:         Boolean that notes if the action was successful or not
+
+        :raise TypeError: Causes and exception in case the given parameter is not a Resource object
+        """
         if not isinstance(resource, Resource):
             raise TypeError
 
         return resource.delete()
 
     def request(self):
+        """
+        Requests the resource set for acquisition. Success here only means that the call succeeded,
+        and actual results will be pushed through a D-Bus signal that you can register a callback for.
+
+        :return: Boolean that notes if the action was successful or not
+        """
         try:
             self.set_iface.request()
             return True
@@ -280,6 +320,12 @@ class ResourceSet(object):
             return False
 
     def release(self):
+        """
+        Requests a release of the release set's resources. Success here only means that the call succeeded,
+        and actual results will be pushed through a D-Bus signal that you can register a callback for.
+
+        :return: Boolean that notes if the action was successful or not
+        """
         try:
             self.set_iface.release()
             return True
@@ -287,6 +333,16 @@ class ResourceSet(object):
             return False
 
     def get_state(self):
+        """
+        Returns the state of this resource set as a string
+
+        :return: String that represents the last updated state of this resource set
+                 * acquired
+                 * available
+                 * lost
+                 * pending
+                 * unknown
+        """
         return str(self.set_iface.getProperties()["status"])
 
     def get_class(self):
