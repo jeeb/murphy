@@ -79,12 +79,23 @@ def pretty_str_dbus_dict(d, level=0):
     return s
 
 
+def create_array(dbus_array):
+    ret = []
+    for val in dbus_array:
+        ret.append(dbus_type_to_py_type(val)(val))
+
+    return ret
+
+
 def dbus_type_to_py_type(val):
     return {
         dbus.String: str,
         dbus.Int32:  int,
         dbus.UInt32: int,
         dbus.Double: float,
+        dbus.Array:  create_array,
+        dbus.Dictionary: dbus.Dictionary,
+        dbus.ObjectPath: str,
     }.get(type(val))
 
 
@@ -123,6 +134,15 @@ class Resource(object):
         self.res_id   = int(res_path.split("/")[-1])
         self.res_obj  = bus.get_object(config.bus_name, res_path)
         self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
+
+        self.cb_set    = None
+        self.user_data = None
+
+        def resource_internal_callback(prop, value):
+            if self.cb_set:
+                self.cb_set(prop, value, self, self.user_data)
+
+        self.res_iface.connect_to_signal("propertyChanged", resource_internal_callback)
 
     def get_state(self):
         return str(self.res_iface.getProperties()["status"])
@@ -196,8 +216,15 @@ class Resource(object):
         except:
             return False
 
-    def register_cb_for_res_changes(self, cb, path_var_name):
-        self.res_iface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
+    def register_callback(self, cb, user_data=None):
+        if not callable(cb):
+            raise TypeError
+
+        self.cb_set = cb
+        self.user_data = user_data
+
+    def get_mainloop(self):
+        return self.config.mainloop
 
     def pretty_print(self):
         return pretty_str_dbus_dict(self.res_iface.getProperties())
@@ -211,6 +238,14 @@ class ResourceSet(object):
         self.set_id    = int(set_path.split("/")[-1])
         self.set_obj   = bus.get_object(config.bus_name, set_path)
         self.set_iface = dbus.Interface(self.set_obj, dbus_interface=MRP_RES_SET_IFACE)
+        self.cb_set    = None
+        self.user_data = None
+
+        def res_set_internal_callback(prop, value):
+            if self.cb_set:
+                self.cb_set(prop, value, self, self.user_data)
+
+        self.set_iface.connect_to_signal("propertyChanged", res_set_internal_callback)
 
     def list_available_resources(self):
         res_list = []
@@ -274,8 +309,15 @@ class ResourceSet(object):
         except:
             return False
 
-    def register_cb_for_res_set_changes(self, cb, path_var_name):
-        self.set_iface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
+    def register_callback(self, cb, user_data=None):
+        if not callable(cb):
+            raise TypeError
+
+        self.cb_set = cb
+        self.user_data = user_data
+
+    def get_mainloop(self):
+        return self.config.mainloop
 
     def pretty_print(self):
         return pretty_str_dbus_dict(self.set_iface.getProperties())
@@ -303,6 +345,15 @@ class Connection(object):
         self.proxy = self.bus.get_object(self.config.bus_name, self.config.object_path)
         self.interface = dbus.Interface(self.proxy, dbus_interface=MRP_MGR_IFACE)
 
+        self.cb_set    = None
+        self.user_data = None
+
+        def connection_internal_callback(prop, value):
+            if self.cb_set:
+                self.cb_set(prop, value, self, self.user_data)
+
+        self.interface.connect_to_signal("propertyChanged", connection_internal_callback)
+
     def create_resource_set(self):
         set_path = self.interface.createResourceSet()
         if not set_path:
@@ -328,5 +379,15 @@ class Connection(object):
         else:
             return None
 
-    def register_cb_for_connection_changes(self, cb, path_var_name):
-        self.interface.connect_to_signal("propertyChanged", cb, path_keyword=path_var_name)
+    def register_callback(self, cb, user_data=None):
+        if not callable(cb):
+            raise TypeError
+
+        self.cb_set = cb
+        self.user_data = user_data
+
+    def get_mainloop(self):
+        return self.config.mainloop
+
+    def pretty_print(self):
+        return pretty_str_dbus_dict(self.interface.getProperties())
