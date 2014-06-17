@@ -194,7 +194,7 @@ class Resource(object):
 
     def set_attribute_value(self, name, value):
         try:
-            attributes = self.res_iface.getProperties()["attributes"]
+            attributes  = self.res_iface.getProperties()["attributes"]
             if name in attributes:
                 cast = type(attributes[name])
                 attributes[name] = cast(value)
