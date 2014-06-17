@@ -502,8 +502,8 @@ class ResourceSet(object):
     def __init__(self, res_cb, conn, mrp_class):
         """
         Creates a resource set, which is the basic unit of acquiring and releasing resources. Resources can be
-        acquired only partially or partially lost to other clients, but the client can only request and release
-        resource sets. Usually used via Connection.create_resource_set() and not directly.
+        acquired or lost independently if the configuration permits, but the client can only request and release
+        whole resource sets. Usually used via Connection.create_resource_set() and not directly.
 
         :param res_cb:    Resource callback to be called when there is an update in this resource set
         :param conn:      Connection to which this ResourceSet belongs
