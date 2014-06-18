@@ -32,6 +32,7 @@ import dbus
 from dbus.mainloop.glib import DBusGMainLoop
 import gobject
 
+# Murphy D-Bus interface names
 MRP_MGR_IFACE     = "org.murphy.manager"
 MRP_RES_SET_IFACE = "org.murphy.resourceset"
 MRP_RES_IFACE     = "org.murphy.resource"
@@ -88,6 +89,12 @@ def create_array(dbus_array):
 
 
 def dbus_type_to_py_type(val):
+    """
+    Gives the Python type for a value based on the D-Bus type
+
+    :param val: D-Bus value
+    :return:    Python type matching the D-Bus type of the value
+    """
     return {
         dbus.String: str,
         dbus.Int32:  int,
@@ -100,7 +107,14 @@ def dbus_type_to_py_type(val):
 
 
 class DbusConfig(object):
+    """
+    Object containing the various configuration options for the D-Bus connection, including its type (session/system),
+    the bus name as well as the object path and mainloop
+    """
     def __init__(self):
+        """
+        Initializes the created DbusConfig object. Defaults for all values are set by default.
+        """
         DBusGMainLoop(set_as_default=True)
         self.mainloop = gobject.MainLoop()
         self.bus_type = "session"
@@ -108,18 +122,39 @@ class DbusConfig(object):
         self.object_path = "/org/murphy/resource"
 
     def set_bus_type(self, bus_type):
+        """
+        Sets the D-Bus bus type to be connected to
+
+        :param bus_type: String that represents the bus type to selected
+
+        :raise ValueError: Causes an exception in case the given parameter is not one of "session" or "system"
+        """
         if bus_type != "session" or bus_type != "system":
             raise ValueError
 
         self.bus_type = bus_type
 
     def set_name(self, name):
+        """
+        Sets the bus name to be used when connecting
+
+        :param name: String that represents the bus name
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
         if not isinstance(name, str):
             raise TypeError
 
         self.bus_name = name
 
     def set_object_path(self, path):
+        """
+        Sets the object path to the used managing interface
+
+        :param path: String that represents the object path
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
         if not isinstance(path, str):
             raise TypeError
 
