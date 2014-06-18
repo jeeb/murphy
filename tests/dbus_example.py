@@ -89,7 +89,9 @@ def pythonic_callback(prop, value, original_thing, user_data):
 
 if __name__ == "__main__":
     user_data = TestObject()
-    conn = Connection(DBusConfig())
+    config = DBusConfig()
+    config.set_bus_type("session")
+    conn = Connection(config)
     conn.register_callback(pythonic_callback, user_data)
     res_set = conn.create_resource_set()
     user_data.res_set = res_set.set_path
