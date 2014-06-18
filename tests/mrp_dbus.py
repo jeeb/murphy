@@ -106,14 +106,14 @@ def dbus_type_to_py_type(val):
     }.get(type(val))
 
 
-class DbusConfig(object):
+class DBusConfig(object):
     """
     Object containing the various configuration options for the D-Bus connection, including its type (session/system),
     the bus name as well as the object path and mainloop
     """
     def __init__(self):
         """
-        Initializes the created DbusConfig object. Defaults for all values are set by default.
+        Initializes the created DBusConfig object. Defaults for all values are set by default.
         """
         DBusGMainLoop(set_as_default=True)
         self.mainloop = gobject.MainLoop()
@@ -174,7 +174,7 @@ class Resource(object):
         Initializes the created Resource object.
 
         :param bus:      D-Bus Bus that was connected to in order to create this resource set.
-        :param config:   DbusConfig object that contains the general configuration of the D-Bus connection.
+        :param config:   DBusConfig object that contains the general configuration of the D-Bus connection.
         :param res_path: The path of the newly created resource. Is automatically created when
                          ResourceSet.add_resource() is called, which is the primary way of creating these
                          objects
@@ -392,7 +392,7 @@ class ResourceSet(object):
         Initializes the created ResourceSet object.
 
         :param bus:      D-Bus Bus that was connected to in order to create this resource set.
-        :param config:   DbusConfig object that contains the general configuration of the D-Bus connection.
+        :param config:   DBusConfig object that contains the general configuration of the D-Bus connection.
         :param set_path: The path of the newly created resource set. Is automatically created when
                          Connection.create_resource_set() is called, which is the primary way of creating these
                          objects
@@ -582,16 +582,16 @@ class ResourceSet(object):
 class Connection(object):
     """
     Connection to Murphy via D-Bus, can use either the session or system bus. Administrates the resource sets in the
-    system. Primary configuration is done via the DbusConfig object fed when the object is constructed.
+    system. Primary configuration is done via the DBusConfig object fed when the object is constructed.
     """
     def __init__(self, config):
         """
         Initializes the created Connection object.
 
-        :param config: DbusConfig object that contains the general configuration of the D-Bus connection.
+        :param config: DBusConfig object that contains the general configuration of the D-Bus connection.
         :return: Connection object created according to the given parameters
         """
-        if not isinstance(config, DbusConfig):
+        if not isinstance(config, DBusConfig):
             raise TypeError
 
         self.config = config
