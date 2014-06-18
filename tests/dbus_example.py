@@ -28,7 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from mrp_dbus import (Connection, DbusConfig, Resource)
+from mrp_dbus import (Connection, DBusConfig, Resource)
 
 
 class TestObject():
@@ -89,7 +89,7 @@ def pythonic_callback(prop, value, original_thing, user_data):
 
 if __name__ == "__main__":
     user_data = TestObject()
-    conn = Connection(DbusConfig())
+    conn = Connection(DBusConfig())
     conn.register_callback(pythonic_callback, user_data)
     res_set = conn.create_resource_set()
     user_data.res_set = res_set.set_path
