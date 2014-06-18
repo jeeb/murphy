@@ -117,7 +117,7 @@ class DBusConfig(object):
         """
         DBusGMainLoop(set_as_default=True)
         self.mainloop = gobject.MainLoop()
-        self.bus_type = "session"
+        self.bus_type = "system"
         self.bus_name = "org.Murphy"
         self.object_path = "/org/murphy/resource"
 
@@ -129,7 +129,7 @@ class DBusConfig(object):
 
         :raise ValueError: Causes an exception in case the given parameter is not one of "session" or "system"
         """
-        if bus_type != "session" or bus_type != "system":
+        if bus_type != "session" and bus_type != "system":
             raise ValueError
 
         self.bus_type = bus_type
