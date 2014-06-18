@@ -127,7 +127,23 @@ class DbusConfig(object):
 
 
 class Resource(object):
+    """
+    Object signifying a single resource in a resource set. Depending on the configuration not all resources are always
+    acquired when a resource set is acquired (non-mandatory resources).
+
+    Resources, as well as resource sets can not be modified via the API after they have been acquired, to modify values
+    one must first successfully release the resource set, modify a given value, and then re-acquire it.
+    """
     def __init__(self, bus, config, res_path):
+        """
+        Initializes the created Resource object.
+
+        :param bus:      D-Bus Bus that was connected to in order to create this resource set.
+        :param config:   DbusConfig object that contains the general configuration of the D-Bus connection.
+        :param res_path: The path of the newly created resource. Is automatically created when
+                         ResourceSet.add_resource() is called, which is the primary way of creating these
+                         objects
+        """
         self.bus = bus
         self.config = config
         self.res_path = res_path
@@ -145,15 +161,43 @@ class Resource(object):
         self.res_iface.connect_to_signal("propertyChanged", resource_internal_callback)
 
     def get_state(self):
+        """
+        Returns the state of this resource as a string
+
+        :return: String that represents the last updated state of this resource
+                 * acquired
+                 * available
+                 * lost
+                 * pending
+                 * unknown
+        """
         return str(self.res_iface.getProperties()["status"])
 
     def get_name(self):
+        """
+        Returns the name of this resource as a string
+
+        :return: String that represents the name of this resource in the system
+        """
         return str(self.res_iface.getProperties()["name"])
 
     def is_mandatory(self):
+        """
+        Returns if this resource is mandatory for the resource set acquisition to succeed
+
+        :return: Boolean that notes if the resource is required for the acquisition of the resource set
+        """
         return bool(self.res_iface.getProperties()["mandatory"])
 
     def make_mandatory(self, mandatory=True):
+        """
+        Sets the mandatory state for this resource
+
+        :param mandatory: Optional parameter that notes the value for the state to be set, True if unset
+        :return:          Boolean that notes if the action was successful or not
+
+        :raise TypeError: Causes an exception in case the given parameter is not a boolean
+        """
         if not isinstance(mandatory, bool):
             raise TypeError
 
@@ -164,9 +208,22 @@ class Resource(object):
             return False
 
     def is_shareable(self):
+        """
+        Returns if this resource is shareable between multiple clients
+
+        :return: Boolean that notes if the resource is shareable between multiple clients
+        """
         return bool(self.res_iface.getProperties()["shared"])
 
     def make_shareable(self, shareable=True):
+        """
+        Sets the shareable state for this resource
+
+        :param shareable: Optional parameter that notes the value of the state to be set, True if unset
+        :return:          Boolean that notes if the action was successful or not
+
+        :raise TypeError: Causes an exception in case the given parameter is not a boolean
+        """
         if not isinstance(shareable, bool):
             raise TypeError
 
@@ -177,6 +234,11 @@ class Resource(object):
             return False
 
     def list_attributes(self):
+        """
+        Creates a list of the available attributes in this resource
+
+        :return: List that contains the names of the attributes available in this resource
+        """
         attr_list = []
         attributes = self.res_iface.getProperties()["attributes"].keys()
         for attr in attributes:
@@ -185,6 +247,14 @@ class Resource(object):
         return attr_list
 
     def get_attribute_value(self, name):
+        """
+        Returns the value of an attribute from this resource by name
+
+        :param name: Name of the attribute the value of which will be returned
+        :return:     Value of the attribute the name of which was passed as the parameter
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
         if not isinstance(name, str):
             raise TypeError
 
@@ -193,6 +263,15 @@ class Resource(object):
         return cast(attribute)
 
     def set_attribute_value(self, name, value):
+        """
+        Sets a specific attribute to a given value
+
+        :param name:  Name of the attribute the value of which will be set
+        :param value: Value to be set for the attribute
+        :return:      Boolean that notes if the action was successful or not
+
+        :raise: Causes an exception in case a DBusException was thrown
+        """
         try:
             attributes  = self.res_iface.getProperties()["attributes"]
             if name in attributes:
@@ -209,6 +288,11 @@ class Resource(object):
             return False
 
     def delete(self):
+        """
+        Deletes (removes) the resource from its resource set
+
+        :return: Boolean that notes if the action was successful or not
+        """
         try:
             self.res_iface.delete()
             del(self)
@@ -217,6 +301,26 @@ class Resource(object):
             return False
 
     def register_callback(self, cb, user_data=None):
+        """
+        Registers a function to be called when a change occurs in this D-Bus connection regarding this resource.
+
+        :param cb:        Function to be called when a signal is received from Murphy via D-Bus. Must be callable.
+                          Function will get the following parameters:
+                          * Name of property
+                            * status
+                            * name
+                            * mandatory
+                            * shared
+                            * attributes      (attributes with currently set values)
+                            * attributes_conf (attributes with values to propagate)
+                          * Value of the property
+                          * Object from which this signal callback was registered (Resource object)
+                          * User data; Object given to this function passed on to the callback, or
+                            None if one isn't set
+        :param user_data: Object that will be passed on to the callback, or None if one isn't passed
+
+        :raise TypeError: Causes an exception in case the given parameter is not callable
+        """
         if not callable(cb):
             raise TypeError
 
@@ -224,9 +328,19 @@ class Resource(object):
         self.user_data = user_data
 
     def get_mainloop(self):
+        """
+        Returns the mainloop to which this object was created.
+
+        :return: GObject mainloop (gobject.MainLoop)
+        """
         return self.config.mainloop
 
     def pretty_print(self):
+        """
+        Returns the current contents of this object as received from D-Bus as a string
+
+        :return: String that describes the current contents of this object as received from D-Bus
+        """
         return pretty_str_dbus_dict(self.res_iface.getProperties())
 
 
