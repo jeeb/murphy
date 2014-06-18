@@ -234,6 +234,9 @@ class ResourceSet(object):
     """
     The basic unit of acquiring and releasing resources. Resources can be acquired or lost independently if the
     configuration permits, but the client can only request and release whole resource sets.
+
+    Resource sets and their resources can only be generally modified until they are acquired. Any changes done
+    after acquisition will currently end in failure.
     """
     def __init__(self, bus, config, set_path):
         """
@@ -299,7 +302,7 @@ class ResourceSet(object):
         :param resource: Resource object of the resource to remove
         :return:         Boolean that notes if the action was successful or not
 
-        :raise TypeError: Causes and exception in case the given parameter is not a Resource object
+        :raise TypeError: Causes an exception in case the given parameter is not a Resource object
         """
         if not isinstance(resource, Resource):
             raise TypeError
@@ -346,9 +349,22 @@ class ResourceSet(object):
         return str(self.set_iface.getProperties()["status"])
 
     def get_class(self):
+        """
+        Returns the class of this resource set as a string
+
+        :return: String that represents the set class of this resource set
+        """
         return str(self.set_iface.getProperties()["class"])
 
     def set_class(self, app_class):
+        """
+        Sets the class of this resource set.
+
+        :param app_class: String representation of the class to be set for this resource set
+        :return:          Boolean that notes if the action was successful or not
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
         if not isinstance(app_class, str):
             raise TypeError
 
@@ -359,6 +375,11 @@ class ResourceSet(object):
             return False
 
     def delete(self):
+        """
+        Deletes the resource set from the system
+
+        :return: Boolean that notes if the action was successful or not
+        """
         try:
             self.set_iface.delete()
             return True
@@ -366,6 +387,26 @@ class ResourceSet(object):
             return False
 
     def register_callback(self, cb, user_data=None):
+        """
+        Registers a function to be called when a change occurs in this D-Bus connection regarding this resource set.
+        This does include addition and removal of resources to/from this resource set, but changes in resources
+        included in this resources are handled by their own signals.
+
+        :param cb:        Function to be called when a signal is received from Murphy via D-Bus. Must be callable.
+                          Function will get the following parameters:
+                          * Name of property
+                            * class
+                            * status
+                            * availableResources
+                            * resources
+                          * Value of the property
+                          * Object from which this signal callback was registered (ResourceSet object)
+                          * User data; Object given to this function passed on to the callback, or
+                            None if one isn't set
+        :param user_data: Object that will be passed on to the callback, or None if one isn't passed
+
+        :raise TypeError: Causes an exception in case the given callback function is not callable
+        """
         if not callable(cb):
             raise TypeError
 
@@ -373,9 +414,19 @@ class ResourceSet(object):
         self.user_data = user_data
 
     def get_mainloop(self):
+        """
+        Returns the mainloop to which this object was created.
+
+        :return: GObject mainloop (gobject.MainLoop)
+        """
         return self.config.mainloop
 
     def pretty_print(self):
+        """
+        Returns the current contents of this object as received from D-Bus as a string
+
+        :return: String that describes the current contents of this object as received from D-Bus
+        """
         return pretty_str_dbus_dict(self.set_iface.getProperties())
 
 
