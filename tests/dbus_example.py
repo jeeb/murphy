@@ -98,6 +98,10 @@ if __name__ == "__main__":
     res_set.register_callback(pythonic_callback, user_data)
 
     res = res_set.add_resource(res_set.list_available_resources()[0])
+    res_again = res_set.get_resource(res_set.list_resources()[0])
+    if not res_again:
+        print("Failed to get the same resource")
+
     res.register_callback(pythonic_callback, user_data)
     welp = res.list_attributes()
     if not res.set_attribute_value(welp[0], -9001):
