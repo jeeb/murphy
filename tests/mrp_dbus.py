@@ -458,6 +458,32 @@ class ResourceSet(object):
 
         return Resource(self, res_name=res)
 
+    def list_resources(self):
+        """
+        Creates a list of the paths of currently added resources in this resource set.
+
+        :return: List of the object paths of currently added resources in this resource set
+        """
+        res_list = []
+        resources = self.set_iface.getProperties()["resources"]
+        for resource in resources:
+            res_list.append(resource)
+
+        return res_list
+
+    def get_resource(self, obj_path):
+        """
+        Returns a Resource object of the resource described by the given object path
+
+        :param obj_path: D-Bus object path describing a specific Murphy resource
+        :return:         None in case of failure, Resource object if successful
+        """
+        resources = self.set_iface.getProperties()["resources"]
+        if obj_path in resources:
+            return Resource(self, given_path=obj_path)
+        else:
+            return None
+
     @staticmethod
     def remove_resource(resource):
         """
