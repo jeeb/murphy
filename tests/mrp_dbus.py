@@ -169,21 +169,20 @@ class Resource(object):
     Resources, as well as resource sets can not be modified via the API after they have been acquired, to modify values
     one must first successfully release the resource set, modify a given value, and then re-acquire it.
     """
-    def __init__(self, bus, config, res_path):
+    def __init__(self, res_set, res_path):
         """
         Initializes the created Resource object.
 
-        :param bus:      D-Bus Bus that was connected to in order to create this resource set.
-        :param config:   DBusConfig object that contains the general configuration of the D-Bus connection.
+        :param res_set:  Murphy ResourceSet object that this resource is to be created under.
         :param res_path: The path of the newly created resource. Is automatically created when
                          ResourceSet.add_resource() is called, which is the primary way of creating these
                          objects
         """
-        self.bus = bus
-        self.config = config
+        self.bus = res_set.bus
+        self.config = res_set.config
         self.res_path = res_path
         self.res_id   = int(res_path.split("/")[-1])
-        self.res_obj  = bus.get_object(config.bus_name, res_path)
+        self.res_obj  = self.bus.get_object(self.config.bus_name, res_path)
         self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
 
         self.cb_set    = None
@@ -387,21 +386,20 @@ class ResourceSet(object):
     Resource sets and their resources can only be generally modified until they are acquired. Any changes done
     after acquisition will currently end in failure.
     """
-    def __init__(self, bus, config, set_path):
+    def __init__(self, conn, set_path):
         """
         Initializes the created ResourceSet object.
 
-        :param bus:      D-Bus Bus that was connected to in order to create this resource set.
-        :param config:   DBusConfig object that contains the general configuration of the D-Bus connection.
+        :param conn:     Murphy Connection object that this resource set is to be created under.
         :param set_path: The path of the newly created resource set. Is automatically created when
                          Connection.create_resource_set() is called, which is the primary way of creating these
                          objects
         """
         self.set_path  = set_path
-        self.bus       = bus
-        self.config    = config
+        self.bus       = conn.bus
+        self.config    = conn.config
         self.set_id    = int(set_path.split("/")[-1])
-        self.set_obj   = bus.get_object(config.bus_name, set_path)
+        self.set_obj   = self.bus.get_object(self.config.bus_name, set_path)
         self.set_iface = dbus.Interface(self.set_obj, dbus_interface=MRP_RES_SET_IFACE)
         self.cb_set    = None
         self.user_data = None
@@ -441,7 +439,7 @@ class ResourceSet(object):
         if not res_path:
             return None
 
-        return Resource(self.bus, self.config, res_path)
+        return Resource(self, res_path)
 
     @staticmethod
     def remove_resource(resource):
@@ -632,7 +630,7 @@ class Connection(object):
         if not set_path:
             return None
 
-        return ResourceSet(self.bus, self.config, set_path)
+        return ResourceSet(self, set_path)
 
     def list_resource_sets(self):
         """
@@ -659,7 +657,7 @@ class Connection(object):
 
         listing = self.interface.getProperties()["resourceSets"]
         if set_path in listing:
-            return ResourceSet(self.bus, self.config, set_path)
+            return ResourceSet(self, set_path)
         else:
             return None
 
