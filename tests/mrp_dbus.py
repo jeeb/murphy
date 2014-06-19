@@ -281,7 +281,7 @@ class Resource(object):
         except:
             return False
 
-    def list_attributes(self):
+    def list_attribute_names(self):
         """
         Creates a list of the available attributes in this resource
 
