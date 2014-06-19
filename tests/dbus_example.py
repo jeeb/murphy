@@ -29,6 +29,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from mrp_dbus import (Connection, DBusConfig, Resource)
+from mrp_dbus_helpers import StateDumpResource
 
 
 class TestObject():
@@ -99,8 +100,19 @@ if __name__ == "__main__":
 
     res = res_set.add_resource(res_set.list_available_resources()[0])
     res_again = res_set.get_resource(res_set.list_resources()[0])
+
     if not res_again:
         print("Failed to get the same resource")
+
+    # Test StateDumping
+    dump = StateDumpResource(res)
+    dump2 = StateDumpResource(res_again)
+    dump.attributes["policy"] = "strict"
+
+    if not dump.equals(dump2):
+        dump.print_differences(dump2)
+    else:
+        exit(1)
 
     res.register_callback(pythonic_callback, user_data)
     welp = res.list_attribute_names()
