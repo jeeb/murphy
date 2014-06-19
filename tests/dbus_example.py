@@ -103,7 +103,7 @@ if __name__ == "__main__":
         print("Failed to get the same resource")
 
     res.register_callback(pythonic_callback, user_data)
-    welp = res.list_attributes()
+    welp = res.list_attribute_names()
     if not res.set_attribute_value(welp[0], -9001):
         print("Perkele3")
 
