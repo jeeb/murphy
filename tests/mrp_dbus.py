@@ -171,7 +171,8 @@ class Resource(object):
     """
     def __init__(self, res_set, res_name=None, given_path=None):
         """
-        Initializes the created Resource object.
+        Initializes the created Resource object. Needs one of the two optional parameters to be set for either
+        resource addition or for getting an already added resource.
 
         :param res_set:    Murphy ResourceSet object that this resource is to be created under.
         :param res_name:   Optional resource name parameter used when a new resource is to be added
