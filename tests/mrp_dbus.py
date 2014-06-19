@@ -169,20 +169,33 @@ class Resource(object):
     Resources, as well as resource sets can not be modified via the API after they have been acquired, to modify values
     one must first successfully release the resource set, modify a given value, and then re-acquire it.
     """
-    def __init__(self, res_set, res_path):
+    def __init__(self, res_set, res_name=None, given_path=None):
         """
         Initializes the created Resource object.
 
-        :param res_set:  Murphy ResourceSet object that this resource is to be created under.
-        :param res_path: The path of the newly created resource. Is automatically created when
-                         ResourceSet.add_resource() is called, which is the primary way of creating these
-                         objects
+        :param res_set:    Murphy ResourceSet object that this resource is to be created under.
+        :param res_name:   Optional resource name parameter used when a new resource is to be added
+        :param given_path: Optional D-Bus object path parameter used when an already existing resource is to be used
         """
+
+        # You're not supposed to use both optional parameters at once
+        if res_name and given_path:
+            raise ValueError
+
+        # If we're given a path, we're grabbing an already existing resource
+        if given_path:
+            self.res_path = given_path
+        # Otherwise create a new resource with the given name
+        else:
+            self.res_path = res_set.set_iface.addResource(res_name)
+
+        if not self.res_path:
+            raise ValueError
+
         self.bus = res_set.bus
         self.config = res_set.config
-        self.res_path = res_path
-        self.res_id   = int(res_path.split("/")[-1])
-        self.res_obj  = self.bus.get_object(self.config.bus_name, res_path)
+        self.res_id   = int(self.res_path.split("/")[-1])
+        self.res_obj  = self.bus.get_object(self.config.bus_name, self.res_path)
         self.res_iface = dbus.Interface(self.res_obj, dbus_interface=MRP_RES_IFACE)
 
         self.cb_set    = None
@@ -386,20 +399,28 @@ class ResourceSet(object):
     Resource sets and their resources can only be generally modified until they are acquired. Any changes done
     after acquisition will currently end in failure.
     """
-    def __init__(self, conn, set_path):
+    def __init__(self, conn, given_path=None):
         """
         Initializes the created ResourceSet object.
 
-        :param conn:     Murphy Connection object that this resource set is to be created under.
-        :param set_path: The path of the newly created resource set. Is automatically created when
-                         Connection.create_resource_set() is called, which is the primary way of creating these
-                         objects
+        :param conn:       Murphy Connection object that this resource set is to be created under.
+        :param given_path: Optional D-Bus object path to an existing resource set.
         """
-        self.set_path  = set_path
+
+        # If we're given a path, we're grabbing an already existing resource set
+        if given_path:
+            self.set_path = given_path
+        # Otherwise create the resource set
+        else:
+            self.set_path  = conn.interface.createResourceSet()
+
+        if not self.set_path:
+            raise ValueError
+
         self.bus       = conn.bus
         self.config    = conn.config
-        self.set_id    = int(set_path.split("/")[-1])
-        self.set_obj   = self.bus.get_object(self.config.bus_name, set_path)
+        self.set_id    = int(self.set_path.split("/")[-1])
+        self.set_obj   = self.bus.get_object(self.config.bus_name, self.set_path)
         self.set_iface = dbus.Interface(self.set_obj, dbus_interface=MRP_RES_SET_IFACE)
         self.cb_set    = None
         self.user_data = None
@@ -435,11 +456,7 @@ class ResourceSet(object):
         if not isinstance(res, str):
             raise TypeError
 
-        res_path = self.set_iface.addResource(res)
-        if not res_path:
-            return None
-
-        return Resource(self, res_path)
+        return Resource(self, res_name=res)
 
     @staticmethod
     def remove_resource(resource):
@@ -626,11 +643,7 @@ class Connection(object):
 
         :return: None in case of failure, ResourceSet object if successful
         """
-        set_path = self.interface.createResourceSet()
-        if not set_path:
-            return None
-
-        return ResourceSet(self, set_path)
+        return ResourceSet(self)
 
     def list_resource_sets(self):
         """
