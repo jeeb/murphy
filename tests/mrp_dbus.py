@@ -206,7 +206,7 @@ class Resource(object):
             if self.cb_set:
                 self.cb_set(prop, value, self, self.user_data)
 
-        self.res_iface.connect_to_signal("propertyChanged", resource_internal_callback)
+        self.int_callback = resource_internal_callback
 
     def get_state(self):
         """
@@ -375,6 +375,8 @@ class Resource(object):
         self.cb_set = cb
         self.user_data = user_data
 
+        self.res_iface.connect_to_signal("propertyChanged", self.int_callback)
+
     def get_mainloop(self):
         """
         Returns the mainloop to which this object was created.
@@ -430,7 +432,7 @@ class ResourceSet(object):
             if self.cb_set:
                 self.cb_set(prop, value, self, self.user_data)
 
-        self.set_iface.connect_to_signal("propertyChanged", res_set_internal_callback)
+        self.int_callback = res_set_internal_callback
 
     def list_available_resources(self):
         """
@@ -604,6 +606,8 @@ class ResourceSet(object):
         self.cb_set = cb
         self.user_data = user_data
 
+        self.set_iface.connect_to_signal("propertyChanged", self.int_callback)
+
     def get_mainloop(self):
         """
         Returns the mainloop to which this object was created.
@@ -660,7 +664,7 @@ class Connection(object):
             if self.cb_set:
                 self.cb_set(prop, value, self, self.user_data)
 
-        self.interface.connect_to_signal("propertyChanged", connection_internal_callback)
+        self.int_callback = connection_internal_callback
 
     def create_resource_set(self):
         """
@@ -722,6 +726,8 @@ class Connection(object):
 
         self.cb_set = cb
         self.user_data = user_data
+
+        self.interface.connect_to_signal("propertyChanged", self.int_callback)
 
     def get_mainloop(self):
         """
