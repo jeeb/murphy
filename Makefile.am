@@ -1,6 +1,6 @@
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS  = . utils src doc
+SUBDIRS  = . utils src doc tests
 doc_DATA = AUTHORS ChangeLog NEWS README
 
 # This is the only way with automake I know of to force 'check-git-hooks'

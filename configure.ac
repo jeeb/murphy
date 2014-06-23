@@ -693,6 +693,7 @@ AC_CONFIG_FILES([build-aux/shave
 		 doc/plugin-developer-guide/db/Makefile
 		 doc/plugin-developer-guide/doxml/Makefile
 		 src/plugins/resource-native/libmurphy-resource/murphy-resource.pc
+		 tests/Makefile
 		 ])
 AC_OUTPUT
 
