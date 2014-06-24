@@ -1,5 +1,5 @@
 TESTS = run_murphyd.sh
-NEEDED_LOGS =
+NEEDED_LOGS = run_murphyd.log
 
 if BUILD_RESOURCES
 TESTS += test_mrp_resource_native.conf
@@ -20,7 +20,7 @@ NEEDED_LOGS += test_mrp_dbus.log
 endif
 
 TESTS += stop_murphyd.sh
-stop_murphyd.log: run_murphyd.log $(NEEDED_LOGS)
+stop_murphyd.log: $(NEEDED_LOGS)
 
 TEST_EXTENSIONS = .conf .sh
 CONF_LOG_COMPILER = fmbt
