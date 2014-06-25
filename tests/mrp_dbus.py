@@ -616,6 +616,14 @@ class ResourceSet(object):
         """
         return self.config.mainloop
 
+    def get_path(self):
+        """
+        Returns the object path of this resource set. Can be useful in callbacks, for example
+
+        :return: String representation of the object path of this resource set
+        """
+        return self.set_path
+
     def pretty_print(self):
         """
         Returns the current contents of this object as received from D-Bus as a string
