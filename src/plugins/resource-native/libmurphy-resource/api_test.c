@@ -95,7 +95,7 @@ void create_resources(my_app_data *app_data)
     attr = mrp_res_get_attribute_by_name(resource, "role");
 
     if (attr) {
-        mrp_res_set_attribute_string(app_data->cx, attr, "call");
+        mrp_res_set_attribute_string(attr, "call");
     }
 
     resource = mrp_res_create_resource(app_data->rs,

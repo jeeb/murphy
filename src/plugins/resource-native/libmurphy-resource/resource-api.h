@@ -354,14 +354,13 @@ mrp_res_attribute_t * mrp_res_get_attribute_by_name(mrp_res_resource_t *res,
 /**
  * Set new string attribute value to resource.
  *
- * @param cx murphy context.
  * @param attr attríbute pointer returned by mrp_res_get_attribute_by_name.
  * @value value to be set, copied by the library.
  *
  * @return murphy error code.
  */
-int mrp_res_set_attribute_string(mrp_res_context_t *cx,
-        mrp_res_attribute_t *attr, const char *value);
+int mrp_res_set_attribute_string(mrp_res_attribute_t *attr,
+        const char *value);
 
 
 /**

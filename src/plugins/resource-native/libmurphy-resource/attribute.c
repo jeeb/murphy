@@ -172,12 +172,12 @@ mrp_res_attribute_t * mrp_res_get_attribute_by_name(
 }
 
 
-int mrp_res_set_attribute_string(mrp_res_context_t *cx,
-        mrp_res_attribute_t *attr, const char *value)
+int mrp_res_set_attribute_string(mrp_res_attribute_t *attr,
+        const char *value)
 {
     char *str;
 
-    if (!cx || !attr)
+    if (!attr)
         return -1;
 
     /* check the attribute type */

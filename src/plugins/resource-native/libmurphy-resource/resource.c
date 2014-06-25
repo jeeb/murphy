@@ -175,7 +175,7 @@ static void resource_event(mrp_msg_t *msg,
                     mrp_res_set_attribute_double(cx, dst, src->floating);
                     break;
                 case mrp_string:
-                    mrp_res_set_attribute_string(cx, dst, src->string);
+                    mrp_res_set_attribute_string(dst, src->string);
                     break;
                 default: /* mrp_invalid */
                     break;
