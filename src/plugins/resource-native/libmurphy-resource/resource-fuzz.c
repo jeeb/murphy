@@ -187,7 +187,7 @@ static void release_rset(fuzz_data_t *data)
 
         if (i-- == 0) {
             if (item->acquired) {
-                mrp_res_release_resource_set(data->cx, item->rset);
+                mrp_res_release_resource_set(item->rset);
                 item->acquired = FALSE;
             }
             return;

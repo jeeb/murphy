@@ -127,7 +127,7 @@ void giveup_resources(my_app_data *app_data)
 {
     /* release resources */
     if (app_data->rs)
-        mrp_res_release_resource_set(app_data->cx, app_data->rs);
+        mrp_res_release_resource_set(app_data->rs);
     else
         printf("No release set acquired!\n");
 }

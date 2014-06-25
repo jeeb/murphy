@@ -571,12 +571,12 @@ const mrp_res_resource_set_t * mrp_res_list_resources(
 }
 
 
-int mrp_res_release_resource_set(mrp_res_context_t *cx,
-                mrp_res_resource_set_t *original)
+int mrp_res_release_resource_set(mrp_res_resource_set_t *original)
 {
     mrp_res_resource_set_t *internal_set = NULL;
+    mrp_res_context_t *cx = original->priv->cx;
 
-    if (!cx->priv->connected)
+    if (!cx || !cx->priv->connected)
         goto error;
 
     if (!original->priv->internal_id)

@@ -244,13 +244,11 @@ int mrp_res_acquire_resource_set(const mrp_res_resource_set_t *rs);
  * for this set will not stop, since updates for the resource
  * set available status are still delivered.
  *
- * @param cx connnection to Murphy resource engine.
  * @param rs resource set you want to release.
  *
  * @return murphy error code.
  */
-int mrp_res_release_resource_set(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs);
+int mrp_res_release_resource_set(mrp_res_resource_set_t *rs);
 
 
 /**
