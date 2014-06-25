@@ -314,12 +314,10 @@ mrp_res_resource_t * mrp_res_get_resource_by_name(
 /**
  * Delete a resource from a resource set.
  *
- * @param set resource the resource will deleted from.
  * @param res resource to be deleted.
  *
  */
-void mrp_res_delete_resource(mrp_res_resource_set_t *rs,
-        mrp_res_resource_t *res);
+void mrp_res_delete_resource(mrp_res_resource_t *res);
 
 /**
  * Delete resource by name from resource set.

@@ -671,10 +671,8 @@ void mrp_res_delete_resource_set(mrp_res_resource_set_t *set)
 }
 
 
-void mrp_res_delete_resource(mrp_res_resource_set_t *set, mrp_res_resource_t *res)
+void mrp_res_delete_resource(mrp_res_resource_t *res)
 {
-    MRP_UNUSED(set);
-
     if (res->priv->set) {
         if (!mrp_res_delete_resource_by_name(res->priv->set, res->name)) {
             /* hmm, strange */
