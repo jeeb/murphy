@@ -466,7 +466,7 @@ const mrp_res_string_array_t * mrp_res_list_application_classes(
 }
 
 
-mrp_res_resource_t *mrp_res_create_resource(mrp_res_context_t *cx,
+mrp_res_resource_t *mrp_res_create_resource(
                     mrp_res_resource_set_t *set,
                     const char *name,
                     bool mandatory,
@@ -476,8 +476,14 @@ mrp_res_resource_t *mrp_res_create_resource(mrp_res_context_t *cx,
     uint32_t i = 0;
     bool found = false;
     uint32_t server_id = 0;
+    mrp_res_context_t *cx = NULL;
 
-    if (cx == NULL || set == NULL || name == NULL)
+    if (set == NULL)
+        return NULL;
+
+    cx = set->priv->cx;
+
+    if (cx == NULL || name == NULL)
         return NULL;
 
     for (i = 0; i < cx->priv->master_resource_set->priv->num_resources; i++) {

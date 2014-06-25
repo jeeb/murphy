@@ -79,8 +79,7 @@ void create_resources(my_app_data *app_data)
         return;
     }
 
-    resource = mrp_res_create_resource(app_data->cx,
-                      app_data->rs,
+    resource = mrp_res_create_resource(app_data->rs,
                       "audio_playback",
                       true,
                       false);
@@ -99,8 +98,7 @@ void create_resources(my_app_data *app_data)
         mrp_res_set_attribute_string(app_data->cx, attr, "call");
     }
 
-    resource = mrp_res_create_resource(app_data->cx,
-                      app_data->rs,
+    resource = mrp_res_create_resource(app_data->rs,
                       "video_playback",
                       true,
                       false);

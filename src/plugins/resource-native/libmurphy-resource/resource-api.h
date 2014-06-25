@@ -278,7 +278,6 @@ int mrp_res_get_resource_set_id(mrp_res_resource_set_t *rs);
  * Created resource will be automatically added to
  * the resource set provided as argument.
  *
- * @param cx connnection to Murphy resource engine.
  * @param set resource the resource will be added to.
  * @param name name of the resource you want to create.
  * @param mandatory is the resource mandatory or not
@@ -286,8 +285,8 @@ int mrp_res_get_resource_set_id(mrp_res_resource_set_t *rs);
  *
  * @return pointer to new resource if succesful null otherwise.
  */
-mrp_res_resource_t *mrp_res_create_resource(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs, const char *name, bool mandatory,
+mrp_res_resource_t *mrp_res_create_resource(mrp_res_resource_set_t *rs,
+        const char *name, bool mandatory,
         bool shared);
 
 /**
