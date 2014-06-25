@@ -53,6 +53,30 @@ class TestObject():
             self.res_set_removed
 
 
+def attribute_changed(user_data, prop, value):
+    return not user_data.value_modified and prop == "attributes" and value.get("int") == -9001
+
+
+def res_set_added(user_data, prop, value):
+    return not user_data.res_set_added and prop == "resourceSets" and user_data.res_set.get_path() in value
+
+
+def res_set_removed(user_data, prop, value):
+    return prop == "resourceSets" and user_data.res_set.get_path() not in value
+
+
+def resource_added(user_data, prop, value):
+    return not user_data.resource_added and prop == "resources" and len(value) > 0
+
+
+def resource_removed(prop, value):
+    return prop == "resources" and len(value) == 0
+
+
+def object_acquired(prop, value):
+    return prop == "status" and value == "acquired"
+
+
 def pythonic_callback(prop, value, original_thing, user_data):
     print(">> PythonicCallback")
 
@@ -61,29 +85,39 @@ def pythonic_callback(prop, value, original_thing, user_data):
 
     # Determine the type of object that sent the signal
     if isinstance(original_thing, Connection):
-        if not user_data.res_set_added:
-            if prop == "resourceSets" and user_data.res_set.get_path() in value:
-                print("PythonicCallback: A Resource set has been added to connection!")
-                user_data.res_set_added = True
-        elif prop == "resourceSets" and user_data.res_set.get_path() not in value:
+        # See if we are being notified of resource set addition
+        if res_set_added(user_data, prop, value):
+            print("PythonicCallback: The resource set has been added to connection!")
+            user_data.res_set_added = True
+
+        # Otherwise see if the resource set has actually been removed
+        elif res_set_removed(user_data, prop, value):
             print("PythonicCallback: Resource set has been cleaned up!")
             user_data.res_set_removed = True
+
     elif isinstance(original_thing, ResourceSet):
-        if not user_data.resource_added:
-            if prop == "resources" and len(value) > 0:
-                print("PythonicCallback: Resource has been added to the set!")
-                user_data.resource_added = True
-        elif prop == "status" and value == "acquired":
+        # See if we are being notified of resource addition
+        if resource_added(user_data, prop, value):
+            print("PythonicCallback: Resource has been added to the set!")
+            user_data.resource_added = True
+
+        # Otherwise see if the resource set has been acquired, and print a message
+        elif object_acquired(prop, value):
             print("PythonicCallback: Resource set is acquired!")
-        elif prop == "resources" and len(value) == 0:
+
+        # And finally see if the resource has actually been removed
+        elif resource_removed(prop, value):
             print("PythonicCallback: Resource has been removed from the set!")
             user_data.resource_removed = True
+
     elif isinstance(original_thing, Resource):
-        if not user_data.value_modified:
-            if prop == "attributes" and value.get("int") == -9001:
-                print("PythonicCallback: Attribute in resource set is now set to requested value!")
-                user_data.value_modified = True
-        elif prop == "status" and value == "acquired":
+        # See if we are being notified of a specific attribute changing
+        if attribute_changed(user_data, prop, value):
+            print("PythonicCallback: Attribute in resource set is now set to requested value!")
+            user_data.value_modified = True
+
+        # Otherwise see if the resource has been acquired
+        elif object_acquired(prop, value):
             print("PythonicCallback: Resource is acquired!")
             user_data.resource_acquired = True
 
