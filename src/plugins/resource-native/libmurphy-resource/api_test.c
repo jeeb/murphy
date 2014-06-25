@@ -179,7 +179,7 @@ static void state_callback(mrp_res_context_t *context,
 
                 for (i = 0; i < resource_names->num_strings; i++) {
 
-                    resource = mrp_res_get_resource_by_name(context, rs,
+                    resource = mrp_res_get_resource_by_name(rs,
                             resource_names->strings[i]);
 
                     if (!resource)
@@ -283,7 +283,7 @@ static void resource_callback(mrp_res_context_t *cx,
 
     /* here compare the resource set difference */
 
-    res = mrp_res_get_resource_by_name(cx, rs, "audio_playback");
+    res = mrp_res_get_resource_by_name(rs, "audio_playback");
 
     if (!res) {
         printf("audio_playback not present in resource set\n");
@@ -294,7 +294,7 @@ static void resource_callback(mrp_res_context_t *cx,
 
     printf("resource 0 name '%s' -> '%s'\n", res->name, state_to_str(res->state));
 
-    res = mrp_res_get_resource_by_name(cx, rs, "video_playback");
+    res = mrp_res_get_resource_by_name(rs, "video_playback");
 
     if (!res) {
         printf("video_playback not present in resource set\n");
@@ -316,7 +316,7 @@ static void resource_callback(mrp_res_context_t *cx,
 
     /* print the current role attribute */
 
-    res = mrp_res_get_resource_by_name(cx, rs, "audio_playback");
+    res = mrp_res_get_resource_by_name(rs, "audio_playback");
     attr = mrp_res_get_attribute_by_name(cx, res, "role");
 
     if (res && attr)

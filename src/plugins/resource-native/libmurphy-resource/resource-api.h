@@ -302,14 +302,13 @@ mrp_res_string_array_t * mrp_res_list_resource_names(
 /**
  * Delete resource by name from resource set.
  *
- * @param cx connnection to Murphy resource engine.
  * @param rs resource set where you want to get the resource.
  * @param name name of the resource you want to get.
  * @param pointer to resource pointer to be assigned.
  *
  * @return 0 if resource found.
  */
-mrp_res_resource_t * mrp_res_get_resource_by_name(mrp_res_context_t *cx,
+mrp_res_resource_t * mrp_res_get_resource_by_name(
         const mrp_res_resource_set_t *rs, const char *name);
 
 /**
