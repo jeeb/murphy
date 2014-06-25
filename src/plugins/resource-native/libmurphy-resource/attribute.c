@@ -209,10 +209,10 @@ int mrp_res_set_attribute_uint(mrp_res_attribute_t *attr,
 }
 
 
-int mrp_res_set_attribute_int(mrp_res_context_t *cx,
-            mrp_res_attribute_t *attr, int32_t value)
+int mrp_res_set_attribute_int(mrp_res_attribute_t *attr,
+        int32_t value)
 {
-    if (!cx || !attr || attr->type != mrp_int32)
+    if (!attr || attr->type != mrp_int32)
         return -1;
 
     attr->integer = value;

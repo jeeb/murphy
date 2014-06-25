@@ -166,7 +166,7 @@ static void resource_event(mrp_msg_t *msg,
 
             switch (src->type) {
                 case mrp_int32:
-                    mrp_res_set_attribute_int(cx, dst, src->integer);
+                    mrp_res_set_attribute_int(dst, src->integer);
                     break;
                 case mrp_uint32:
                     mrp_res_set_attribute_uint(dst, src->unsignd);
