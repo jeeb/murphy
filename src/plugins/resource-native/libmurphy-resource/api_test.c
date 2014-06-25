@@ -59,7 +59,7 @@ void create_resources(my_app_data *app_data)
 
     /* if we already have a decent set, just re-acquire it */
     if (app_data->rs) {
-        mrp_res_acquire_resource_set(app_data->cx, app_data->rs);
+        mrp_res_acquire_resource_set(app_data->rs);
         return;
     }
 
@@ -118,7 +118,7 @@ void acquire_resources(my_app_data *app_data)
 {
     /* acquire the resources */
     if (app_data->rs)
-        mrp_res_acquire_resource_set(app_data->cx, app_data->rs);
+        mrp_res_acquire_resource_set(app_data->rs);
     else
         printf("No release set created!\n");
 }

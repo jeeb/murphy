@@ -160,7 +160,7 @@ static void acquire_rset(fuzz_data_t *data)
 
         if (i-- == 0) {
             if (!item->acquired) {
-                mrp_res_acquire_resource_set(data->cx, item->rset);
+                mrp_res_acquire_resource_set(item->rset);
                 item->acquired = TRUE;
             }
             return;

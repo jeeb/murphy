@@ -233,13 +233,11 @@ bool mrp_res_equal_resource_set(const mrp_res_resource_set_t *a,
  * you asked for you will get an update for your resource
  * set in the resource callback.
  *
- * @param cx connnection to Murphy resource engine.
  * @param rs resource set you want to acquire.
  *
  * @return murphy error code.
  */
-int mrp_res_acquire_resource_set(mrp_res_context_t *cx,
-        const mrp_res_resource_set_t *rs);
+int mrp_res_acquire_resource_set(const mrp_res_resource_set_t *rs);
 
 /**
  * Release the acquired resource set. Resource callbacks

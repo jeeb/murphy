@@ -780,10 +780,11 @@ bool mrp_res_set_autorelease(bool status,
 }
 
 
-int mrp_res_acquire_resource_set(mrp_res_context_t *cx,
+int mrp_res_acquire_resource_set(
                 const mrp_res_resource_set_t *original)
 {
     mrp_res_resource_set_t *rset;
+    mrp_res_context_t *cx = original->priv->cx;
 
     if (!cx->priv->connected) {
         mrp_res_error("not connected to server");
