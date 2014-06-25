@@ -28,7 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from mrp_dbus import (Connection, DBusConfig, Resource)
+from mrp_dbus import (Connection, DBusConfig, Resource, ResourceSet)
 from mrp_dbus_helpers import StateDumpResource
 
 
@@ -56,31 +56,38 @@ class TestObject():
 def pythonic_callback(prop, value, original_thing, user_data):
     print(">> PythonicCallback")
 
-    # Basic per-callback log
+    # Basic per-callback debug log for property and new value
     print("PythonicCallback: %s = %s" % (prop, value))
 
-    if prop == "resourceSets" and user_data.res_set.get_path() in value:
-        print("PythonicCallback: Resource set is now added")
-        user_data.res_set_added = True
-    elif prop == "resources" and len(value) > 0:
-        print("PythonicCallback: There is now resources!")
-        user_data.resource_added = True
-    elif prop == "attributes" and value.get("int") == -9001:
-        print("PythonicCallback: The attribute is now set!")
-        user_data.value_modified = True
-    elif prop == "status" and value == "acquired":
-        if isinstance(original_thing, Resource):
-            print("PythonicCallback: The resource is acquired!")
+    # Determine the type of object that sent the signal
+    if isinstance(original_thing, Connection):
+        if not user_data.res_set_added:
+            if prop == "resourceSets" and user_data.res_set.get_path() in value:
+                print("PythonicCallback: A Resource set has been added to connection!")
+                user_data.res_set_added = True
+        elif prop == "resourceSets" and user_data.res_set.get_path() not in value:
+            print("PythonicCallback: Resource set has been cleaned up!")
+            user_data.res_set_removed = True
+    elif isinstance(original_thing, ResourceSet):
+        if not user_data.resource_added:
+            if prop == "resources" and len(value) > 0:
+                print("PythonicCallback: Resource has been added to the set!")
+                user_data.resource_added = True
+        elif prop == "status" and value == "acquired":
+            print("PythonicCallback: Resource set is acquired!")
+        elif prop == "resources" and len(value) == 0:
+            print("PythonicCallback: Resource has been removed from the set!")
+            user_data.resource_removed = True
+    elif isinstance(original_thing, Resource):
+        if not user_data.value_modified:
+            if prop == "attributes" and value.get("int") == -9001:
+                print("PythonicCallback: Attribute in resource set is now set to requested value!")
+                user_data.value_modified = True
+        elif prop == "status" and value == "acquired":
+            print("PythonicCallback: Resource is acquired!")
             user_data.resource_acquired = True
-        else:
-            print("PythonicCallback: The resource set is acquired!")
-    elif prop == "resources" and len(value) == 0:
-        print("PythonicCallback: The resource has been removed from the set!")
-        user_data.resource_removed = True
-    elif prop == "resourceSets" and user_data.res_set.get_path() not in value:
-        print("PythonicCallback: The resource set has been cleaned up!")
-        user_data.res_set_removed = True
 
+    # Check if all needed changes have happened, and quit mainloop in that case
     if user_data.all_true():
         print("PythonicCallback: All Done!")
         original_thing.get_mainloop().quit()
