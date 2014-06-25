@@ -353,6 +353,7 @@ static mrp_res_resource_set_t *create_resource_set(
     rs->application_class = mrp_strdup(klass);
 
     rs->priv->pub = rs;
+    rs->priv->cx = cx;
     rs->priv->id = 0;
     rs->priv->internal_id = cx->priv->next_internal_id++;
     rs->priv->seqno = 0;
