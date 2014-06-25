@@ -172,7 +172,7 @@ static void resource_event(mrp_msg_t *msg,
                     mrp_res_set_attribute_uint(dst, src->unsignd);
                     break;
                 case mrp_double:
-                    mrp_res_set_attribute_double(cx, dst, src->floating);
+                    mrp_res_set_attribute_double(dst, src->floating);
                     break;
                 case mrp_string:
                     mrp_res_set_attribute_string(dst, src->string);

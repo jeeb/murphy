@@ -221,10 +221,10 @@ int mrp_res_set_attribute_int(mrp_res_attribute_t *attr,
 }
 
 
-int mrp_res_set_attribute_double(mrp_res_context_t *cx,
-        mrp_res_attribute_t *attr, double value)
+int mrp_res_set_attribute_double(mrp_res_attribute_t *attr,
+        double value)
 {
-    if (!cx || !attr || attr->type != mrp_double)
+    if (!attr || attr->type != mrp_double)
         return -1;
 
     attr->floating = value;
