@@ -155,11 +155,11 @@ mrp_res_string_array_t * mrp_res_list_attribute_names(
 
 
 mrp_res_attribute_t * mrp_res_get_attribute_by_name(
-        mrp_res_context_t *cx, mrp_res_resource_t *res, const char *name)
+        mrp_res_resource_t *res, const char *name)
 {
     int i;
 
-    if (!cx || !res)
+    if (!res)
         return NULL;
 
     for (i = 0; i < res->priv->num_attributes; i++) {

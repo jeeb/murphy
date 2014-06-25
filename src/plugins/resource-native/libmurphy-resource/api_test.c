@@ -92,7 +92,7 @@ void create_resources(my_app_data *app_data)
 
     /* set a resource attribute */
 
-    attr = mrp_res_get_attribute_by_name(app_data->cx, resource, "role");
+    attr = mrp_res_get_attribute_by_name(resource, "role");
 
     if (attr) {
         mrp_res_set_attribute_string(app_data->cx, attr, "call");
@@ -197,8 +197,7 @@ static void state_callback(mrp_res_context_t *context,
                         continue;
 
                     for (j = 0; j < attributes->num_strings; j++) {
-                        attr = mrp_res_get_attribute_by_name(context,
-                                resource,
+                        attr = mrp_res_get_attribute_by_name(resource,
                                 attributes->strings[j]);
 
                         if (!attr)
@@ -317,7 +316,7 @@ static void resource_callback(mrp_res_context_t *cx,
     /* print the current role attribute */
 
     res = mrp_res_get_resource_by_name(rs, "audio_playback");
-    attr = mrp_res_get_attribute_by_name(cx, res, "role");
+    attr = mrp_res_get_attribute_by_name(res, "role");
 
     if (res && attr)
         printf("attribute '%s' has role '%s'\n", res->name, attr->string);

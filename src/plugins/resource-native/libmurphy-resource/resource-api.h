@@ -343,14 +343,13 @@ mrp_res_string_array_t * mrp_res_list_attribute_names(
 /**
  * Get the particular resource attribute by name from the resource.
  *
- * @param cx murphy context.
  * @param res resource where the attributes are taken.
  * @param name of the attribute that is fetched.
  *
  * @return attribute pointer to the fetched attribute.
  */
-mrp_res_attribute_t * mrp_res_get_attribute_by_name(mrp_res_context_t *cx,
-        mrp_res_resource_t *res, const char *name);
+mrp_res_attribute_t * mrp_res_get_attribute_by_name(mrp_res_resource_t *res,
+        const char *name);
 
 /**
  * Set new string attribute value to resource.
