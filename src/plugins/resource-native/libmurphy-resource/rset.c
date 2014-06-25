@@ -530,15 +530,18 @@ error:
 }
 
 
-mrp_res_resource_set_t *mrp_res_copy_resource_set(mrp_res_context_t *cx,
+mrp_res_resource_set_t *mrp_res_copy_resource_set(
         const mrp_res_resource_set_t *original)
 {
     mrp_res_resource_set_t *copy, *internal;
+    mrp_res_context_t *cx = NULL;
 
     copy = resource_set_copy(original);
 
     if (!copy)
         goto error;
+
+    cx = original->priv->cx;
 
     /* increase the reference count of the library resource set */
 

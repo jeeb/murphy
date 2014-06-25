@@ -210,8 +210,7 @@ void mrp_res_delete_resource_set(mrp_res_resource_set_t *rs);
  *
  * @return pointer to a copy of the resource set.
  */
-mrp_res_resource_set_t *mrp_res_copy_resource_set(mrp_res_context_t *cx,
-        const mrp_res_resource_set_t *orig);
+mrp_res_resource_set_t *mrp_res_copy_resource_set(const mrp_res_resource_set_t *orig);
 
 /**
  * You might have assigned the same update callback for

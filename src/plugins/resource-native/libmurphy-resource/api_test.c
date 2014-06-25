@@ -314,7 +314,7 @@ static void resource_callback(mrp_res_context_t *cx,
     mrp_res_delete_resource_set(my_data->rs);
 
     /* copying must also have no semantic meaning */
-    my_data->rs = mrp_res_copy_resource_set(cx, rs);
+    my_data->rs = mrp_res_copy_resource_set(rs);
 
     /* print the current role attribute */
 
