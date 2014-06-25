@@ -860,13 +860,15 @@ error:
 }
 
 
-int mrp_res_get_resource_set_id(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs)
+int mrp_res_get_resource_set_id(mrp_res_resource_set_t *rs)
 {
     mrp_res_resource_set_t *internal_set;
+    mrp_res_context_t *cx = NULL;
 
-    if (!rs || !rs->priv)
+    if (!rs || !rs->priv || !rs->priv->cx)
         return 0;
+
+    cx = rs->priv->cx;
 
     internal_set = mrp_htbl_lookup(cx->priv->internal_rset_mapping,
             u_to_p(rs->priv->internal_id));

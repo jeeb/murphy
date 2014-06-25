@@ -266,13 +266,11 @@ int mrp_res_release_resource_set(mrp_res_resource_set_t *rs);
  * with audio streams to find out which streams belong to which resource
  * set in the audio domain controller.
  *
- * @param cx connnection to Murphy resource engine.
  * @param rs resource set whose id is queried.
  *
  * @return resource set id.
  **/
-int mrp_res_get_resource_set_id(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs);
+int mrp_res_get_resource_set_id(mrp_res_resource_set_t *rs);
 
 
 /**
