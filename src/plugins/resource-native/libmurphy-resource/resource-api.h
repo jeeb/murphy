@@ -292,12 +292,11 @@ mrp_res_resource_t *mrp_res_create_resource(mrp_res_resource_set_t *rs,
 /**
  * Get the names of all resources in this resource set.
  *
- * @param cx murphy context.
  * @param rs resource set where the resource are.
  *
  * @return string array that needs to be freed with mrp_res_free_string_array
  */
-mrp_res_string_array_t * mrp_res_list_resource_names(mrp_res_context_t *cx,
+mrp_res_string_array_t * mrp_res_list_resource_names(
         const mrp_res_resource_set_t *rs);
 
 /**

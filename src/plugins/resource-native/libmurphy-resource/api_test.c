@@ -170,7 +170,7 @@ static void state_callback(mrp_res_context_t *context,
 
                 printf("listing all resources available in the system\n");
 
-                resource_names = mrp_res_list_resource_names(context, rs);
+                resource_names = mrp_res_list_resource_names(rs);
 
                 if (!resource_names) {
                     printf("No resources available in the system!\n");

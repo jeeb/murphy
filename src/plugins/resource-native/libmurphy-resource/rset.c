@@ -717,13 +717,13 @@ bool mrp_res_delete_resource_by_name(mrp_res_resource_set_t *rs, const char *nam
 }
 
 
-mrp_res_string_array_t * mrp_res_list_resource_names(mrp_res_context_t *cx,
+mrp_res_string_array_t * mrp_res_list_resource_names(
                 const mrp_res_resource_set_t *rs)
 {
     uint32_t i;
     mrp_res_string_array_t *ret;
 
-    if (!cx || !rs)
+    if (!rs)
         return NULL;
 
     ret = mrp_allocz(sizeof(mrp_res_string_array_t));
