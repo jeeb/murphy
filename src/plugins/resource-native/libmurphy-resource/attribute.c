@@ -113,13 +113,19 @@ mrp_res_attribute_t *mrp_attribute_array_dup(uint32_t dim,
 
 /* public API */
 
-mrp_res_string_array_t * mrp_res_list_attribute_names(mrp_res_context_t *cx,
+mrp_res_string_array_t * mrp_res_list_attribute_names(
         const mrp_res_resource_t *res)
 {
     int i;
     mrp_res_string_array_t *ret;
+    mrp_res_context_t *cx = NULL;
 
-    if (!cx || !res)
+    if (!res)
+        return NULL;
+
+    cx = res->priv->set->priv->cx;
+
+    if (!cx)
         return NULL;
 
     ret = mrp_allocz(sizeof(mrp_res_string_array_t));

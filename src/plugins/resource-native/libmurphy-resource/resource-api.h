@@ -333,12 +333,11 @@ bool mrp_res_delete_resource_by_name(mrp_res_resource_set_t *rs,
 /**
  * Get the names of all attributes in this resource.
  *
- * @param cx murphy context.
  * @param res resource where the attributes are taken.
  *
  * @return string array that needs to be freed with mrp_res_free_string_array
  */
-mrp_res_string_array_t * mrp_res_list_attribute_names(mrp_res_context_t *cx,
+mrp_res_string_array_t * mrp_res_list_attribute_names(
         const mrp_res_resource_t *res);
 
 /**

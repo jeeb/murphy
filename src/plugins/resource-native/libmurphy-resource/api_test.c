@@ -191,7 +191,7 @@ static void state_callback(mrp_res_context_t *context,
                     if (strcmp(resource->name, "video_playback") == 0)
                         system_handles_video = TRUE;
 
-                    attributes = mrp_res_list_attribute_names(context, resource);
+                    attributes = mrp_res_list_attribute_names(resource);
 
                     if (!attributes)
                         continue;
