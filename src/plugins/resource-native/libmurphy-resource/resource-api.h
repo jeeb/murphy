@@ -366,14 +366,13 @@ int mrp_res_set_attribute_string(mrp_res_attribute_t *attr,
 /**
  * Set new unsigned integer attribute value to resource.
  *
- * @param cx murphy context.
  * @param attr attríbute pointer returned by mrp_res_get_attribute_by_name.
  * @value value to be set.
  *
  * @return murphy error code.
  */
-int mrp_res_set_attribute_uint(mrp_res_context_t *cx,
-        mrp_res_attribute_t *attr, uint32_t value);
+int mrp_res_set_attribute_uint(mrp_res_attribute_t *attr,
+        uint32_t value);
 
 
 /**
