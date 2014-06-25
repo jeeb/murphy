@@ -759,10 +759,10 @@ mrp_res_resource_t * mrp_res_get_resource_by_name(mrp_res_context_t *cx,
     return NULL;
 }
 
-bool mrp_res_set_autorelease(mrp_res_context_t *cx, bool status,
+bool mrp_res_set_autorelease(bool status,
         mrp_res_resource_set_t *rs)
 {
-    if (!cx || !rs)
+    if (!rs || !rs->priv->cx)
         return FALSE;
 
      /* the resource library doesn't allow updating already  used sets */

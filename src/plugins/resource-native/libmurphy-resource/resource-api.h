@@ -185,13 +185,12 @@ mrp_res_resource_set_t * mrp_res_create_resource_set(mrp_res_context_t *cx,
  * when the resource becomes available again. By default the automatic
  * release mode is off.
  *
- * @param cx murphy connection context.
  * @param status automatic release status: TRUE means on, FALSE means off
  * @param rs resource set that is being updated.
  *
  * @return true if successful, false otherwise.
  */
-bool mrp_res_set_autorelease(mrp_res_context_t *cx, bool status,
+bool mrp_res_set_autorelease(bool status,
         mrp_res_resource_set_t *rs);
 
 /**

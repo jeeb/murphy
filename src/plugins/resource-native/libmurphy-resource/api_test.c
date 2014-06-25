@@ -74,7 +74,7 @@ void create_resources(my_app_data *app_data)
         return;
     }
 
-    if (!mrp_res_set_autorelease(app_data->cx, TRUE, app_data->rs)) {
+    if (!mrp_res_set_autorelease(TRUE, app_data->rs)) {
         printf("Could not set autorelease flag!\n");
         return;
     }
