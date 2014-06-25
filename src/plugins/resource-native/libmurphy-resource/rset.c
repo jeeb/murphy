@@ -207,13 +207,16 @@ end:
 
 
 
-void delete_resource_set(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs)
+void delete_resource_set(mrp_res_resource_set_t *rs)
 {
+    mrp_res_context_t *cx = NULL;
+
     if (!rs)
         return;
 
-    if (cx && rs->priv) {
+    if (rs->priv && rs->priv->cx) {
+        cx = rs->priv->cx;
+
         /* check if the resource set being deleted is a library resource set */
         mrp_res_resource_set_t *internal_rset = mrp_htbl_lookup(
                 cx->priv->internal_rset_mapping, u_to_p(rs->priv->internal_id));
@@ -384,7 +387,7 @@ static mrp_res_resource_set_t *create_resource_set(
 
 error:
     mrp_log_error("error creating resource set");
-    delete_resource_set(cx, rs);
+    delete_resource_set(rs);
     return NULL;
 }
 
@@ -653,10 +656,9 @@ mrp_res_resource_set_t *mrp_res_create_resource_set(mrp_res_context_t *cx,
 }
 
 
-void mrp_res_delete_resource_set(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *set)
+void mrp_res_delete_resource_set(mrp_res_resource_set_t *set)
 {
-    delete_resource_set(cx, set);
+    delete_resource_set(set);
 }
 
 

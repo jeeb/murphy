@@ -199,8 +199,7 @@ bool mrp_res_set_autorelease(bool status,
  *
  * @param set pointer to existing resource set created by the user.
  */
-void mrp_res_delete_resource_set(mrp_res_context_t *cx,
-        mrp_res_resource_set_t *rs);
+void mrp_res_delete_resource_set(mrp_res_resource_set_t *rs);
 
 /**
  * Make a copy of the resource set. This is a helper function to

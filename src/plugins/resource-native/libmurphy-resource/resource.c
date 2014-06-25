@@ -423,7 +423,7 @@ static void destroy_context(mrp_res_context_t *cx)
         if (cx->priv->transp)
             mrp_transport_destroy(cx->priv->transp);
 
-        delete_resource_set(cx, cx->priv->master_resource_set);
+        delete_resource_set(cx->priv->master_resource_set);
 
         /* FIXME: is this the way we want to free all resources and
          * resource sets? */

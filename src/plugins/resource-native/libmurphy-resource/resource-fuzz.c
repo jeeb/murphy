@@ -214,7 +214,7 @@ static void delete_rset(fuzz_data_t *data)
 
         if (i-- == 0) {
             mrp_list_delete(ip);
-            mrp_res_delete_resource_set(data->cx, item->rset);
+            mrp_res_delete_resource_set(item->rset);
             mrp_free(item);
             data->n_items--;
             return;

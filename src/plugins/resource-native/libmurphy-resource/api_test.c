@@ -87,7 +87,7 @@ void create_resources(my_app_data *app_data)
 
     if (resource == NULL) {
         printf("Couldn't create audio resource\n");
-        mrp_res_delete_resource_set(app_data->cx, app_data->rs);
+        mrp_res_delete_resource_set(app_data->rs);
         return;
     }
 
@@ -107,7 +107,7 @@ void create_resources(my_app_data *app_data)
 
     if (resource == NULL) {
         printf("Couldn't create video resource\n");
-        mrp_res_delete_resource_set(app_data->cx, app_data->rs);
+        mrp_res_delete_resource_set(app_data->rs);
         return;
     }
 
@@ -243,7 +243,7 @@ static void state_callback(mrp_res_context_t *context,
 
         case MRP_RES_DISCONNECTED:
             printf("disconnected from murphy\n");
-            mrp_res_delete_resource_set(app_data->cx, app_data->rs);
+            mrp_res_delete_resource_set(app_data->rs);
             mrp_res_destroy(app_data->cx);
             exit(1);
     }
@@ -311,7 +311,7 @@ static void resource_callback(mrp_res_context_t *cx,
      * It's up to the user to make sure that there's a working reference
      * to the resource set.
      */
-    mrp_res_delete_resource_set(cx, my_data->rs);
+    mrp_res_delete_resource_set(my_data->rs);
 
     /* copying must also have no semantic meaning */
     my_data->rs = mrp_res_copy_resource_set(cx, rs);
@@ -369,7 +369,7 @@ static void handle_input(mrp_io_watch_t *watch, int fd, mrp_io_event_t events,
                 break;
             case 'Q':
                 if (app_data->rs)
-                    mrp_res_delete_resource_set(app_data->cx, app_data->rs);
+                    mrp_res_delete_resource_set(app_data->rs);
                 if (ml)
                     mrp_mainloop_quit(ml, 0);
                 break;
