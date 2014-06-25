@@ -59,7 +59,7 @@ def pythonic_callback(prop, value, original_thing, user_data):
     # Basic per-callback log
     print("PythonicCallback: %s = %s" % (prop, value))
 
-    if prop == "resourceSets" and value.count(user_data.res_set) > 0:
+    if prop == "resourceSets" and user_data.res_set.get_path() in value:
         print("PythonicCallback: Resource set is now added")
         user_data.res_set_added = True
     elif prop == "resources" and len(value) > 0:
@@ -77,7 +77,7 @@ def pythonic_callback(prop, value, original_thing, user_data):
     elif prop == "resources" and len(value) == 0:
         print("PythonicCallback: The resource has been removed from the set!")
         user_data.resource_removed = True
-    elif prop == "resourceSets" and value.count(user_data.res_set) == 0:
+    elif prop == "resourceSets" and user_data.res_set.get_path() not in value:
         print("PythonicCallback: The resource set has been cleaned up!")
         user_data.res_set_removed = True
 
@@ -89,16 +89,30 @@ def pythonic_callback(prop, value, original_thing, user_data):
 
 
 if __name__ == "__main__":
+    # Create the object that is passed to the callback as user_data
     user_data = TestObject()
+
+    # Create a D-Bus configuration object and set the bus type to "session"
     config = DBusConfig()
     config.set_bus_type("session")
+
+    # "Connect" to the D-Bus protocol
     conn = Connection(config)
+    # Register a callback for additions and removals of resource sets
     conn.register_callback(pythonic_callback, user_data)
+
+    # Try creating a resource set
     res_set = conn.create_resource_set()
-    user_data.res_set = res_set.set_path
+
+    # Save a reference to the resource set in user_data
+    user_data.res_set = res_set
+
+    # Register a callback for changes in the resource set
     res_set.register_callback(pythonic_callback, user_data)
 
+    # Create a resource in the resource set with the type of the first available resource
     res = res_set.add_resource(res_set.list_available_resources()[0])
+    # Try grabbing the first resource added to the resource set
     res_again = res_set.get_resource(res_set.list_resources()[0])
 
     if not res_again:
@@ -113,16 +127,24 @@ if __name__ == "__main__":
         dump.print_differences(dump2)
     else:
         exit(1)
+    # End StateDumping test
 
+    # Register a callback for changes in the resource
     res.register_callback(pythonic_callback, user_data)
+    # Get a list of attributes available in the resource
     welp = res.list_attribute_names()
+
+    # Try setting the value of an attribute
     if not res.set_attribute_value(welp[0], -9001):
-        print("Perkele3")
+        print("Failed to request an attribute value change to the first attribute")
 
+    # And finally try requesting the resource set's resources
     if not res_set.request():
-        print("Perkele2")
+        print("Failed to request the resource set's contents")
 
+    # Clean-up
     res_set.remove_resource(res)
     res_set.delete()
 
+    # Run the mainloop to get the actual results in callback calls
     conn.config.mainloop.run()
