@@ -36,6 +36,7 @@ conn = None
 res_sets = []
 resources = []
 
+
 def value_to_be_set(type):
     return {
         dbus.String: "testString",
@@ -43,6 +44,7 @@ def value_to_be_set(type):
         dbus.UInt32: 1192,
         dbus.Double: 3.14,
     }.get(type)
+
 
 def connect():
     print(">>> Connect")
@@ -80,6 +82,7 @@ def remove_res_set():
     assert res_set.delete()
     print(conn.pretty_print())
     print("<<< RemoveResSet")
+
 
 def add_resource():
     print(">>> AddResource")
