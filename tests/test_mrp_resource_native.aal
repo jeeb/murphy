@@ -27,21 +27,7 @@
 
 aal "noname" {
     language "python" {
-        import os
-        os.environ["MRP_IN_TREE"] = "1"
-        from mrp_resource_native import (Connection)
-        from mrp_resource_native_helpers import (StatusObj,
-                                                 py_status_callback,
-                                                 py_res_callback,
-                                                 py_grab_resource_set,
-                                                 py_check_result,
-                                                 py_modify_attribute)
-
-        attr_name = "role"
-        attr_val = "testing_testing"
-        status = StatusObj()
-        conn = Connection(py_status_callback, status)
-        res_set = None
+        from test_mrp_resource_native import *
     }
 
     # preview-show-vars: conn_state, resource_state, change_type
@@ -60,8 +46,7 @@ aal "noname" {
         guard { return conn_state != "connected" }
         body  { conn_state = "connected" }
         adapter {
-            global conn
-            conn.connect()
+            connect()
         }
     }
 
@@ -72,16 +57,7 @@ aal "noname" {
             resource_state = "not gotten"
         }
         adapter {
-            global conn
-            conn.get_opaque_data().res_set_changed = False
-
-            if conn.get_opaque_data().res_set:
-                conn.get_opaque_data().res_set.delete()
-                conn.get_opaque_data().res_set = None
-
-            conn.disconnect()
-            print("We disconnect")
-            print("")
+            disconnect()
         }
     }
 
@@ -92,8 +68,7 @@ aal "noname" {
             change_type = "resource"
         }
         adapter {
-            global conn
-            assert py_grab_resource_set(conn, py_res_callback)
+            issue_resource_order()
         }
     }
 
@@ -104,8 +79,7 @@ aal "noname" {
             change_type = "attribute"
         }
         adapter {
-            global conn
-            assert py_modify_attribute(conn, py_res_callback, attr_name, attr_val)
+            issue_attribute_order()
         }
     }
 
@@ -113,23 +87,14 @@ aal "noname" {
         guard { return resource_state == "order issued" }
         body { resource_state = "gotten" }
         adapter {
-            global conn
-            if conn.get_opaque_data().res_set.get_state() == "acquired":
-                return
-
-            while conn.iterate():
-                print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
-                if conn.get_opaque_data().res_set_changed:
-                    py_check_result(conn)
-                    return
+            check_for_order_completion()
         }
     }
 
     tag "connected" {
         guard { conn_state == "connected" }
         adapter {
-            global conn
-            assert conn.get_state() == "connected"
+            connected()
         }
     }
 }
