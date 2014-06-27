@@ -34,23 +34,72 @@ aal "noname" {
         conn = None
     }
 
-    # preview-show-vars: conn_state, resource_state, change_type
-    # preview-depth: 5
+    # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type
+    # preview-depth: 10
     variables {
-        conn_state, resource_state, change_type
+        connected, res_set_state, resource_state, attribute_state, change_type
     }
     initial_state {
-        conn_state = "disconnected"
-        resource_state = "not gotten"
+        connected = False
+        res_set_state = "not created"
+        resource_state = "not available"
+        attribute_state = "not available"
         change_type = "no change"
     }
     input "connect" {
-        guard { return conn_state != "connected" }
-        body  { conn_state = "connected" }
+        guard { return not connected }
+        body  { connected = True }
         adapter {
             global config
             global conn
             conn = Connection(config)
         }
+    }
+    input "disconnect" {
+        guard { return connected }
+        body {
+            attribute_state = "not available"
+            resource_state  = "not available"
+            res_set_state   = "not created"
+            connected = False
+        }
+    }
+    input "create_res_set" {
+        guard { return connected and res_set_state == "not created" }
+        body { res_set_state = "available" }
+    }
+    input "remove_res_set" {
+        guard { return res_set_state == "available" }
+        body {
+            attribute_state = "not available"
+            resource_state = "not available"
+            res_set_state = "not created"
+        }
+    }
+    input "add_resource" {
+        guard { return res_set_state == "available" and resource_state == "not available" }
+        body {
+            resource_state = "available"
+            attribute_state = "available"
+        }
+    }
+    input "remove_resource" {
+        guard { return resource_state == "available" and res_set_state != "acquired" }
+        body {
+            resource_state = "not available"
+            attribute_state = "not available"
+        }
+    }
+    input "modify_attribute" {
+        guard { return res_set_state != "acquired" and attribute_state == "available" }
+        body { attribute_state = "changed" }
+    }
+    input "acquire_set" {
+        guard { return res_set_state == "available" and resource_state != "not available" }
+        body { res_set_state = "acquired" }
+    }
+    input "release_set" {
+        guard { return res_set_state == "acquired" }
+        body { res_set_state = "available" }
     }
 }
