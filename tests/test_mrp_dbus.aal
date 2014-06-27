@@ -27,11 +27,7 @@
 
 aal "noname" {
     language "python" {
-        from mrp_dbus import (Connection, DBusConfig, Resource)
-
-        config = DBusConfig()
-        config.set_bus_type("session")
-        conn = None
+        from test_mrp_dbus import *
     }
 
     # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type
@@ -50,9 +46,7 @@ aal "noname" {
         guard { return not connected }
         body  { connected = True }
         adapter {
-            global config
-            global conn
-            conn = Connection(config)
+            connect()
         }
     }
     input "disconnect" {
@@ -63,10 +57,16 @@ aal "noname" {
             res_set_state   = "not created"
             connected = False
         }
+        adapter {
+            disconnect()
+        }
     }
     input "create_res_set" {
         guard { return connected and res_set_state == "not created" }
         body { res_set_state = "available" }
+        adapter {
+            create_res_set()
+        }
     }
     input "remove_res_set" {
         guard { return res_set_state == "available" }
@@ -75,12 +75,18 @@ aal "noname" {
             resource_state = "not available"
             res_set_state = "not created"
         }
+        adapter {
+            remove_res_set()
+        }
     }
     input "add_resource" {
         guard { return res_set_state == "available" and resource_state == "not available" }
         body {
             resource_state = "available"
             attribute_state = "available"
+        }
+        adapter {
+            add_resource()
         }
     }
     input "remove_resource" {
@@ -89,17 +95,29 @@ aal "noname" {
             resource_state = "not available"
             attribute_state = "not available"
         }
+        adapter {
+            remove_resource()
+        }
     }
     input "modify_attribute" {
         guard { return res_set_state != "acquired" and attribute_state == "available" }
         body { attribute_state = "changed" }
+        adapter {
+            modify_attribute()
+        }
     }
     input "acquire_set" {
         guard { return res_set_state == "available" and resource_state != "not available" }
         body { res_set_state = "acquired" }
+        adapter {
+            acquire_set()
+        }
     }
     input "release_set" {
         guard { return res_set_state == "acquired" }
         body { res_set_state = "available" }
+        adapter {
+            release_set()
+        }
     }
 }
