@@ -307,8 +307,22 @@ class Resource(object):
             raise TypeError
 
         attribute = self.res_iface.getProperties()["attributes"][name]
-        cast = dbus_type_to_py_type(attribute)
-        return cast(attribute)
+        return attribute
+
+    def get_attribute_type(self, name):
+        """
+        Returns the type of a value of an attribute from this resource by name
+
+        :param name: Name of the attribute
+        :return:     Type of the given attribute value
+
+        :raise TypeError: Causes an exception in case the given parameter is not a string
+        """
+        if not isinstance(name, str):
+            raise TypeError
+
+        attribute = self.res_iface.getProperties()["attributes"][name]
+        return type(attribute)
 
     def set_attribute_value(self, name, value):
         """
