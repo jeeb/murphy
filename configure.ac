@@ -541,8 +541,8 @@ if test "x$has_check" = "xno"; then
 fi
 
 # Check for fMBT
-AC_CHECK_PROG(FMBT,fmbt,yes)
-AM_CONDITIONAL(FMBT_AVAILABLE, [test "$FMBT" = "yes"])
+AC_CHECK_PROG(fmbt_found,fmbt,yes,no)
+AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes"])
 AC_SUBST(FMBT_AVAILABLE)
 
 # Check for documentation tools
@@ -670,7 +670,7 @@ echo "Murphy console plugin and client: $enable_console"
 echo "Resource management support: $with_resources"
 echo "Websockets support: $enable_websockets"
 echo "systemd support: $enable_systemd"
-echo "fMBT tests: $FMBT"
+echo "fMBT tests: $fmbt_found"
 echo "Plugins:"
 echo "  - linked-in:"
 for plugin in ${INTERNAL_PLUGINS:-none}; do
