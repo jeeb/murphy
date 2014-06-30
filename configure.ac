@@ -544,6 +544,9 @@ fi
 AC_CHECK_PROG(fmbt_found,fmbt,yes,no)
 AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes"])
 AC_SUBST(FMBT_AVAILABLE)
+if test "$fmbt_found" = "no"; then
+    AC_MSG_WARN([fMBT testing tool not found, fMBT-based tests are DISABLED.])
+fi
 
 # Check for documentation tools
 AC_ARG_WITH([documentation],
