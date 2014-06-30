@@ -1,3 +1,5 @@
+if FMBT_AVAILABLE
+
 TESTS = run_murphyd.sh
 NEEDED_LOGS = run_murphyd.log
 
@@ -24,3 +26,5 @@ stop_murphyd.log: $(NEEDED_LOGS)
 
 TEST_EXTENSIONS = .conf .sh
 CONF_LOG_COMPILER = fmbt
+
+endif # FMBT_AVAILABLE

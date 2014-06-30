@@ -538,6 +538,11 @@ if test "x$has_check" = "xno"; then
     AC_MSG_WARN([Check framework not found, unit tests are DISABLED.])
 fi
 
+# Check for fMBT
+AC_CHECK_PROG(FMBT,fmbt,yes)
+AM_CONDITIONAL(FMBT_AVAILABLE, [test "$FMBT" = "yes"])
+AC_SUBST(FMBT_AVAILABLE)
+
 # Check for documentation tools
 AC_ARG_WITH([documentation],
             [AS_HELP_STRING([--with-documentation],
@@ -663,6 +668,7 @@ echo "Murphy console plugin and client: $enable_console"
 echo "Resource management support: $with_resources"
 echo "Websockets support: $enable_websockets"
 echo "systemd support: $enable_systemd"
+echo "fMBT tests: $FMBT"
 echo "Plugins:"
 echo "  - linked-in:"
 for plugin in ${INTERNAL_PLUGINS:-none}; do
