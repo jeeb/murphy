@@ -126,6 +126,27 @@ def modify_attribute():
     print("<<< ModifyAttribute")
 
 
+def make_resource_mandatory():
+    print(">>> MakeMandatory")
+    res_set = res_sets[0]
+    res = res_set.get_resource(res_set.list_resources()[0])
+    res.make_mandatory()
+    print(res.pretty_print())
+    assert res.is_mandatory()
+    print("<<< MakeMandatory")
+
+
+def make_resource_nonessential():
+    print(">>> MakeNonessential")
+    res_set = res_sets[0]
+    res = res_set.get_resource(res_set.list_resources()[0])
+    res.make_mandatory(False)
+    print(res.pretty_print())
+    assert not res.is_mandatory()
+    print("<<< MakeNonessential")
+    pass
+
+
 def acquire_set():
     print(">>> AcquireSet")
     global res_sets
