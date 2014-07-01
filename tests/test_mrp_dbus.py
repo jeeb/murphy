@@ -147,6 +147,27 @@ def make_resource_nonessential():
     pass
 
 
+def make_resource_shareable():
+    print(">>> MakeShareable")
+    res_set = res_sets[0]
+    res = res_set.get_resource(res_set.list_resources()[0])
+    res.make_shareable()
+    print(res.pretty_print())
+    assert res.is_shareable()
+    print("<<< MakeShareable")
+
+
+def make_resource_unshareable():
+    print(">>> MakeUnshareable")
+    res_set = res_sets[0]
+    res = res_set.get_resource(res_set.list_resources()[0])
+    res.make_shareable(False)
+    print(res.pretty_print())
+    assert not res.is_shareable()
+    print(">>> MakeUnshareable")
+    pass
+
+
 def acquire_set():
     print(">>> AcquireSet")
     global res_sets
