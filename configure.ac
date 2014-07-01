@@ -543,7 +543,7 @@ fi
 # Check for fMBT
 AC_CHECK_PROG(fmbt_found,fmbt,yes,no)
 AC_CHECK_PROG(fmbt_log_found,fmbt-log,yes,no)
-AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes" -o \
+AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes" -a \
                                      "$fmbt_log_found" = "yes"])
 AC_SUBST(FMBT_AVAILABLE)
 if test "$fmbt_found" = "no" -o "$fmbt_log_found" = "no"; then
