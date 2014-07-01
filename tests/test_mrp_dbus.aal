@@ -82,6 +82,12 @@ aal "murphy_dbus" {
             remove_res_set()
         }
     }
+    input "set_class" {
+        guard { return res_set_state == "available" }
+        adapter {
+           set_class()
+        }
+    }
     input "add_resource" {
         guard { return res_set_state == "available" and resource_state == "not available" }
         body {
