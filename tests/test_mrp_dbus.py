@@ -84,6 +84,15 @@ def remove_res_set():
     print("<<< RemoveResSet")
 
 
+def set_class():
+    print(">>> SetClass")
+    res_set = res_sets[0]
+    res_set.set_class("navigator")
+    print(res_set.pretty_print())
+    assert res_set.get_class() == "navigator"
+    print("<<< SetClass")
+
+
 def add_resource():
     print(">>> AddResource")
     global res_sets
