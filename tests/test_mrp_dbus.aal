@@ -30,17 +30,18 @@ aal "murphy_dbus" {
         from test_mrp_dbus import *
     }
 
-    # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type, resource_mandatory
+    # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type, resource_mandatory, resource_shared
     # preview-depth: 10
     variables {
         connected, res_set_state, resource_state, attribute_state, change_type, \
-        resource_mandatory
+        resource_mandatory, resource_shared
     }
     initial_state {
         connected = False
         res_set_state = "not created"
         resource_state = "not available"
         resource_mandatory = True
+        resource_shared = False
         attribute_state = "not available"
         change_type = "no change"
     }
@@ -134,6 +135,20 @@ aal "murphy_dbus" {
         body { resource_mandatory = False }
         adapter {
             make_resource_nonessential()
+        }
+    }
+    input "make_shareable" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and not resource_shared }
+        body { resource_shared = True }
+        adapter {
+            make_resource_shareable()
+        }
+    }
+    input "make_unshareable" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and resource_shared }
+        body { resource_shared = False }
+        adapter {
+            make_resource_unshareable()
         }
     }
 }
