@@ -44,6 +44,7 @@ properties:
     RW String class: default "default"
     RO String status: default "pending"
     RO [String] availableResources
+    RO [String] availableClasses
     RO [ObjectPath] resources: default []
 
 
