@@ -71,6 +71,7 @@
 
 #define PROP_RESOURCE_SETS          "resourceSets"
 #define PROP_AVAILABLE_RESOURCES    "availableResources"
+#define PROP_AVAILABLE_CLASSES      "availableClasses"
 #define PROP_NAME                   "name"
 #define PROP_SHARED                 "shared"
 #define PROP_MANDATORY              "mandatory"
@@ -153,6 +154,7 @@ typedef struct {
 
     property_o_t *resources_prop;
     property_o_t *available_resources_prop;
+    property_o_t *available_classes_prop;
     property_o_t *class_prop;
     property_o_t *status_prop;
 
@@ -1003,6 +1005,7 @@ static void destroy_rset(resource_set_o_t *rset)
     destroy_property(rset->status_prop);
     destroy_property(rset->resources_prop);
     destroy_property(rset->available_resources_prop);
+    destroy_property(rset->available_classes_prop);
 
     if (ctx->tracking)
         mrp_dbus_forget_name(ctx->dbus, rset->owner, dbus_name_cb, rset);
@@ -1029,6 +1032,7 @@ static resource_set_o_t * create_rset(manager_o_t *mgr, uint32_t id,
     resource_set_o_t *rset = NULL;
     char **resources_arr;
     char **available_resources_arr;
+    char **available_classes_arr;
 
     if (!sender)
         goto error;
@@ -1098,6 +1102,20 @@ static resource_set_o_t * create_rset(manager_o_t *mgr, uint32_t id,
             available_resources_arr, free_string_array);
 
     if (!rset->available_resources_prop)
+        goto error;
+
+    available_classes_arr = copy_string_array(
+                mrp_application_class_get_all_names(128,
+                        (const char **) resbuf));
+
+    if (!available_classes_arr)
+        goto error;
+
+    rset->available_classes_prop = create_property(mgr->ctx,
+            rset->path, RSET_IFACE, "as", PROP_AVAILABLE_CLASSES,
+            available_classes_arr, free_string_array);
+
+    if (!rset->available_classes_prop)
         goto error;
 
     rset->owner = mrp_strdup(sender);
@@ -1763,6 +1781,7 @@ static int rset_cb(mrp_dbus_t *dbus, mrp_dbus_msg_t *msg, void *data)
         get_property_dict_entry(rset->status_prop, reply);
         get_property_dict_entry(rset->resources_prop, reply);
         get_property_dict_entry(rset->available_resources_prop, reply);
+        get_property_dict_entry(rset->available_classes_prop, reply);
 
         mrp_dbus_msg_close_container(reply);
 
