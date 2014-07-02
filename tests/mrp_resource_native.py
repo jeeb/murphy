@@ -358,6 +358,18 @@ class Attribute(object):
 
         return bool(not ret_val)
 
+    def get_type(self):
+        """
+        Returns the type of this attribute as a single character
+
+        :return: Character that represents the type of this attribute.
+                 * i (signed 32bit integer)
+                 * u (unsigned 32bit integer)
+                 * f (double floating point value)
+                 * s (string)
+        """
+        return self.attr.type
+
     def get_value(self):
         """
         Returns the value currently set to this attribute.
