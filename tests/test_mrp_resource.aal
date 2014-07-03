@@ -1,0 +1,175 @@
+# Copyright (c) 2014, Intel Corporation
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+aal "murphy_dbus" {
+    language "python" {
+        from test_mrp_resource import *
+    }
+
+    # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type, resource_mandatory, resource_shared
+    # preview-depth: 10
+    variables {
+        connected, res_set_state, resource_state, attribute_state, change_type, \
+        resource_mandatory, resource_shared
+    }
+
+    initial_state {
+        connected = False
+        res_set_state = "not created"
+        resource_state = "not available"
+        resource_mandatory = True
+        resource_shared = False
+        attribute_state = "not available"
+        change_type = "no change"
+    }
+
+    input "connect" {
+        guard { return not connected }
+        body  { connected = True }
+        adapter {
+            connect()
+        }
+    }
+
+    input "disconnect" {
+        guard { return connected }
+        body {
+            attribute_state = "not available"
+            resource_state  = "not available"
+            res_set_state   = "not created"
+            connected = False
+        }
+        adapter {
+            disconnect()
+        }
+    }
+
+    input "create_res_set" {
+        guard { return connected and res_set_state == "not created" }
+        body { res_set_state = "available" }
+        adapter {
+            create_res_set()
+        }
+    }
+
+    input "remove_res_set" {
+        guard { return res_set_state == "available" }
+        body {
+            attribute_state = "not available"
+            resource_state = "not available"
+            res_set_state = "not created"
+        }
+        adapter {
+            remove_res_set()
+        }
+    }
+
+    input "set_class" {
+        guard { return res_set_state == "available" }
+        adapter {
+           set_class()
+        }
+    }
+
+    input "add_resource" {
+        guard { return res_set_state == "available" and resource_state == "not available" }
+        body {
+            resource_state = "available"
+            attribute_state = "available"
+        }
+        adapter {
+            add_resource()
+        }
+    }
+
+    input "remove_resource" {
+        guard { return resource_state == "available" and res_set_state != "acquired" }
+        body {
+            resource_state = "not available"
+            attribute_state = "not available"
+        }
+        adapter {
+            remove_resource()
+        }
+    }
+
+    input "modify_attribute" {
+        guard { return res_set_state != "acquired" and attribute_state == "available" }
+        body { attribute_state = "changed" }
+        adapter {
+            modify_attribute()
+        }
+    }
+
+    input "acquire_set" {
+        guard { return res_set_state == "available" and resource_state != "not available" }
+        body { res_set_state = "acquired" }
+        adapter {
+            acquire_set()
+        }
+    }
+
+    input "release_set" {
+        guard { return res_set_state == "acquired" }
+        body { res_set_state = "available" }
+        adapter {
+            release_set()
+        }
+    }
+
+    input "make_mandatory" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and not resource_mandatory }
+        body { resource_mandatory = True }
+        adapter {
+            make_resource_mandatory()
+        }
+    }
+
+    input "make_nonessential" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and resource_mandatory }
+        body { resource_mandatory = False }
+        adapter {
+            make_resource_nonessential()
+        }
+    }
+
+    input "make_shareable" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and not resource_shared }
+        body { resource_shared = True }
+        adapter {
+            make_resource_shareable()
+        }
+    }
+
+    input "make_unshareable" {
+        guard { return res_set_state != "acquired" and resource_state != "not available" and resource_shared }
+        body { resource_shared = False }
+        adapter {
+            make_resource_unshareable()
+        }
+    }
+}
