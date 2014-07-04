@@ -107,7 +107,7 @@ def py_grab_resource_set(conn, callback):
 
     if res_set.get_state() != "acquired":
         state.set_acquired()
-        return not res_set.acquire()
+        return res_set.acquire()[0]
     else:
         return True
 
@@ -137,7 +137,7 @@ def py_modify_attribute(conn, callback, name, value):
 
     if res_set.get_state() != "acquired":
         state.set_acquired()
-        return not res_set.acquire()
+        return res_set.acquire()[0]
     else:
         return True
 
