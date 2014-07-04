@@ -17,6 +17,7 @@ status = StatusObj()
 conn = Connection(py_status_callback, status)
 res_sets = []
 
+
 def value_to_be_set(type):
     return {
         "s": "testString",
@@ -24,6 +25,7 @@ def value_to_be_set(type):
         "u": 1192,
         "f": 3.14,
     }.get(type)
+
 
 def local_callback(new_res_set, opaque):
     print("ResCallBack: Entered")
@@ -53,6 +55,7 @@ def local_callback(new_res_set, opaque):
     res_set.update(new_res_set)
 
     print("ResCallBack: Exited\n")
+
 
 def connect():
     global conn
@@ -94,7 +97,7 @@ def remove_res_set():
 
 
 def set_class():
-    pass # These parts of resources cannot be modified after the fact in this API
+    pass  # These parts of resources cannot be modified after the fact in this API
 
 
 def add_resource():
@@ -124,19 +127,19 @@ def modify_attribute():
 
 
 def make_resource_mandatory():
-    pass # These parts of resources cannot be modified after the fact in this API
+    pass  # These parts of resources cannot be modified after the fact in this API
 
 
 def make_resource_nonessential():
-    pass # These parts of resources cannot be modified after the fact in this API
+    pass  # These parts of resources cannot be modified after the fact in this API
 
 
 def make_resource_shareable():
-    pass # These parts of resources cannot be modified after the fact in this API
+    pass  # These parts of resources cannot be modified after the fact in this API
 
 
 def make_resource_unshareable():
-    pass # These parts of resources cannot be modified after the fact in this API
+    pass  # These parts of resources cannot be modified after the fact in this API
 
 
 def acquire_set():
