@@ -57,9 +57,9 @@ def actual_test_steps(conn):
     if attr:
         print("Setting attribute val retcode: %s" % attr.set_value_to("huehue") )
 
-    acquired_status = res_set.acquire()
+    acquired_status = res_set.acquire()[0]
 
-    return not acquired_status
+    return acquired_status
 
 
 def check_tests_results(conn):
