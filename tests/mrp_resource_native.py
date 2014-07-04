@@ -557,12 +557,21 @@ class ResourceSet(object):
         Attempts to acquire the resources in this resource set. Success here only means that the call succeeded,
         and actual changes to the resource set's status will only be visible within a related resource callback.
 
-        :return: Murphy error code that conveys the status of the message being sent to Murphy.
-                 Error states are nonzero.
+        :return: Tuple of boolean and a string; The boolean is True when the order was successfully completed,
+                 and False when not. The string represents one of the Murphy error states.
+                 * none
+                 * connection lost
+                 * internal
+                 * malformed
+                 * unknown
         """
-        return \
+        ret_val = \
             mrp_reslib.mrp_res_acquire_resource_set(pointer(self.conn.res_ctx),
                                                     pointer(self.res_set))
+        if not ret_val:
+            return True, error_to_str(ret_val)
+        else:
+            return False, error_to_str(ret_val)
 
     def release(self):
         """
