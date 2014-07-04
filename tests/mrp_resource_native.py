@@ -577,11 +577,23 @@ class ResourceSet(object):
         """
         Releases the resources in this resource set.
 
-        :return: Void
+        :return: Tuple of boolean and a string; The boolean is True when the order was successfully completed,
+                 and False when not. The string represents one of the Murphy error states.
+                 * none
+                 * connection lost
+                 * internal
+                 * malformed
+                 * unknown
         """
-        return \
+        ret_val = \
             mrp_reslib.mrp_res_release_resource_set(pointer(self.conn.res_ctx),
                                                     pointer(self.res_set))
+
+        if not ret_val:
+            return True, error_to_str(ret_val)
+        else:
+            return False, error_to_str(ret_val)
+
 
     def get_id(self):
         """
