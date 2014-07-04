@@ -143,7 +143,7 @@ def acquire_set():
     global res_sets
     assert len(res_sets)
     set = res_sets[0]
-    assert error_to_str(set.acquire()) == "none"
+    assert set.acquire()[0]
 
 
 def release_set():
