@@ -150,7 +150,7 @@ def release_set():
     global res_sets
     assert len(res_sets)
     set = res_sets[0]
-    assert error_to_str(set.release()) == "none"
+    assert set.release()[0]
 
 
 def issue_resource_order():
