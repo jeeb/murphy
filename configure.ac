@@ -180,6 +180,10 @@ AC_SUBST(SDBUS_ENABLED)
 AC_SUBST(SDBUS_CFLAGS)
 AC_SUBST(SDBUS_LIBS)
 
+# Common D-Bus enablement variable
+AM_CONDITIONAL(DBUS_ENABLED, [test "$enable_libdbus" = "yes" \
+                              -o   "$enable_sdbus" = "yes"])
+
 # Check if PulseAudio mainloop support was enabled.
 AC_ARG_ENABLE(pulse,
               [  --enable-pulse          enable PulseAudio mainloop support],

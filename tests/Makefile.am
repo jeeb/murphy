@@ -11,16 +11,18 @@ test_mrp_resource_native.log: run_murphyd.log
 NEEDED_LOGS += test_mrp_resource_native.log
 endif
 
-if LIBDBUS_ENABLED
+if DBUS_ENABLED
 TESTS += test_mrp_dbus.conf
 test_mrp_dbus.log: run_murphyd.log
 NEEDED_LOGS += test_mrp_dbus.log
 endif
 
-if SDBUS_ENABLED
-TESTS += test_mrp_dbus.conf
-test_mrp_dbus.log: run_murphyd.log
-NEEDED_LOGS += test_mrp_dbus.log
+if BUILD_RESOURCES
+if DBUS_ENABLED
+TESTS += run_multiprotocol_comparison.sh
+run_multiprotocol_comparison.log: run_murphyd.log
+NEEDED_LOGS += run_multiprotocol_comparison.log
+endif
 endif
 
 # Actual tests requiring Murphy end
@@ -28,7 +30,7 @@ endif
 TESTS += stop_murphyd.sh
 stop_murphyd.log: $(NEEDED_LOGS)
 
+endif # FMBT_AVAILABLE
+
 TEST_EXTENSIONS = .conf .sh
 CONF_LOG_COMPILER = fmbt
-
-endif # FMBT_AVAILABLE
