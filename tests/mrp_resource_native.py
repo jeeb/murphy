@@ -594,7 +594,6 @@ class ResourceSet(object):
         else:
             return False, error_to_str(ret_val)
 
-
     def get_id(self):
         """
         Gets the numeric ID of this resource set.
