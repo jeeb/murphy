@@ -55,7 +55,7 @@ def py_status_callback(conn, error_code, opaque):
                 if attr:
                     print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
-    print('StatusCallback ErrCode: %d\n' % (error_code))
+    print('StatusCallback ErrCode: %s\n' % (error_code))
 
 
 def py_res_callback(new_res_set, opaque):

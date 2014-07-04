@@ -771,7 +771,7 @@ class Connection(object):
         disconnect() function will disconnect and clean up.
 
         :param status_cb:   Function to call when a status callback is called. Will be called with three
-                            parameters: the connection, the Murphy error code (int) as well as the opaque data
+                            parameters: the connection, the Murphy error state as a string as well as the opaque data
         :param opaque_data: A python object that will be passed to the callbacks under this connection
         """
         self.udata    = UserData(self, opaque_data)
@@ -783,10 +783,11 @@ class Connection(object):
         self.conn_status_callback_called = False
         self.connected_to_murphy = False
 
-        def conn_status_callback_func(res_ctx_p, error_code, userdata_p):
+        def conn_status_callback_func(res_ctx_p, orig_error_code, userdata_p):
             self.conn_status_callback_called = True
             conn = GivenConnection(res_ctx_p)
-            if error_to_str(error_code) == "none" and conn.get_state() == "connected":
+            error_code = error_to_str(orig_error_code)
+            if error_code == "none" and conn.get_state() == "connected":
                 self.connected_to_murphy = True
 
             opaque = cast(userdata_p, POINTER(UserData)).contents.opaque
