@@ -307,16 +307,24 @@ def map_attr_type_to_py_type(attr_type):
 
 
 class Attribute(object):
-    def __init__(self, res, mrp_attr):
+    def __init__(self, res, name):
         """
         Gets the according attribute out of a given resource. Usually called by a Resource object.
 
-        :param res:      Resource the attribute belongs to
-        :param mrp_attr: Murphy attribute pointer pointing towards the requested attribute
+        :param res:  Resource the attribute belongs to
+        :param name: Name of the attribute to return
         :return: Attribute object created according to the parameters
         """
         self.res  = res
-        self.attr = mrp_attr.contents
+        self.attr = None
+
+        self.attr = \
+            mrp_reslib.mrp_res_get_attribute_by_name(pointer(res.res_set.conn.res_ctx),
+                                                     pointer(res.res),
+                                                     name).contents
+
+        if not self.attr:
+            raise MemoryError
 
     def set_value_to(self, value):
         """
@@ -465,13 +473,10 @@ class Resource(object):
         """
         attr = None
 
-        mrp_attr = \
-            mrp_reslib.mrp_res_get_attribute_by_name(pointer(self.res_set.conn.res_ctx),
-                                                     pointer(self.res),
-                                                     name)
-
-        if mrp_attr:
-            attr = Attribute(self, mrp_attr)
+        try:
+            attr = Attribute(self, name)
+        except:
+            return None
 
         return attr
 
