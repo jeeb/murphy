@@ -80,32 +80,6 @@ def pretty_str_dbus_dict(d, level=0):
     return s
 
 
-def create_array(dbus_array):
-    ret = []
-    for val in dbus_array:
-        ret.append(dbus_type_to_py_type(val)(val))
-
-    return ret
-
-
-def dbus_type_to_py_type(val):
-    """
-    Gives the Python type for a value based on the D-Bus type
-
-    :param val: D-Bus value
-    :return:    Python type matching the D-Bus type of the value
-    """
-    return {
-        dbus.String: str,
-        dbus.Int32:  int,
-        dbus.UInt32: int,
-        dbus.Double: float,
-        dbus.Array:  create_array,
-        dbus.Dictionary: dbus.Dictionary,
-        dbus.ObjectPath: str,
-    }.get(type(val))
-
-
 class DBusConfig(object):
     """
     Object containing the various configuration options for the D-Bus connection, including its type (session/system),
