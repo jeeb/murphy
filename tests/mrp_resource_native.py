@@ -854,6 +854,8 @@ class Connection(object):
         """
         if pointer(self.mainloop):
             return bool(mrp_common.mrp_mainloop_iterate(pointer(self.mainloop)))
+        else:
+            return False
 
     def disconnect(self):
         """
