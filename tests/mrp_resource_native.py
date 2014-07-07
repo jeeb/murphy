@@ -606,7 +606,8 @@ class ResourceSet(object):
 
     def create_resource(self, name, mandatory=True, shared=False):
         """
-        Creates (adds) a resource to this resource set. GivenR
+        Creates (adds) a resource to this resource set. The mandatory and shared flags can only be set
+        during resource creation, so if they have to be set to specific values, they should be set here.
 
         :param name:      Name of the resource to add to this resource set
         :param mandatory: Optional boolean parameter that notes whether or not this resource is
@@ -786,8 +787,8 @@ class Connection(object):
         :param opaque_data: A python object that will be passed to the callbacks under this connection
         """
         self.udata    = UserData(self, opaque_data)
-        self.mainloop = None  # not a pointer
-        self.res_ctx  = None  # not a pointer
+        self.mainloop = None
+        self.res_ctx  = None
         self.status_cb = status_cb
         self.conn_status_callback = None
 
@@ -885,7 +886,10 @@ class Connection(object):
         """
         Creates a new resource set to this connection
 
-        :param res_cb:    Resource callback to be called when there is an update in resource sets
+        :param res_cb:    Resource callback to be called when there is an update in the resource set.
+                          The same callback can be used for multiple resource sets, in which case the
+                          user must check which resource set is the one receiving an update within the
+                          callback.
         :param mrp_class: Application class to which this resource set belongs
         :return: ResourceSet object created according to the parameters
         """
