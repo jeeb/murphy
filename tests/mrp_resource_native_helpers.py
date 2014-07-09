@@ -243,3 +243,8 @@ class StateDump(object):
         self.state = "acquired"
         for res in self.resources.itervalues():
             res.state = "acquired"
+
+    def set_released(self):
+        self.state = "available"
+        for res in self.resources.itervalues():
+            res.state = "lost"
