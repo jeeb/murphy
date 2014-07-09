@@ -35,6 +35,7 @@ config.set_bus_type("session")
 conn = None
 res_sets = []
 resources = []
+changes = dict()
 
 
 def value_to_be_set(type):
