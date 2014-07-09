@@ -130,6 +130,7 @@ aal "murphy_dbus" {
         body { res_set_state = "acquired" }
         adapter {
             acquire_set()
+            check_results()
         }
     }
 
@@ -138,6 +139,7 @@ aal "murphy_dbus" {
         body { res_set_state = "available" }
         adapter {
             release_set()
+            check_results()
         }
     }
 
