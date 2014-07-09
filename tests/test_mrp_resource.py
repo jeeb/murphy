@@ -30,7 +30,7 @@ def value_to_be_set(type):
 def local_callback(new_res_set, opaque):
     print("ResCallBack: Entered")
 
-    # Get the old res set from the opaque data
+    # Get the current res set from the opaque data
     res_set = opaque.res_set
 
     # Check if this callback is for the resource set we have in userdata
@@ -56,6 +56,18 @@ def local_callback(new_res_set, opaque):
 
     print("ResCallBack: Exited\n")
 
+def update_state_dumps(res_set):
+    """
+    Updates the state dumps kept in the opaque user data
+    """
+    global conn
+    if not res_set:
+        conn.get_opaque_data().res_set_state          = None
+        conn.get_opaque_data().res_set_expected_state = None
+    else:
+        conn.get_opaque_data().res_set_state          = StateDump(res_set)
+        conn.get_opaque_data().res_set_expected_state = StateDump(res_set)
+
 
 def connect():
     global conn
@@ -63,11 +75,19 @@ def connect():
 
 
 def disconnect():
-    global conn
+    global conn, res_sets
+
+    # Remove all leftover resource sets
+    for set in res_sets:
+        set.delete()
+
+    # Reset the list
+    res_sets = []
+
+    # Reset information in the opaque user data
     conn.get_opaque_data().res_set_changed = False
 
     if conn.get_opaque_data().res_set:
-        conn.get_opaque_data().res_set.delete()
         conn.get_opaque_data().res_set = None
 
     conn.disconnect()
@@ -76,22 +96,38 @@ def disconnect():
 
 
 def create_res_set():
-    global res_sets
+    global conn, res_sets
+
     pre_count = len(res_sets)
-    res_set = conn.create_resource_set(py_res_callback, conn.list_application_classes()[0])
+
+    res_set = conn.create_resource_set(local_callback, conn.list_application_classes()[0])
+    assert res_set
     res_sets.append(res_set)
+
+    # Set the information stored in the opaque user data
+    conn.get_opaque_data().res_set = res_set
+    update_state_dumps(res_set)
+
     after_count = len(res_sets)
     assert (after_count - pre_count) == 1
 
 
 def remove_res_set():
-    global res_sets
+    global conn, res_sets
+
+    # Count things and make sure that we have at least one resource set in the list
     pre_count = len(res_sets)
     assert pre_count
+
+    # Remove the actual resource set
     set = res_sets[0]
-    print(len(set.list_resource_names()))
     set.delete()
     res_sets.remove(set)
+
+    # Reset information stored in the opaque user data
+    update_state_dumps(None)
+
+    # Make sure that the new count of resource sets is according to expectations
     after_count = len(res_sets)
     assert (pre_count - after_count) == 1
 
@@ -101,29 +137,39 @@ def set_class():
 
 
 def add_resource():
-    global conn
+    global conn, res_sets
+
+    set = res_sets[0]
     res_list = conn.list_resources()
     res_names = res_list.list_resource_names()
 
-    assert res_sets[0].create_resource(res_names[0])
+    assert set.create_resource(res_names[0])
+    # Update the state dumps in opaque user data
+    update_state_dumps(set)
 
 
 def remove_resource():
-    global res_sets
-    assert len(res_sets)
+    global conn, res_sets
+
     set = res_sets[0]
-    name_list = set.list_resource_names()
-    assert len(name_list)
-    name = name_list[0]
+    res_names = set.list_resource_names()
+    assert len(res_names)
+
+    name = res_names[0]
+
     set.delete_resource_by_name(name)
-    print("beep")
+    # Update the state dumps in opaque user data
+    update_state_dumps(set)
 
 
 def modify_attribute():
     global res_sets
+
     res = res_sets[0].get_resource_by_name(res_sets[0].list_resource_names()[0])
     attr = res.get_attribute_by_name(res.list_attribute_names()[0])
     assert attr.set_value_to(value_to_be_set(attr.get_type()))
+
+    update_state_dumps(res_sets[0])
 
 
 def make_resource_mandatory():
