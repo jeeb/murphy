@@ -84,9 +84,7 @@ def disconnect():
     # Reset the list
     res_sets = []
 
-    # Reset information in the opaque user data
-    conn.get_opaque_data().res_set_changed = False
-
+    # Reset information stored in the opaque user data
     if conn.get_opaque_data().res_set:
         conn.get_opaque_data().res_set = None
 
@@ -126,6 +124,8 @@ def remove_res_set():
 
     # Reset information stored in the opaque user data
     update_state_dumps(None)
+
+    conn.get_opaque_data().res_set_changed = False
 
     # Make sure that the new count of resource sets is according to expectations
     after_count = len(res_sets)
@@ -193,6 +193,7 @@ def acquire_set():
     assert len(res_sets)
     set = res_sets[0]
     assert set.acquire()[0]
+    conn.get_opaque_data().res_set_state.set_acquired()
 
 
 def release_set():
@@ -200,6 +201,7 @@ def release_set():
     assert len(res_sets)
     set = res_sets[0]
     assert set.release()[0]
+    conn.get_opaque_data().res_set_state.set_released()
 
 
 def issue_resource_order():
@@ -222,6 +224,16 @@ def check_for_order_completion():
         if conn.get_opaque_data().res_set_changed:
             py_check_result(conn)
             return
+
+
+def check_results():
+    global conn, res_sets
+
+    while conn.iterate():
+        print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
+        if conn.get_opaque_data().res_set_changed:
+            if py_check_result(conn):
+                return
 
 
 def connected():
