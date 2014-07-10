@@ -134,6 +134,22 @@ class DBusConfig(object):
 
         self.object_path = path
 
+    def reset_mainloop(self):
+        """
+        Recreates the mainloop to which this object was created. If the
+        mainloop is still running, it will quit it and create a new one that you can
+        then later start again.
+
+        :return: Void
+        """
+        if self.mainloop:
+            if self.mainloop.is_running():
+                self.mainloop.quit()
+
+            del(self.mainloop)
+
+        self.mainloop = gobject.MainLoop()
+
 
 class Resource(object):
     """
