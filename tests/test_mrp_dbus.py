@@ -40,13 +40,137 @@ conn_callback_set = False
 res_set_callback_set = False
 resource_callback_set = False
 
+# Things we can actually add, such as resources or sets
+class Addition(object):
+    def __init__(self, name, added_path):
+        self.name = name
+        self.added_path = added_path
+
+    def get_name(self):
+        return self.name
+
+    def check(self, path, list_of_values):
+        return path == self.name and self.added_path in list_of_values
+
+class ResSetAddition(Addition):
+    def __init__(self, path):
+        super(ResSetAddition, self).__init__("resourceSets", path)
+
+
+class ResourceAddition(Addition):
+    def __init__(self, path):
+        super(ResourceAddition, self).__init__("resources", path)
+        pass
+
+
+# Same as the previous, just reverse
+class Removal(object):
+    def __init__(self, name, removed_path):
+        self.name = name
+        self.removed_path = removed_path
+
+    def get_name(self):
+        return self.name
+
+    def check(self, path, list_of_values):
+        return path == self.name and self.removed_path not in list_of_values
+
+
+class ResSetRemoval(Removal):
+    def __init__(self, path):
+        super(ResSetRemoval, self).__init__("resourceSets", path)
+
+
+class ResourceRemoval(Removal):
+    def __init__(self, path):
+        super(ResourceRemoval, self).__init__("resources", path)
+
+
+# Now here it gets a bit more kinky, we can have both values as well as dicts
+class Modification(object):
+    def __init__(self, name, modification):
+        self.name = name
+        self.modification = modification
+
+    def get_name(self):
+        return self.name
+
+    def check(self, value):
+        return self.modification == value
+
+
+class AttributeModification(Modification):
+    def __init__(self, attr_name, new_attr_value):
+        super(AttributeModification, self).__init__("attributes", (attr_name, new_attr_value))
+
+    def check(self, value):
+        name = self.modification[0]
+        val = self.modification[1]
+
+        return name in value and value[name] == val
+
+
+class Acquisition():
+    pass
+
+
+
+
+# Basic design is (modified_object, list_of_changes)
+class ChangeManager():
+    def __init__(self):
+        self.change_sets = dict()
+
+    def get_changes(self, object):
+        if str(object) in self.change_sets:
+            return self.change_sets[str(object)]
+        else:
+            return None
+
+    def add_change(self, object, change):
+        object_str = str(object)
+        if object_str in self.change_sets:
+            self.change_sets[object_str].append(change)
+        else:
+            self.change_sets[object_str] = [change]
+
+    def remove_change(self, object, change):
+        object_str = str(object)
+        if object_str in self.change_sets:
+            self.change_sets[object_str].remove(change)
+            if not len(self.change_sets[object_str]):
+                del(self.change_sets[object_str])
+            return True
+        else:
+            return False
+
+    def remove_changes(self, object):
+        object_str = str(object)
+        if object_str in self.change_sets:
+            del(self.change_sets[object_str])
+
+    def changes_available(self):
+        return bool(len(self.change_sets))
+
+c_manager = ChangeManager()
+
 
 def test_callback(prop, value, original_thing, user_data):
-    global changes
+    global changes, c_manager
     print(">> PythonicCallback")
 
     # Basic per-callback debug log for property and new value
-    print("PythonicCallback[%s]: %s = %s" % (type(original_thing), prop, value))
+    print("PythonicCallback[%s]: %s = %s" % (str(original_thing), prop, value))
+
+    # Using the ChangeManager to handle incoming changes
+    change_list = c_manager.get_changes(original_thing)
+    print(change_list)
+    if change_list:
+        for c in change_list:
+            if c.check(prop, value):
+                c_manager.remove_change(original_thing, c)
+
+
 
     if prop in changes:
         # We are adding things or modifying things
@@ -65,14 +189,10 @@ def test_callback(prop, value, original_thing, user_data):
                 del(changes[prop])
         # We are removing things
         else:
-            if isinstance(value, dbus.Array):
-                if changes[prop][1] not in value:
-                    del(changes[prop])
-            else:
-                if changes[prop][1] != value:
-                    del(changes[prop])
+            if changes[prop][1] not in value:
+                del(changes[prop])
 
-    if not len(changes):
+    if not len(changes) and not c_manager.get_changes(original_thing):
         user_data.reset_mainloop()
 
     print("<< PythonicCallback")
@@ -119,6 +239,7 @@ def create_res_set():
         res_set_callback_set = True
 
     changes["resourceSets"] = ("addition", res_set.get_path())
+    c_manager.add_change(conn, ResSetAddition(res_set.get_path()))
     conn.get_mainloop().run()
     res_sets.append(res_set)
     print(conn.pretty_print())
@@ -129,7 +250,11 @@ def remove_res_set():
     print(">>> RemoveResSet")
     global conn, res_sets, res_set_callback_set
     res_set = res_sets.pop()
+    for r in res_set.list_resources():
+        pass
     changes["resourceSets"] = ("removal", res_set.get_path())
+    c_manager.remove_changes(res_set)
+    c_manager.add_change(conn, ResSetRemoval(res_set.get_path()))
     assert res_set.delete()
     res_set_callback_set = False
     conn.get_mainloop().run()
@@ -158,6 +283,9 @@ def add_resource():
         res.register_callback(test_callback, config)
         resource_callback_set = True
     changes["resources"] = ("addition", res.get_path())
+    c_manager.add_change(res_set, ResourceAddition(res.get_path()))
+    r_list = res_set.list_resources()
+    print(r_list)
     conn.get_mainloop().run()
     print(res_set.pretty_print())
     print("<<< AddResource")
@@ -171,6 +299,8 @@ def remove_resource():
     res = res_set.get_resource(res_name)
     assert res
     changes["resources"] = ("removal", res.get_path())
+    c_manager.remove_changes(res)
+    c_manager.add_change(res_set, ResourceRemoval(res.get_path()))
     assert res_set.remove_resource(res)
     conn.get_mainloop().run()
     resource_callback_set = False
