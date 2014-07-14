@@ -25,7 +25,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from mrp_dbus import (Connection, DBusConfig, ResourceSet)
+from mrp_dbus import (Connection, DBusConfig)
 from random import sample
 import dbus
 
@@ -35,10 +35,10 @@ config.set_bus_type("session")
 conn = None
 res_sets = []
 resources = []
-changes = dict()
 conn_callback_set = False
 res_set_callback_set = False
 resource_callback_set = False
+
 
 # Things we can actually add, such as resources or sets
 class Addition(object):
@@ -51,6 +51,7 @@ class Addition(object):
 
     def check(self, path, list_of_values):
         return path == self.name and self.added_path in list_of_values
+
 
 class ResSetAddition(Addition):
     def __init__(self, path):
@@ -86,7 +87,7 @@ class ResourceRemoval(Removal):
         super(ResourceRemoval, self).__init__("resources", path)
 
 
-# Now here it gets a bit more kinky, we can have both values as well as dicts
+# Modification of values, attributes
 class Modification(object):
     def __init__(self, name, modification):
         self.name = name
@@ -95,25 +96,43 @@ class Modification(object):
     def get_name(self):
         return self.name
 
-    def check(self, value):
-        return self.modification == value
+    def check(self, key, value):
+        return self.name == key and self.modification == value
+
+
+class ClassModification(Modification):
+    def __init__(self, new_class):
+        super(ClassModification, self).__init__("class", new_class)
 
 
 class AttributeModification(Modification):
     def __init__(self, attr_name, new_attr_value):
         super(AttributeModification, self).__init__("attributes", (attr_name, new_attr_value))
 
-    def check(self, value):
+    def check(self, key, value):
         name = self.modification[0]
         val = self.modification[1]
-
-        return name in value and value[name] == val
-
-
-class Acquisition():
-    pass
+        return key == "attributes" and name in value and value[name] == val
 
 
+class MandatorynessModification(Modification):
+    def __init__(self, bool):
+        super(MandatorynessModification, self).__init__("mandatory", bool)
+
+
+class SharingModification(Modification):
+    def __init__(self, bool):
+        super(SharingModification, self).__init__("shared", bool)
+
+
+class Acquisition(Modification):
+    def __init__(self):
+        super(Acquisition, self).__init__("status", "acquired")
+
+
+class Release(Modification):
+    def __init__(self):
+        super(Release, self).__init__("status", "available")
 
 
 # Basic design is (modified_object, list_of_changes)
@@ -122,77 +141,66 @@ class ChangeManager():
         self.change_sets = dict()
 
     def get_changes(self, object):
-        if str(object) in self.change_sets:
-            return self.change_sets[str(object)]
+        path = object.get_path()
+        if path in self.change_sets:
+            return self.change_sets[path]
         else:
             return None
 
     def add_change(self, object, change):
-        object_str = str(object)
-        if object_str in self.change_sets:
-            self.change_sets[object_str].append(change)
+        path = object.get_path()
+        if path in self.change_sets:
+            self.change_sets[path].append(change)
         else:
-            self.change_sets[object_str] = [change]
+            self.change_sets[path] = [change]
 
     def remove_change(self, object, change):
-        object_str = str(object)
-        if object_str in self.change_sets:
-            self.change_sets[object_str].remove(change)
-            if not len(self.change_sets[object_str]):
-                del(self.change_sets[object_str])
+        path = object.get_path()
+        if path in self.change_sets:
+            self.change_sets[path].remove(change)
+            if not len(self.change_sets[path]):
+                del(self.change_sets[path])
             return True
         else:
             return False
 
     def remove_changes(self, object):
-        object_str = str(object)
-        if object_str in self.change_sets:
-            del(self.change_sets[object_str])
+        path = object.get_path()
+        if path in self.change_sets:
+            del(self.change_sets[path])
 
     def changes_available(self):
         return bool(len(self.change_sets))
+
+    def was_this_an_expected_change(self, object, key, value):
+        available_changes = self.get_changes(object)
+        print("Beep: %s" % (available_changes))
+        if available_changes:
+            for c in available_changes:
+                if c.check(key, value):
+                    print(c)
+                    self.remove_change(object, c)
+                    return True
+
+        return False
 
 c_manager = ChangeManager()
 
 
 def test_callback(prop, value, original_thing, user_data):
-    global changes, c_manager
     print(">> PythonicCallback")
 
     # Basic per-callback debug log for property and new value
     print("PythonicCallback[%s]: %s = %s" % (str(original_thing), prop, value))
 
     # Using the ChangeManager to handle incoming changes
-    change_list = c_manager.get_changes(original_thing)
-    print(change_list)
-    if change_list:
-        for c in change_list:
-            if c.check(prop, value):
-                c_manager.remove_change(original_thing, c)
+    if c_manager.was_this_an_expected_change(original_thing, prop, value):
+        print("PythonicCallback: This change was expected!")
+    else:
+        print("PythonicCallback: This change was not expected")
 
-
-
-    if prop in changes:
-        # We are adding things or modifying things
-        if changes[prop][0] == "addition":
-            if isinstance(value, dbus.Array):
-                if changes[prop][1] in value:
-                    del(changes[prop])
-            elif isinstance(value, dbus.Dictionary):
-                if changes[prop][1][0] in value and changes[prop][1][1] == value[changes[prop][1][0]]:
-                    del(changes[prop])
-            else:
-                if changes[prop][1] == value:
-                    del(changes[prop])
-        elif changes[prop][0] == "acquisition":
-            if isinstance(original_thing, ResourceSet) and changes[prop][1] == value:
-                del(changes[prop])
-        # We are removing things
-        else:
-            if changes[prop][1] not in value:
-                del(changes[prop])
-
-    if not len(changes) and not c_manager.get_changes(original_thing):
+    # When we are no longer expecting new changes, we stop the mainloop
+    if not c_manager.changes_available():
         user_data.reset_mainloop()
 
     print("<< PythonicCallback")
@@ -231,14 +239,13 @@ def disconnect():
 
 def create_res_set():
     print(">>> CreateResSet")
-    global conn, res_sets, changes, res_set_callback_set
+    global conn, res_sets, res_set_callback_set
     res_set = conn.create_resource_set()
     assert res_set
     if not res_set_callback_set:
         res_set.register_callback(test_callback, config)
         res_set_callback_set = True
 
-    changes["resourceSets"] = ("addition", res_set.get_path())
     c_manager.add_change(conn, ResSetAddition(res_set.get_path()))
     conn.get_mainloop().run()
     res_sets.append(res_set)
@@ -250,9 +257,6 @@ def remove_res_set():
     print(">>> RemoveResSet")
     global conn, res_sets, res_set_callback_set
     res_set = res_sets.pop()
-    for r in res_set.list_resources():
-        pass
-    changes["resourceSets"] = ("removal", res_set.get_path())
     c_manager.remove_changes(res_set)
     c_manager.add_change(conn, ResSetRemoval(res_set.get_path()))
     assert res_set.delete()
@@ -266,7 +270,7 @@ def set_class():
     print(">>> SetClass")
     res_set = res_sets[0]
     res_set.set_class("navigator")
-    changes["class"] = ("addition", "navigator")
+    c_manager.add_change(res_set, ClassModification("navigator"))
     print(res_set.pretty_print())
     conn.get_mainloop().run()
     assert res_set.get_class() == "navigator"
@@ -282,7 +286,6 @@ def add_resource():
     if not resource_callback_set:
         res.register_callback(test_callback, config)
         resource_callback_set = True
-    changes["resources"] = ("addition", res.get_path())
     c_manager.add_change(res_set, ResourceAddition(res.get_path()))
     r_list = res_set.list_resources()
     print(r_list)
@@ -298,7 +301,6 @@ def remove_resource():
     res_name = res_set.list_resources()[0]
     res = res_set.get_resource(res_name)
     assert res
-    changes["resources"] = ("removal", res.get_path())
     c_manager.remove_changes(res)
     c_manager.add_change(res_set, ResourceRemoval(res.get_path()))
     assert res_set.remove_resource(res)
@@ -323,7 +325,7 @@ def modify_attribute():
     print("ModifyAttribute: Setting attribute %s to value %s" % (attr_name, value_to_be_set(attr_type)))
 
     assert res.set_attribute_value(attr_name, value_to_be_set(attr_type))
-    changes["attributes"] = ("addition", (attr_name, value_to_be_set(attr_type)))
+    c_manager.add_change(res, AttributeModification(attr_name, value_to_be_set(attr_type)))
     conn.get_mainloop().run()
     print(res.pretty_print())
     assert res.get_attribute_value(attr_name) == value_to_be_set(attr_type)
@@ -335,7 +337,7 @@ def make_resource_mandatory():
     res_set = res_sets[0]
     res = res_set.get_resource(res_set.list_resources()[0])
     res.make_mandatory()
-    changes["mandatory"] = ("addition", True)
+    c_manager.add_change(res, MandatorynessModification(True))
     conn.get_mainloop().run()
     print(res.pretty_print())
     assert res.is_mandatory()
@@ -347,7 +349,7 @@ def make_resource_nonessential():
     res_set = res_sets[0]
     res = res_set.get_resource(res_set.list_resources()[0])
     res.make_mandatory(False)
-    changes["mandatory"] = ("addition", False)
+    c_manager.add_change(res, MandatorynessModification(False))
     conn.get_mainloop().run()
     print(res.pretty_print())
     assert not res.is_mandatory()
@@ -360,7 +362,7 @@ def make_resource_shareable():
     res_set = res_sets[0]
     res = res_set.get_resource(res_set.list_resources()[0])
     res.make_shareable()
-    changes["shared"] = ("addition", True)
+    c_manager.add_change(res, SharingModification(True))
     conn.get_mainloop().run()
     print(res.pretty_print())
     assert res.is_shareable()
@@ -372,7 +374,7 @@ def make_resource_unshareable():
     res_set = res_sets[0]
     res = res_set.get_resource(res_set.list_resources()[0])
     res.make_shareable(False)
-    changes["shared"] = ("addition", False)
+    c_manager.add_change(res, SharingModification(False))
     conn.get_mainloop().run()
     print(res.pretty_print())
     assert not res.is_shareable()
@@ -385,7 +387,7 @@ def acquire_set():
     global res_sets
     res_set = res_sets[0]
     assert res_set.request()
-    changes["status"] = ("acquisition", "acquired")
+    c_manager.add_change(res_set, Acquisition())
     conn.get_mainloop().run()
     print(res_set.pretty_print())
     assert res_set.get_state() == "acquired"
@@ -397,7 +399,7 @@ def release_set():
     global res_sets
     res_set = res_sets[0]
     assert res_set.release()
-    changes["status"] = ("acquisition", "available")
+    c_manager.add_change(res_set, Release())
     conn.get_mainloop().run()
     print(res_set.pretty_print())
     assert res_set.get_state() == "available"
