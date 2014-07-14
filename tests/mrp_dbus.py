@@ -757,6 +757,14 @@ class Connection(object):
         """
         return self.config.mainloop
 
+    def get_path(self):
+        """
+        Returns the object path of this connection. Can be useful in callbacks, for example
+
+        :return: String representation of the object path of this connection
+        """
+        return self.config.object_path
+
     def pretty_print(self):
         """
         Returns the current contents of this object as received from D-Bus as a string
