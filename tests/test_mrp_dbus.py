@@ -29,7 +29,7 @@ from mrp_dbus import (Connection, DBusConfig)
 from mrp_dbus_helpers import (ChangeManager, ResSetAddition, ResSetRemoval,
                               ClassModification, ResourceAddition, ResourceRemoval,
                               AttributeModification, MandatorynessModification,
-                              SharingModification, Acquisition, Release)
+                              SharingModification, Acquisition, Release, example_callback)
 from random import sample
 import dbus
 
@@ -44,25 +44,6 @@ res_set_callback_set = False
 resource_callback_set = False
 
 c_manager = ChangeManager()
-
-
-def test_callback(prop, value, original_thing, user_data):
-    print(">> PythonicCallback")
-
-    # Basic per-callback debug log for property and new value
-    print("PythonicCallback[%s]: %s = %s" % (str(original_thing), prop, value))
-
-    # Using the ChangeManager to handle incoming changes
-    if c_manager.was_this_an_expected_change(original_thing, prop, value):
-        print("PythonicCallback: This change was expected!")
-    else:
-        print("PythonicCallback: This change was not expected")
-
-    # When we are no longer expecting new changes, we stop the mainloop
-    if not c_manager.changes_available():
-        user_data.reset_mainloop()
-
-    print("<< PythonicCallback")
 
 
 def value_to_be_set(type):
@@ -81,7 +62,7 @@ def connect():
     print(conn.pretty_print())
     assert conn
     if not conn_callback_set:
-        conn.register_callback(test_callback, config)
+        conn.register_callback(example_callback, c_manager)
         conn_callback_set = True
     print("<<< Connect")
 
@@ -102,7 +83,7 @@ def create_res_set():
     res_set = conn.create_resource_set()
     assert res_set
     if not res_set_callback_set:
-        res_set.register_callback(test_callback, config)
+        res_set.register_callback(example_callback, c_manager)
         res_set_callback_set = True
 
     c_manager.add_change(conn, ResSetAddition(res_set.get_path()))
@@ -143,7 +124,7 @@ def add_resource():
     res = res_set.add_resource(res_set.list_available_resources()[0])
     assert res
     if not resource_callback_set:
-        res.register_callback(test_callback, config)
+        res.register_callback(example_callback, c_manager)
         resource_callback_set = True
     c_manager.add_change(res_set, ResourceAddition(res.get_path()))
     r_list = res_set.list_resources()
