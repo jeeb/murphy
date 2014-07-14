@@ -194,7 +194,7 @@ class Resource(object):
 
         def resource_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.user_data)
+                self.cb_set(prop, value, self, self.config, self.user_data)
 
         self.int_callback = resource_internal_callback
 
@@ -442,7 +442,7 @@ class ResourceSet(object):
 
         def res_set_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.user_data)
+                self.cb_set(prop, value, self, self.config, self.user_data)
 
         self.int_callback = res_set_internal_callback
 
@@ -682,7 +682,7 @@ class Connection(object):
 
         def connection_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.user_data)
+                self.cb_set(prop, value, self, self.config, self.user_data)
 
         self.int_callback = connection_internal_callback
 

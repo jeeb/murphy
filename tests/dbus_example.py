@@ -28,110 +28,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from mrp_dbus import (Connection, DBusConfig, Resource, ResourceSet)
-from mrp_dbus_helpers import StateDumpResource
-
-
-class TestObject():
-    def __init__(self):
-        self.res_set_added     = False
-        self.resource_added    = False
-        self.value_modified    = False
-        self.resource_acquired = False
-        self.resource_removed  = False
-        self.res_set_removed   = False
-
-        self.res_set = None
-
-    def all_true(self):
-        return \
-            self.res_set_added and \
-            self.resource_added and \
-            self.value_modified and \
-            self.resource_removed and \
-            self.resource_acquired and \
-            self.res_set_removed
-
-
-def attribute_changed(user_data, prop, value):
-    return not user_data.value_modified and prop == "attributes" and value.get("int") == -9001
-
-
-def res_set_added(user_data, prop, value):
-    return not user_data.res_set_added and prop == "resourceSets" and user_data.res_set.get_path() in value
-
-
-def res_set_removed(user_data, prop, value):
-    return prop == "resourceSets" and user_data.res_set.get_path() not in value
-
-
-def resource_added(user_data, prop, value):
-    return not user_data.resource_added and prop == "resources" and len(value) > 0
-
-
-def resource_removed(prop, value):
-    return prop == "resources" and len(value) == 0
-
-
-def object_acquired(prop, value):
-    return prop == "status" and value == "acquired"
-
-
-def pythonic_callback(prop, value, original_thing, user_data):
-    print(">> PythonicCallback")
-
-    # Basic per-callback debug log for property and new value
-    print("PythonicCallback: %s = %s" % (prop, value))
-
-    # Determine the type of object that sent the signal
-    if isinstance(original_thing, Connection):
-        # See if we are being notified of resource set addition
-        if res_set_added(user_data, prop, value):
-            print("PythonicCallback: The resource set has been added to connection!")
-            user_data.res_set_added = True
-
-        # Otherwise see if the resource set has actually been removed
-        elif res_set_removed(user_data, prop, value):
-            print("PythonicCallback: Resource set has been cleaned up!")
-            user_data.res_set_removed = True
-
-    elif isinstance(original_thing, ResourceSet):
-        # See if we are being notified of resource addition
-        if resource_added(user_data, prop, value):
-            print("PythonicCallback: Resource has been added to the set!")
-            user_data.resource_added = True
-
-        # Otherwise see if the resource set has been acquired, and print a message
-        elif object_acquired(prop, value):
-            print("PythonicCallback: Resource set is acquired!")
-
-        # And finally see if the resource has actually been removed
-        elif resource_removed(prop, value):
-            print("PythonicCallback: Resource has been removed from the set!")
-            user_data.resource_removed = True
-
-    elif isinstance(original_thing, Resource):
-        # See if we are being notified of a specific attribute changing
-        if attribute_changed(user_data, prop, value):
-            print("PythonicCallback: Attribute in resource set is now set to requested value!")
-            user_data.value_modified = True
-
-        # Otherwise see if the resource has been acquired
-        elif object_acquired(prop, value):
-            print("PythonicCallback: Resource is acquired!")
-            user_data.resource_acquired = True
-
-    # Check if all needed changes have happened, and quit mainloop in that case
-    if user_data.all_true():
-        print("PythonicCallback: All Done!")
-        original_thing.get_mainloop().quit()
-
-    print("<< PythonicCallback\n")
-
+from mrp_dbus import (Connection, DBusConfig)
+from mrp_dbus_helpers import (ChangeManager, example_callback, ResSetAddition,
+                              ResourceAddition, AttributeModification, Acquisition,
+                              ResourceRemoval, ResSetRemoval)
 
 if __name__ == "__main__":
     # Create the object that is passed to the callback as user_data
-    user_data = TestObject()
+    manager = ChangeManager()
 
     # Create a D-Bus configuration object and set the bus type to "session"
     config = DBusConfig()
@@ -140,52 +44,44 @@ if __name__ == "__main__":
     # "Connect" to the D-Bus protocol
     conn = Connection(config)
     # Register a callback for additions and removals of resource sets
-    conn.register_callback(pythonic_callback, user_data)
+    conn.register_callback(example_callback, manager)
 
     # Try creating a resource set
     res_set = conn.create_resource_set()
-
-    # Save a reference to the resource set in user_data
-    user_data.res_set = res_set
+    manager.add_change(conn, ResSetAddition(res_set.get_path()))
+    conn.get_mainloop().run()
 
     # Register a callback for changes in the resource set
-    res_set.register_callback(pythonic_callback, user_data)
+    res_set.register_callback(example_callback, manager)
 
     # Create a resource in the resource set with the type of the first available resource
     res = res_set.add_resource(res_set.list_available_resources()[0])
-    # Try grabbing the first resource added to the resource set
-    res_again = res_set.get_resource(res_set.list_resources()[0])
-
-    if not res_again:
-        print("Failed to get the same resource")
-
-    # Test StateDumping
-    dump = StateDumpResource(res)
-    dump2 = StateDumpResource(res_again)
-    dump.attributes["policy"] = "strict"
-
-    if not dump.equals(dump2):
-        dump.print_differences(dump2)
-    else:
-        exit(1)
-    # End StateDumping test
+    manager.add_change(res_set, ResourceAddition(res.get_path()))
+    conn.get_mainloop().run()
 
     # Register a callback for changes in the resource
-    res.register_callback(pythonic_callback, user_data)
+    res.register_callback(example_callback, manager)
     # Get a list of attributes available in the resource
-    welp = res.list_attribute_names()
+    attr_names = res.list_attribute_names()
 
     # Try setting the value of an attribute
-    if not res.set_attribute_value(welp[0], -9001):
+    if not res.set_attribute_value(attr_names[0], -9001):
         print("Failed to request an attribute value change to the first attribute")
+    manager.add_change(res, AttributeModification(attr_names[0], -9001))
+    conn.get_mainloop().run()
 
     # And finally try requesting the resource set's resources
     if not res_set.request():
         print("Failed to request the resource set's contents")
+    manager.add_change(res_set, Acquisition())
+    manager.add_change(res, Acquisition())
+    conn.get_mainloop().run()
 
-    # Clean-up
+    # Clean-up the resource and then the resource set
+    manager.add_change(res_set, ResourceRemoval(res.get_path()))
     res_set.remove_resource(res)
-    res_set.delete()
+    conn.get_mainloop().run()
 
-    # Run the mainloop to get the actual results in callback calls
+    manager.add_change(conn, ResSetRemoval(res_set.get_path()))
+    res_set.delete()
     conn.config.mainloop.run()
