@@ -6,7 +6,7 @@ ACTIONS=`fmbt -o adapter=dummy test_mrp_dbus.conf 2>/dev/null | fmbt-log -f '$ax
 run_test()
 {
 test_name=${1}
-    fmbt -i "${test_name}" <<< "${ACTIONS}" 2> "${test_name%.*}_test_run.log"
+    fmbt -i "${test_name}" <<< "${ACTIONS}" 2> >(grep -v "ignoring malformed resource event" 1> "${test_name%.*}_test_run.log")
 }
 
 for i in "${TEST_CONFS[@]}"
