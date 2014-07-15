@@ -29,7 +29,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-def example_callback(prop, value, original_thing, config, user_data):
+def example_callback(prop, value, original_thing, user_data):
     print(">> PythonicCallback")
 
     # Basic per-callback debug log for property and new value
@@ -43,7 +43,7 @@ def example_callback(prop, value, original_thing, config, user_data):
 
     # When we are no longer expecting new changes, we stop the mainloop
     if not user_data.changes_available():
-        config.reset_mainloop()
+        original_thing.reset_mainloop()
 
     print("<< PythonicCallback")
 

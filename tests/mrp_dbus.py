@@ -136,9 +136,9 @@ class DBusConfig(object):
 
     def reset_mainloop(self):
         """
-        Recreates the mainloop to which this object was created. If the
-        mainloop is still running, it will quit it and create a new one that you can
-        then later start again.
+        Recreates the mainloop to which this object was created.
+        If the mainloop is still running, it will be quit and a new one will be created,
+        which you can then start again when needed.
 
         :return: Void
         """
@@ -194,7 +194,7 @@ class Resource(object):
 
         def resource_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.config, self.user_data)
+                self.cb_set(prop, value, self, self.user_data)
 
         self.int_callback = resource_internal_callback
 
@@ -367,6 +367,7 @@ class Resource(object):
                             * attributes_conf (attributes with values to propagate)
                           * Value of the property
                           * Object from which this signal callback was registered (Resource object)
+                          *
                           * User data; Object given to this function passed on to the callback, or
                             None if one isn't set
         :param user_data: Object that will be passed on to the callback, or None if one isn't passed
@@ -388,6 +389,16 @@ class Resource(object):
         :return: GObject mainloop (gobject.MainLoop)
         """
         return self.config.mainloop
+
+    def reset_mainloop(self):
+        """
+        Recreates the mainloop to which the configuration object of this object was created.
+        If the mainloop is still running, it will be quit and a new one will be created,
+        which you can then start again when needed.
+
+        :return: Void
+        """
+        return self.config.reset_mainloop()
 
     def get_path(self):
         """
@@ -442,7 +453,7 @@ class ResourceSet(object):
 
         def res_set_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.config, self.user_data)
+                self.cb_set(prop, value, self, self.user_data)
 
         self.int_callback = res_set_internal_callback
 
@@ -628,6 +639,16 @@ class ResourceSet(object):
         """
         return self.config.mainloop
 
+    def reset_mainloop(self):
+        """
+        Recreates the mainloop to which the configuration object of this object was created.
+        If the mainloop is still running, it will be quit and a new one will be created,
+        which you can then start again when needed.
+
+        :return: Void
+        """
+        return self.config.reset_mainloop()
+
     def get_path(self):
         """
         Returns the object path of this resource set. Can be useful in callbacks, for example
@@ -682,7 +703,7 @@ class Connection(object):
 
         def connection_internal_callback(prop, value):
             if self.cb_set:
-                self.cb_set(prop, value, self, self.config, self.user_data)
+                self.cb_set(prop, value, self, self.user_data)
 
         self.int_callback = connection_internal_callback
 
@@ -756,6 +777,16 @@ class Connection(object):
         :return: GObject mainloop (gobject.MainLoop)
         """
         return self.config.mainloop
+
+    def reset_mainloop(self):
+        """
+        Recreates the mainloop to which the configuration object of this object was created.
+        If the mainloop is still running, it will be quit and a new one will be created,
+        which you can then start again when needed.
+
+        :return: Void
+        """
+        return self.config.reset_mainloop()
 
     def get_path(self):
         """
