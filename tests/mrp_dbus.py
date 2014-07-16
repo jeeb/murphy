@@ -242,7 +242,8 @@ class Resource(object):
         try:
             self.res_iface.setProperty("mandatory", dbus.Boolean(mandatory, variant_level=1))
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def is_shareable(self):
@@ -268,7 +269,8 @@ class Resource(object):
         try:
             self.res_iface.setProperty("shared", dbus.Boolean(shareable, variant_level=1))
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def list_attribute_names(self):
@@ -321,8 +323,6 @@ class Resource(object):
         :param name:  Name of the attribute the value of which will be set
         :param value: Value to be set for the attribute
         :return:      Boolean that notes if the action was successful or not
-
-        :raise: Causes an exception in case a DBusException was thrown
         """
         try:
             attributes  = self.res_iface.getProperties()["attributes"]
@@ -334,9 +334,8 @@ class Resource(object):
                 return True
             else:
                 return False
-        except dbus.DBusException:
-            raise
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def delete(self):
@@ -349,7 +348,8 @@ class Resource(object):
             self.res_iface.delete()
             del(self)
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def register_callback(self, cb, user_data=None):
@@ -535,7 +535,8 @@ class ResourceSet(object):
         try:
             self.set_iface.request()
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def release(self):
@@ -548,7 +549,8 @@ class ResourceSet(object):
         try:
             self.set_iface.release()
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def get_state(self):
@@ -587,7 +589,8 @@ class ResourceSet(object):
         try:
             self.set_iface.setProperty("class", dbus.String(app_class, variant_level=1))
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def delete(self):
@@ -599,7 +602,8 @@ class ResourceSet(object):
         try:
             self.set_iface.delete()
             return True
-        except:
+        except Exception, e:
+            print("Failed due to exception: %s" % e)
             return False
 
     def register_callback(self, cb, user_data=None):
