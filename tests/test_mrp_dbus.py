@@ -109,7 +109,7 @@ def remove_res_set():
 def set_class():
     print(">>> SetClass")
     res_set = res_sets[0]
-    res_set.set_class("navigator")
+    assert res_set.set_class("navigator")
     c_manager.add_change(res_set, ClassModification("navigator"))
     print(res_set.pretty_print())
     conn.get_mainloop().run()
