@@ -30,21 +30,22 @@ aal "murphy_dbus" {
         from test_mrp_dbus import *
     }
 
-    # preview-show-vars: connected, res_set_state, resource_state, attribute_state, change_type, resource_mandatory, resource_shared
+    # preview-show-vars: connected, res_set_state, resource_state, resource_mandatory, resource_shared, resource_set_locked, set_acquired
     # preview-depth: 10
     variables {
-        connected, res_set_state, resource_state, attribute_state, change_type, \
-        resource_mandatory, resource_shared
+        connected, res_set_state, resource_state, \
+        resource_mandatory, resource_shared, \
+        resource_set_locked, set_acquired
     }
 
     initial_state {
         connected = False
-        res_set_state = "not created"
+        res_set_state = "not available"
         resource_state = "not available"
         resource_mandatory = True
         resource_shared = False
-        attribute_state = "not available"
-        change_type = "no change"
+        resource_set_locked = False
+        set_acquired = False
     }
 
     input "connect" {
@@ -55,121 +56,143 @@ aal "murphy_dbus" {
         }
     }
 
-    input "disconnect" {
+    tag "connection available" {
         guard { return connected }
-        body {
-            attribute_state = "not available"
-            resource_state  = "not available"
-            res_set_state   = "not created"
-            connected = False
+
+        input "disconnect" {
+            body {
+                resource_state  = "not available"
+                res_set_state   = "not available"
+                connected = False
+                resource_set_locked = False
+            }
+            adapter {
+                disconnect()
+            }
         }
-        adapter {
-            disconnect()
+
+        input "create_res_set" {
+            guard { return res_set_state == "not available" }
+            body { res_set_state = "available" }
+            adapter {
+                create_res_set()
+            }
         }
     }
 
-    input "create_res_set" {
-        guard { return connected and res_set_state == "not created" }
-        body { res_set_state = "available" }
-        adapter {
-            create_res_set()
-        }
-    }
-
-    input "remove_res_set" {
+    tag "set available" {
         guard { return res_set_state == "available" }
-        body {
-            attribute_state = "not available"
-            resource_state = "not available"
-            res_set_state = "not created"
+
+        input "remove_res_set" {
+            body {
+                resource_state = "not available"
+                res_set_state = "not available"
+                resource_set_locked = False
+                set_acquired = False
+            }
+            adapter {
+                remove_res_set()
+            }
         }
-        adapter {
-            remove_res_set()
+
+        input "set_class" {
+            adapter {
+               set_class(resource_set_locked)
+            }
+        }
+
+        input "add_resource" {
+            guard { return resource_state == "not available" }
+            body {
+                resource_state = "available"
+            }
+            adapter {
+                add_resource()
+            }
         }
     }
 
-    input "set_class" {
-        guard { return res_set_state == "available" }
-        adapter {
-           set_class()
-        }
-    }
+    tag "resource available" {
+        guard { return resource_state == "available" }
 
-    input "add_resource" {
-        guard { return res_set_state == "available" and resource_state == "not available" }
-        body {
-            resource_state = "available"
-            attribute_state = "available"
-        }
-        adapter {
-            add_resource()
-        }
-    }
+        input "acquire_set" {
+            guard { return not set_acquired }
+            body {
+                set_acquired = True
 
-    input "remove_resource" {
-        guard { return resource_state == "available" and res_set_state != "acquired" }
-        body {
-            resource_state = "not available"
-            attribute_state = "not available"
+                # Acquiring or releasing a set triggers a lock
+                if not resource_set_locked:
+                    resource_set_locked = True
+            }
+            adapter {
+                acquire_set()
+            }
         }
-        adapter {
-            remove_resource()
-        }
-    }
 
-    input "modify_attribute" {
-        guard { return res_set_state != "acquired" and attribute_state == "available" }
-        body { attribute_state = "changed" }
-        adapter {
-            modify_attribute()
-        }
-    }
+        input "release_set" {
+            guard { return set_acquired }
+            body {
+                set_acquired = False
 
-    input "acquire_set" {
-        guard { return res_set_state == "available" and resource_state != "not available" }
-        body { res_set_state = "acquired" }
-        adapter {
-            acquire_set()
+                # Acquiring or releasing a set triggers a lock
+                if not resource_set_locked:
+                    resource_set_locked = True
+            }
+            adapter {
+                release_set()
+            }
         }
-    }
 
-    input "release_set" {
-        guard { return res_set_state == "acquired" }
-        body { res_set_state = "available" }
-        adapter {
-            release_set()
+        input "remove_resource" {
+            guard { return set_acquired }
+            body {
+                resource_state = "not available"
+            }
+            adapter {
+                remove_resource()
+            }
         }
-    }
 
-    input "make_mandatory" {
-        guard { return res_set_state != "acquired" and resource_state != "not available" and not resource_mandatory }
-        body { resource_mandatory = True }
-        adapter {
-            make_resource_mandatory()
+        input "modify_attribute" {
+            adapter {
+                modify_attribute(resource_set_locked)
+            }
         }
-    }
 
-    input "make_nonessential" {
-        guard { return res_set_state != "acquired" and resource_state != "not available" and resource_mandatory }
-        body { resource_mandatory = False }
-        adapter {
-            make_resource_nonessential()
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_mandatory" {
+            guard { return not resource_mandatory }
+            body { resource_mandatory = True }
+            adapter {
+                make_resource_mandatory()
+            }
         }
-    }
 
-    input "make_shareable" {
-        guard { return res_set_state != "acquired" and resource_state != "not available" and not resource_shared }
-        body { resource_shared = True }
-        adapter {
-            make_resource_shareable()
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_nonessential" {
+            guard { return resource_mandatory }
+            body { resource_mandatory = False }
+            adapter {
+                make_resource_nonessential()
+            }
         }
-    }
 
-    input "make_unshareable" {
-        guard { return res_set_state != "acquired" and resource_state != "not available" and resource_shared }
-        body { resource_shared = False }
-        adapter {
-            make_resource_unshareable()
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_shareable" {
+            guard { return not resource_shared }
+            body { resource_shared = True }
+            adapter {
+                make_resource_shareable()
+            }
+        }
+
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_unshareable" {
+            guard { return resource_shared }
+            body { resource_shared = False }
+            adapter {
+                make_resource_unshareable()
+            }
         }
     }
 }
