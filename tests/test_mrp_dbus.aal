@@ -65,6 +65,7 @@ aal "murphy_dbus" {
                 res_set_state   = "not available"
                 connected = False
                 resource_set_locked = False
+                set_acquired = False
             }
             adapter {
                 disconnect()
