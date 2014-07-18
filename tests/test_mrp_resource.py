@@ -132,7 +132,7 @@ def remove_res_set():
     assert (pre_count - after_count) == 1
 
 
-def set_class():
+def set_class(failure_expected=False):
     pass  # These parts of resources cannot be modified after the fact in this API
 
 
@@ -162,7 +162,7 @@ def remove_resource():
     update_state_dumps(set)
 
 
-def modify_attribute():
+def modify_attribute(failure_expected=False):
     global res_sets
 
     res = res_sets[0].get_resource_by_name(res_sets[0].list_resource_names()[0])
