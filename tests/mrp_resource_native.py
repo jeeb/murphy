@@ -199,9 +199,6 @@ mrp_reslib.mrp_res_list_application_classes.restype  = POINTER(MrpStringArray)
 mrp_reslib.mrp_res_list_resources.argtypes = [POINTER(MrpResourceCtx)]
 mrp_reslib.mrp_res_list_resources.restype  = POINTER(MrpResourceSet)
 
-mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet)]
-mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(MrpStringArray)
-
 mrp_reslib.mrp_res_create_resource_set.argtypes = [POINTER(MrpResourceCtx),
                                                    c_char_p, c_void_p,
                                                    c_void_p]
