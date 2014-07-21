@@ -204,81 +204,67 @@ mrp_reslib.mrp_res_create_resource_set.argtypes = [POINTER(MrpResourceCtx),
                                                    c_void_p]
 mrp_reslib.mrp_res_create_resource_set.restype  = POINTER(MrpResourceSet)
 
-mrp_reslib.mrp_res_set_autorelease.argtypes = [POINTER(MrpResourceCtx),
-                                               c_bool,
+mrp_reslib.mrp_res_set_autorelease.argtypes = [c_bool,
                                                POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_set_autorelease.restype  = c_bool
 
-mrp_reslib.mrp_res_delete_resource_set.argtypes = [POINTER(MrpResourceCtx),
-                                                   POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_delete_resource_set.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_delete_resource_set.restype  = None
 
-mrp_reslib.mrp_res_copy_resource_set.argtypes = [POINTER(MrpResourceCtx),
-                                                 POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_copy_resource_set.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_copy_resource_set.restype  = POINTER(MrpResourceSet)
 
 mrp_reslib.mrp_res_equal_resource_set.argtypes = [POINTER(MrpResourceSet),
                                                   POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_equal_resource_set.restype  = c_bool
 
-mrp_reslib.mrp_res_acquire_resource_set.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_acquire_resource_set.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_acquire_resource_set.restype  = c_int
 
-mrp_reslib.mrp_res_release_resource_set.argtypes = [POINTER(MrpResourceCtx),
-                                                    POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_release_resource_set.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_release_resource_set.restype  = c_int
 
-mrp_reslib.mrp_res_get_resource_set_id.argtypes = [POINTER(MrpResourceCtx),
-                                                   POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_get_resource_set_id.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_get_resource_set_id.restype  = c_int
 
-mrp_reslib.mrp_res_create_resource.argtypes = [POINTER(MrpResourceCtx), POINTER(MrpResourceSet),
+mrp_reslib.mrp_res_create_resource.argtypes = [POINTER(MrpResourceSet),
                                                c_char_p, c_bool, c_bool]
 mrp_reslib.mrp_res_create_resource.restype  = POINTER(MrpResource)
 
-mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(MrpResourceCtx),
-                                                   POINTER(MrpResourceSet)]
+mrp_reslib.mrp_res_list_resource_names.argtypes = [POINTER(MrpResourceSet)]
 mrp_reslib.mrp_res_list_resource_names.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_get_resource_by_name.argtypes = [POINTER(MrpResourceCtx),
-                                                    POINTER(MrpResourceSet),
+mrp_reslib.mrp_res_get_resource_by_name.argtypes = [POINTER(MrpResourceSet),
                                                     c_char_p]
 mrp_reslib.mrp_res_get_resource_by_name.restype  = POINTER(MrpResource)
 
-mrp_reslib.mrp_res_delete_resource.argtypes = [POINTER(MrpResourceSet),
-                                               POINTER(MrpResource)]
+mrp_reslib.mrp_res_delete_resource.argtypes = [POINTER(MrpResource)]
 mrp_reslib.mrp_res_delete_resource.restype  = None
 
 mrp_reslib.mrp_res_delete_resource_by_name.argtypes = [POINTER(MrpResourceSet),
                                                        c_char_p]
 mrp_reslib.mrp_res_delete_resource_by_name.restype  = c_bool
 
-mrp_reslib.mrp_res_list_attribute_names.argtypes = [POINTER(MrpResourceCtx),
-                                                    POINTER(MrpResource)]
+mrp_reslib.mrp_res_list_attribute_names.argtypes = [POINTER(MrpResource)]
 mrp_reslib.mrp_res_list_attribute_names.restype  = POINTER(MrpStringArray)
 
-mrp_reslib.mrp_res_get_attribute_by_name.argtypes = [POINTER(MrpResourceCtx),
-                                                     POINTER(MrpResource),
+mrp_reslib.mrp_res_get_attribute_by_name.argtypes = [POINTER(MrpResource),
                                                      c_char_p]
 mrp_reslib.mrp_res_get_attribute_by_name.restype  = POINTER(MrpAttribute)
 
-mrp_reslib.mrp_res_set_attribute_string.argtypes = [POINTER(MrpResourceCtx),
-                                                    POINTER(MrpAttribute),
+mrp_reslib.mrp_res_set_attribute_string.argtypes = [POINTER(MrpAttribute),
                                                     c_char_p]
 mrp_reslib.mrp_res_set_attribute_string.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_uint.argtypes = [POINTER(MrpResourceCtx),
-                                                  POINTER(MrpAttribute),
+mrp_reslib.mrp_res_set_attribute_uint.argtypes = [POINTER(MrpAttribute),
                                                   c_uint]
 mrp_reslib.mrp_res_set_attribute_uint.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_int.argtypes = [POINTER(MrpResourceCtx),
-                                                 POINTER(MrpAttribute),
+mrp_reslib.mrp_res_set_attribute_int.argtypes = [POINTER(MrpAttribute),
                                                  c_int]
 mrp_reslib.mrp_res_set_attribute_int.restype  = c_int
 
-mrp_reslib.mrp_res_set_attribute_double.argtypes = [POINTER(MrpResourceCtx),
-                                                    POINTER(MrpAttribute),
+mrp_reslib.mrp_res_set_attribute_double.argtypes = [POINTER(MrpAttribute),
                                                     c_double]
 mrp_reslib.mrp_res_set_attribute_double.restype  = c_int
 
@@ -316,8 +302,7 @@ class Attribute(object):
         self.attr = None
 
         self.attr = \
-            mrp_reslib.mrp_res_get_attribute_by_name(pointer(res.res_set.conn.res_ctx),
-                                                     pointer(res.res),
+            mrp_reslib.mrp_res_get_attribute_by_name(pointer(res.res),
                                                      name).contents
 
         if not self.attr:
@@ -341,23 +326,19 @@ class Attribute(object):
 
         if isinstance(value, int):
             if value_type == "i":
-                ret_val = mrp_reslib.mrp_res_set_attribute_int(pointer(self.res.res_set.conn.res_ctx),
-                                                               pointer(self.attr), value)
+                ret_val = mrp_reslib.mrp_res_set_attribute_int(pointer(self.attr), value)
             elif value_type == "u":
                 if value < 0:
                     return False
                 else:
-                    ret_val = mrp_reslib.mrp_res_set_attribute_uint(pointer(self.res.res_set.conn.res_ctx),
-                                                                    pointer(self.attr), value)
+                    ret_val = mrp_reslib.mrp_res_set_attribute_uint(pointer(self.attr), value)
             else:
                 return False
 
         elif isinstance(value, float):
-            ret_val = mrp_reslib.mrp_res_set_attribute_double(pointer(self.res.res_set.conn.res_ctx),
-                                                              pointer(self.attr), value)
+            ret_val = mrp_reslib.mrp_res_set_attribute_double(pointer(self.attr), value)
         elif isinstance(value, str):
-            ret_val = mrp_reslib.mrp_res_set_attribute_string(pointer(self.res.res_set.conn.res_ctx),
-                                                              pointer(self.attr), value)
+            ret_val = mrp_reslib.mrp_res_set_attribute_string(pointer(self.attr), value)
         else:
             return False
 
@@ -423,8 +404,7 @@ class Resource(object):
         """
         self.res_set = res_set
         res = \
-            mrp_reslib.mrp_res_create_resource(res_set.conn.res_ctx,
-                                               res_set.res_set,
+            mrp_reslib.mrp_res_create_resource(res_set.res_set,
                                                name, mandatory,
                                                shared)
 
@@ -450,8 +430,7 @@ class Resource(object):
         attribute_list = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_attribute_names(pointer(self.res_set.conn.res_ctx),
-                                                    pointer(self.res))
+            mrp_reslib.mrp_res_list_attribute_names(pointer(self.res))
 
         if mrp_list:
             for i in xrange(mrp_list.contents.num_strings):
@@ -568,8 +547,7 @@ class ResourceSet(object):
                  * unknown
         """
         ret_val = \
-            mrp_reslib.mrp_res_acquire_resource_set(pointer(self.conn.res_ctx),
-                                                    pointer(self.res_set))
+            mrp_reslib.mrp_res_acquire_resource_set(pointer(self.res_set))
         if not ret_val:
             return True, error_to_str(ret_val)
         else:
@@ -588,8 +566,7 @@ class ResourceSet(object):
                  * unknown
         """
         ret_val = \
-            mrp_reslib.mrp_res_release_resource_set(pointer(self.conn.res_ctx),
-                                                    pointer(self.res_set))
+            mrp_reslib.mrp_res_release_resource_set(pointer(self.res_set))
 
         if not ret_val:
             return True, error_to_str(ret_val)
@@ -603,8 +580,7 @@ class ResourceSet(object):
         :return: Numeric ID of this resource set
         """
         return \
-            mrp_reslib.mrp_res_get_resource_set_id(pointer(self.conn.res_ctx),
-                                                   pointer(self.res_set))
+            mrp_reslib.mrp_res_get_resource_set_id(pointer(self.res_set))
 
     def create_resource(self, name, mandatory=True, shared=False):
         """
@@ -632,8 +608,7 @@ class ResourceSet(object):
         names = []
 
         mrp_list = \
-            mrp_reslib.mrp_res_list_resource_names(pointer(self.conn.res_ctx),
-                                                   pointer(self.res_set))
+            mrp_reslib.mrp_res_list_resource_names(pointer(self.res_set))
 
         if mrp_list:
             for i in xrange(mrp_list.contents.num_strings):
@@ -653,8 +628,7 @@ class ResourceSet(object):
         resource = None
 
         mrp_res = \
-            mrp_reslib.mrp_res_get_resource_by_name(pointer(self.conn.res_ctx),
-                                                    pointer(self.res_set),
+            mrp_reslib.mrp_res_get_resource_by_name(pointer(self.res_set),
                                                     name)
 
         if mrp_res:
@@ -669,7 +643,7 @@ class ResourceSet(object):
         :param res: Resource to be removed from this resource set
         :return: Void
         """
-        mrp_reslib.mrp_res_delete_resource(pointer(self.res_set), pointer(res.res))
+        mrp_reslib.mrp_res_delete_resource(pointer(res.res))
 
     def delete_resource_by_name(self, name):
         """
@@ -713,8 +687,7 @@ class ResourceSet(object):
         :param status: State to which to set this flag. By default False.
         :return: Boolean that notes if the action was successful or not
         """
-        return bool(mrp_reslib.mrp_res_set_autorelease(pointer(self.conn.res_ctx),
-                                                       status, pointer(self.res_set)))
+        return bool(mrp_reslib.mrp_res_set_autorelease(status, pointer(self.res_set)))
 
     def delete(self):
         """
@@ -722,8 +695,7 @@ class ResourceSet(object):
 
         :return: Void
         """
-        mrp_reslib.mrp_res_delete_resource_set(pointer(self.conn.res_ctx),
-                                               pointer(self.res_set))
+        mrp_reslib.mrp_res_delete_resource_set(pointer(self.res_set))
         self.res_set = None
 
     def update(self, other):
@@ -734,8 +706,7 @@ class ResourceSet(object):
         :return: False in case of failure, True in case of success.
         """
         mrp_res_set = \
-            mrp_reslib.mrp_res_copy_resource_set(pointer(other.conn.res_ctx),
-                                                 pointer(other.res_set))
+            mrp_reslib.mrp_res_copy_resource_set(pointer(other.res_set))
         if mrp_res_set:
             if self.res_set:
                 self.delete()
