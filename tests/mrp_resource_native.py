@@ -830,6 +830,17 @@ class Connection(object):
         else:
             return False
 
+    def run(self):
+        """
+        Iterates the full Murphy mainloop until you disconnect.
+
+        :return: Boolean that notes if the action was successful or not
+        """
+        if pointer(self.mainloop):
+            return bool(mrp_common.mrp_mainloop_run(pointer(self.mainloop)))
+        else:
+            return False
+
     def disconnect(self):
         """
         Disconnects from Murphy and destroys the mainloop, cleans up related things. Does not free resources or
