@@ -636,7 +636,8 @@ class ResourceSet(object):
 
         return resource
 
-    def delete_resource(self, res):
+    @staticmethod
+    def delete_resource(res):
         """
         Deletes (removes) a resource from this resource set.
 
