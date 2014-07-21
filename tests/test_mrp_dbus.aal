@@ -131,7 +131,6 @@ aal "murphy_dbus" {
         }
 
         input "release_set" {
-            guard { return set_acquired }
             body {
                 set_acquired = False
 
