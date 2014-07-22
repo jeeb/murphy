@@ -7,7 +7,8 @@ from mrp_resource_native_helpers import (StatusObj,
                                          py_grab_resource_set,
                                          py_check_result,
                                          py_modify_attribute,
-                                         StateDump)
+                                         StateDump,
+                                         get_test_value_by_type)
 
 
 attr_name = "role"
@@ -16,15 +17,6 @@ attr_val = "testing_testing"
 status = StatusObj()
 conn = Connection(py_status_callback, status)
 res_sets = []
-
-
-def value_to_be_set(type):
-    return {
-        "s": "testString",
-        "i": -9001,
-        "u": 1192,
-        "f": 3.14,
-    }.get(type)
 
 
 def local_callback(new_res_set, opaque):
@@ -167,7 +159,7 @@ def modify_attribute(failure_expected=False):
 
     res = res_sets[0].get_resource_by_name(res_sets[0].list_resource_names()[0])
     attr = res.get_attribute_by_name(res.list_attribute_names()[0])
-    assert attr.set_value_to(value_to_be_set(attr.get_type()))
+    assert attr.set_value_to(get_test_value_by_type(attr.get_type()))
 
     update_state_dumps(res_sets[0])
 

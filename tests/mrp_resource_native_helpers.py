@@ -29,6 +29,15 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
+def get_test_value_by_type(type):
+    return {
+        "s": "testString",
+        "i": -9001,
+        "u": 1192,
+        "f": 3.14,
+    }.get(type)
+
+
 def py_status_callback(conn, error_code, opaque):
     if conn.get_state() == "connected":
         print("StatusCallback: We are connected!")

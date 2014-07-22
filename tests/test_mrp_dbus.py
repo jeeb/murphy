@@ -29,9 +29,9 @@ from mrp_dbus import (Connection, DBusConfig)
 from mrp_dbus_helpers import (ChangeManager, ResSetAddition, ResSetRemoval,
                               ClassModification, ResourceAddition, ResourceRemoval,
                               AttributeModification, MandatorynessModification,
-                              SharingModification, Acquisition, Release, example_callback)
+                              SharingModification, Acquisition, Release, example_callback,
+                              get_test_value_by_type)
 from random import sample
-import dbus
 
 config = DBusConfig()
 config.set_bus_type("session")
@@ -41,15 +41,6 @@ res_sets = []
 resources = []
 
 c_manager = ChangeManager()
-
-
-def value_to_be_set(type):
-    return {
-        dbus.String: "testString",
-        dbus.Int32:  -9001,
-        dbus.UInt32: 1192,
-        dbus.Double: 3.14,
-    }.get(type)
 
 
 def connect():
@@ -176,15 +167,15 @@ def modify_attribute(failure_expected=False):
     assert attr_name
     attr_type = res.get_attribute_type(attr_name)
 
-    print("ModifyAttribute: Setting attribute %s to value %s" % (attr_name, value_to_be_set(attr_type)))
+    print("ModifyAttribute: Setting attribute %s to value %s" % (attr_name, get_test_value_by_type(attr_type)))
 
     if failure_expected:
-        assert not res.set_attribute_value(attr_name, value_to_be_set(attr_type))
+        assert not res.set_attribute_value(attr_name, get_test_value_by_type(attr_type))
     else:
-        assert res.set_attribute_value(attr_name, value_to_be_set(attr_type))
-        c_manager.add_change(res, AttributeModification(attr_name, value_to_be_set(attr_type)))
+        assert res.set_attribute_value(attr_name, get_test_value_by_type(attr_type))
+        c_manager.add_change(res, AttributeModification(attr_name, get_test_value_by_type(attr_type)))
         conn.get_mainloop().run()
-        assert res.get_attribute_value(attr_name) == value_to_be_set(attr_type)
+        assert res.get_attribute_value(attr_name) == get_test_value_by_type(attr_type)
 
     print(res.pretty_print())
     print("<<< ModifyAttribute")
