@@ -48,6 +48,7 @@ def local_callback(new_res_set, opaque):
 
     print("ResCallBack: Exited\n")
 
+
 def update_state_dumps(res_set):
     """
     Updates the state dumps kept in the opaque user data
