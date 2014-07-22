@@ -28,6 +28,17 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import dbus
+
+
+def get_test_value_by_type(type):
+    return {
+        dbus.String: "testString",
+        dbus.Int32:  -9001,
+        dbus.UInt32: 1192,
+        dbus.Double: 3.14,
+    }.get(type)
+
 
 def example_callback(prop, value, original_thing, user_data):
     print(">> PythonicCallback")
