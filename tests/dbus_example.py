@@ -31,7 +31,7 @@
 from mrp_dbus import (Connection, DBusConfig)
 from mrp_dbus_helpers import (ChangeManager, example_callback, ResSetAddition,
                               ResourceAddition, AttributeModification, Acquisition,
-                              ResourceRemoval, ResSetRemoval)
+                              ResourceRemoval, ResSetRemoval, get_test_value_by_type)
 
 if __name__ == "__main__":
     # Create the object that is passed to the callback as user_data
@@ -65,9 +65,9 @@ if __name__ == "__main__":
     attr_names = res.list_attribute_names()
 
     # Try setting the value of an attribute
-    if not res.set_attribute_value(attr_names[0], -9001):
+    if not res.set_attribute_value(attr_names[0], get_test_value_by_type(res.get_attribute_type(attr_names[0]))):
         print("Failed to request an attribute value change to the first attribute")
-    manager.add_change(res, AttributeModification(attr_names[0], -9001))
+    manager.add_change(res, AttributeModification(attr_names[0], get_test_value_by_type(res.get_attribute_type(attr_names[0]))))
     conn.get_mainloop().run()
 
     # And finally try requesting the resource set's resources
