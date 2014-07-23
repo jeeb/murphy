@@ -30,6 +30,12 @@
 
 
 def get_test_value_by_type(type):
+    """
+    Returns a value meant for testing of a given Murphy attribute type
+
+    :param type: Murphy attribute type given as a single-character string
+    :return:     A valid value that can be used for testing of an attribute
+    """
     return {
         "s": "testString",
         "i": -9001,
@@ -39,6 +45,16 @@ def get_test_value_by_type(type):
 
 
 def py_status_callback(conn, error_code, opaque):
+    """
+    Example connection status callback implementation
+
+    :param conn:       Connection object for which this callback was executed
+    :param error_code: Murphy error code given for this connection
+    :param opaque:     Undefined "user data" object, which one sets when
+                       registering the callback. Not used in this example
+                       implementation.
+    :return:           Void
+    """
     if conn.get_state() == "connected":
         print("StatusCallback: We are connected!")
 
@@ -68,6 +84,16 @@ def py_status_callback(conn, error_code, opaque):
 
 
 def py_res_callback(new_res_set, opaque):
+    """
+    Example resource set status callback implementation
+
+    :param new_res_set: Current state of a resource set registered for this callback
+                        function as a ResourceSet object.
+    :param opaque:      Undefined "user data" object, which one sets when registering
+                        the callback. This example implementation requires it to be an
+                        instance of StatusObj
+    :return:            Void
+    """
     print("ResCallBack: Entered")
 
     # Get the old res set from the opaque data
@@ -98,15 +124,31 @@ def py_res_callback(new_res_set, opaque):
 
 
 def create_res_set(conn, callback):
-        conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
-        conn.get_opaque_data().res_set.create_resource("audio_playback")
+    """
+    Example function used in testing; Creates a resource set with a specific
+    resource in it, as well as utilizes StateDumpers to save the state
 
-        # Create two state dumps of our resource set for current/expected state
-        conn.get_opaque_data().res_set_state = StateDump(conn.get_opaque_data().res_set)
-        conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
+    :param conn:     Connection object
+    :param callback: Callback function which will be registered for resource status updates
+    :return:         Void
+    """
+    conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
+    conn.get_opaque_data().res_set.create_resource("audio_playback")
+
+    # Create two state dumps of our resource set for current/expected state
+    conn.get_opaque_data().res_set_state = StateDump(conn.get_opaque_data().res_set)
+    conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
 
 
 def py_grab_resource_set(conn, callback):
+    """
+    Example function used in testing; Attempts to acquires a resource set
+
+    :param conn:     Connection object
+    :param callback: Callback function, which will be registered for resource status updates
+                     in case there is no resource set created yet
+    :return:         False if request for acquisition was unsuccessful, True otherwise
+    """
     # Create a resource set in case it doesn't exist
     if not conn.get_opaque_data().res_set:
         create_res_set(conn, callback)
@@ -122,6 +164,18 @@ def py_grab_resource_set(conn, callback):
 
 
 def py_modify_attribute(conn, callback, name, value):
+    """
+    Example function used in testing; Attempts to modify a specific resource's
+    attribute
+
+    :param conn:     Connection object
+    :param callback: Callback function, which will be registered for resource status updates
+                     in case there is no resource set created yet
+    :param name:     Name of the attribute to modify in resource
+    :param value:    Value of the attribute to modify in resource
+    :return:         False if either attribute modification or resource set acquisition was
+                     unsuccessful, True otherwise
+    """
     status = conn.get_opaque_data()
 
     # Create a resource set in case it doesn't exist
@@ -152,6 +206,14 @@ def py_modify_attribute(conn, callback, name, value):
 
 
 def py_check_result(conn):
+    """
+    Example function used in testing; Compares the state of the resource set saved in the opaque
+    "user data" against a StateDump saved in the opaque "user data"
+
+    :param conn: Connection object
+    :return:     False if the StateDump and the resource set differ in state, True
+                 otherwise
+    """
     res_set = conn.get_opaque_data().res_set
 
     desired_state = conn.get_opaque_data().res_set_state
@@ -168,6 +230,9 @@ def py_check_result(conn):
 
 
 class StatusObj():
+    """
+    Example object that can be used as the opaque "user data" in callbacks
+    """
     def __init__(self):
         self.res_set = None
 
@@ -181,19 +246,44 @@ class StatusObj():
 
 class StateDumpAttribute(object):
     def __init__(self, attr):
+        """
+        Creates a dump of the state of an attribute
+
+        :param attr: Attribute object to be dumped
+        :return:     Void
+        """
         self.name  = attr.get_name()
         self.value = attr.get_value()
 
     def equals(self, other):
+        """
+        Checks if the state of this dump equals the state of another
+
+        :param other: StateDumpAttribute object to compare against
+        :return:      False if the two states are not equal, True
+                      otherwise
+        """
         return self.name == other.name and self.value == other.value
 
     def print_differences(self, other):
+        """
+        Prints the differences between this state dump and another
+
+        :param other: StateDumpAttribute object to show differences against
+        :return:      Void
+        """
         if self.value != other.value:
             print("\t\tAttribute %s: %s != %s" % (self.name, self.value, other.value))
 
 
 class StateDumpResource(object):
     def __init__(self, res):
+        """
+        Creates a dump of the state of a resource
+
+        :param res: Resource object to be dumped
+        :return:    Void
+        """
         self.name = res.get_name()
         self.state = res.get_state()
         self.names        = []
@@ -206,6 +296,13 @@ class StateDumpResource(object):
         self.attributes = dict(zip(self.names, self.attr_objects))
 
     def equals(self, other):
+        """
+        Checks if the state of this dump equals the state of another
+
+        :param other: StateDumpResource object to compare against
+        :return:      False if the two states are not equal, True
+                      otherwise
+        """
         for attr in self.attr_objects:
             if not attr.equals(other.attributes[attr.name]):
                 return False
@@ -213,6 +310,12 @@ class StateDumpResource(object):
         return self.state == other.state
 
     def print_differences(self, other):
+        """
+        Prints the differences between this state dump and another
+
+        :param other: StateDumpResource object to show differences against
+        :return:      Void
+        """
         print("\tResource %s:" % (self.name))
         if self.state != other.state:
             print("\t\tState: %s != %s" % (self.state, other.state))
@@ -223,6 +326,12 @@ class StateDumpResource(object):
 
 class StateDump(object):
     def __init__(self, res_set):
+        """
+        Creates a dump of the state of a resource set
+
+        :param res_set: ResourceSet object to be dumped
+        :return:        Void
+        """
         self.names       = []
         self.res_objects = []
         self.state = res_set.get_state()
@@ -234,6 +343,13 @@ class StateDump(object):
         self.resources = dict(zip(self.names, self.res_objects))
 
     def equals(self, other):
+        """
+        Checks if the state of this dump equals the state of another
+
+        :param other: StateDump object to compare against
+        :return:      False if the two states are not equal, True
+                      otherwise
+        """
         for res in self.res_objects:
             if not res.equals(other.resources[res.name]):
                 return False
@@ -241,6 +357,12 @@ class StateDump(object):
         return self.state == other.state
 
     def print_differences(self, other):
+        """
+        Prints the differences between this state dump and another
+
+        :param other: StateDump object to show differences against
+        :return:      Void
+        """
         print("Resource Set:")
         if self.state != other.state:
             print("\tState: %s != %s" % (self.state, other.state))
@@ -249,11 +371,23 @@ class StateDump(object):
             res.print_differences(other.resources[res.name])
 
     def set_acquired(self):
+        """
+        Sets the values in this state dump's set as well as resources
+        to values that match a fully acquired entity
+
+        :return: Void
+        """
         self.state = "acquired"
         for res in self.resources.itervalues():
             res.state = "acquired"
 
     def set_released(self):
+        """
+        Sets the values in this state dump's set as well as resources
+        to values that match a fully released entity
+
+        :return: Void
+        """
         self.state = "available"
         for res in self.resources.itervalues():
             res.state = "lost"
