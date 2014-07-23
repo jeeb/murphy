@@ -32,6 +32,18 @@ import dbus
 
 
 def get_test_value_by_type(type):
+    """
+    Returns a value meant for testing of a given D-Bus value type
+
+    :param type: D-Bus type for which an example value is needed.
+                 Currently implemented types are as follows:
+                 * dbus.String
+                 * dbus.Int32
+                 * dbus.UInt32
+                 * dbus.Double
+
+    :return:     An example value for a given D-Bus type
+    """
     return {
         dbus.String: "testString",
         dbus.Int32:  -9001,
@@ -43,7 +55,7 @@ def get_test_value_by_type(type):
 def example_callback(prop, value, original_thing, user_data):
     """
     Example callback implementation that expects a ChangeManager object
-    as the user_data.
+    as user_data.
 
     :param prop:           Name of the property for which a signal was received
     :param value:          Updated value of that property
@@ -74,6 +86,9 @@ def example_callback(prop, value, original_thing, user_data):
 
 # Things we can actually add, such as resources or sets
 class Addition(object):
+    """
+    Base class for changes that add something into a list of things
+    """
     def __init__(self, name, added_path):
         self.name = name
         self.added_path = added_path
@@ -86,11 +101,17 @@ class Addition(object):
 
 
 class ResSetAddition(Addition):
+    """
+    Subclass that wraps adding resource sets to a connection
+    """
     def __init__(self, path):
         super(ResSetAddition, self).__init__("resourceSets", path)
 
 
 class ResourceAddition(Addition):
+    """
+    Subclass that wraps adding resources to sets
+    """
     def __init__(self, path):
         super(ResourceAddition, self).__init__("resources", path)
         pass
@@ -98,6 +119,9 @@ class ResourceAddition(Addition):
 
 # Same as the previous, just reverse
 class Removal(object):
+    """
+    Base class for changes that remove something from a list of things
+    """
     def __init__(self, name, removed_path):
         self.name = name
         self.removed_path = removed_path
@@ -110,17 +134,26 @@ class Removal(object):
 
 
 class ResSetRemoval(Removal):
+    """
+    Subclass that wraps removing resource sets from a connection
+    """
     def __init__(self, path):
         super(ResSetRemoval, self).__init__("resourceSets", path)
 
 
 class ResourceRemoval(Removal):
+    """
+    Subclass that wraps removing resources from sets
+    """
     def __init__(self, path):
         super(ResourceRemoval, self).__init__("resources", path)
 
 
 # Modification of values, attributes
 class Modification(object):
+    """
+    Base class for changes that modify a value
+    """
     def __init__(self, name, modification):
         self.name = name
         self.modification = modification
@@ -133,11 +166,17 @@ class Modification(object):
 
 
 class ClassModification(Modification):
+    """
+    Subclass that wraps modification of a resource set's class
+    """
     def __init__(self, new_class):
         super(ClassModification, self).__init__("class", new_class)
 
 
 class AttributeModification(Modification):
+    """
+    Subclass that wraps modification of a resource's attribute
+    """
     def __init__(self, attr_name, new_attr_value):
         super(AttributeModification, self).__init__("attributes", (attr_name, new_attr_value))
 
@@ -148,21 +187,33 @@ class AttributeModification(Modification):
 
 
 class MandatorynessModification(Modification):
+    """
+    Subclass that wraps modification of a resource's mandatory field
+    """
     def __init__(self, bool):
         super(MandatorynessModification, self).__init__("mandatory", bool)
 
 
 class SharingModification(Modification):
+    """
+    Subclass that wraps modification of a resource's shared field
+    """
     def __init__(self, bool):
         super(SharingModification, self).__init__("shared", bool)
 
 
 class Acquisition(Modification):
+    """
+    Subclass that wraps modification of a resource's available field
+    """
     def __init__(self):
         super(Acquisition, self).__init__("status", "acquired")
 
 
 class Release(Modification):
+    """
+    Subclass that wraps modification of a resource's available field
+    """
     def __init__(self):
         super(Release, self).__init__("status", "available")
 
@@ -170,9 +221,24 @@ class Release(Modification):
 # Basic design is (modified_object, list_of_changes)
 class ChangeManager():
     def __init__(self):
+        """
+        A wrapper that connects changes (Additions, Removals and Modifications) to specific
+        objects. Uses a dict based on the D-Bus paths of objects (in case of Murphy
+        these should be unique per daemon run (The numeration will reset if Murphy
+        is restarted).
+
+        :return: Void
+        """
         self.change_sets = dict()
 
     def get_changes(self, object):
+        """
+        Gets the changes specific to an object
+
+        :param object: Object the changes of which are to be returned
+        :return:       None if there are no changes recorded for this object,
+                       otherwise a list of changes recorded for this object
+        """
         path = object.get_path()
         if path in self.change_sets:
             return self.change_sets[path]
@@ -180,6 +246,15 @@ class ChangeManager():
             return None
 
     def add_change(self, object, change):
+        """
+        Adds a change to the list of changes recorded for a given object. In
+        case the object has not yet been recorded, a single-item list will be
+        created of the given change
+
+        :param object: Object for which the change will be recorded
+        :param change: Change that will be recorded
+        :return:       Void
+        """
         path = object.get_path()
         if path in self.change_sets:
             self.change_sets[path].append(change)
@@ -187,6 +262,15 @@ class ChangeManager():
             self.change_sets[path] = [change]
 
     def remove_change(self, object, change):
+        """
+        Removes a change from the list of recorded changes for a given object.
+        In case the list becomes empty by means of this removal, the object
+        gets removed from the dictionary.
+
+        :param object: Object for which the change has been recorded
+        :param change: Change that will be removed from record
+        :return:       False if unsuccessful, True if successful
+        """
         path = object.get_path()
         if path in self.change_sets:
             self.change_sets[path].remove(change)
@@ -197,14 +281,37 @@ class ChangeManager():
             return False
 
     def remove_changes(self, object):
+        """
+        Removes all changes from the list of recorded changes for a given object,
+        and the object itself is purged from the dictionary
+
+        :param object: Object which is to be cleansed
+        :return:       Void
+        """
         path = object.get_path()
         if path in self.change_sets:
             del(self.change_sets[path])
 
     def changes_available(self):
+        """
+        Checks if there are any changes recorded in this ChangeManager instance
+
+        :return: False if this ChangeManager instance is empty, otherwise True
+        """
         return bool(len(self.change_sets))
 
     def was_this_an_expected_change(self, object, key, value):
+        """
+        Checks if a given change for a given object was recorded. If such a
+        change was found, that change will also be removed from the list of
+        recorded changes for given object.
+
+        :param object: Object for which the change was recorded for
+        :param key:    Key of the change
+        :param value:  Value of the change
+        :return:       False if change was not found, True if it was found
+                       as well as removed
+        """
         available_changes = self.get_changes(object)
         print("Beep: %s" % (available_changes))
         if available_changes:
