@@ -286,11 +286,14 @@ class ChangeManager():
         and the object itself is purged from the dictionary
 
         :param object: Object which is to be cleansed
-        :return:       Void
+        :return:       False if unsuccessful, True if successful
         """
         path = object.get_path()
         if path in self.change_sets:
             del(self.change_sets[path])
+            return True
+        else:
+            return False
 
     def changes_available(self):
         """
