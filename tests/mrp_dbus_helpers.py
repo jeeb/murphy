@@ -41,6 +41,19 @@ def get_test_value_by_type(type):
 
 
 def example_callback(prop, value, original_thing, user_data):
+    """
+    Example callback implementation that expects a ChangeManager object
+    as the user_data.
+
+    :param prop:           Name of the property for which a signal was received
+    :param value:          Updated value of that property
+    :param original_thing: Object from which this signal callback was registered from
+    :param user_data:      Undefined "user data" object, which one sets when
+                           registering the callback. This example implementation
+                           requires it to be a ChangeManager object
+
+    :return: Void
+    """
     print(">> PythonicCallback")
 
     # Basic per-callback debug log for property and new value
