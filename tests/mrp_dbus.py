@@ -104,7 +104,7 @@ class DBusConfig(object):
         :raise ValueError: Causes an exception in case the given parameter is not one of "session" or "system"
         """
         if bus_type != "session" and bus_type != "system":
-            raise ValueError
+            raise ValueError("Given value is not a valid D-Bus bus type")
 
         self.bus_type = bus_type
 
@@ -117,7 +117,7 @@ class DBusConfig(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(name, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         self.bus_name = name
 
@@ -130,7 +130,7 @@ class DBusConfig(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(path, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         self.object_path = path
 
@@ -171,7 +171,7 @@ class Resource(object):
 
         # You're not supposed to use both optional parameters at once
         if res_name and given_path:
-            raise ValueError
+            raise ValueError("Defining both res_name and given_path is invalid; Use one or the other")
 
         # If we're given a path, we're grabbing an already existing resource
         if given_path:
@@ -181,7 +181,8 @@ class Resource(object):
             self.res_path = res_set.set_iface.addResource(res_name)
 
         if not self.res_path:
-            raise ValueError
+            raise ValueError("Path to the resource is not available; Either creation failed, or "
+                             "an invalid value was given to the initializer")
 
         self.bus = res_set.bus
         self.config = res_set.config
@@ -237,7 +238,7 @@ class Resource(object):
         :raise TypeError: Causes an exception in case the given parameter is not a boolean
         """
         if not isinstance(mandatory, bool):
-            raise TypeError
+            raise TypeError("Given value is not boolean")
 
         try:
             self.res_iface.setProperty("mandatory", dbus.Boolean(mandatory, variant_level=1))
@@ -264,7 +265,7 @@ class Resource(object):
         :raise TypeError: Causes an exception in case the given parameter is not a boolean
         """
         if not isinstance(shareable, bool):
-            raise TypeError
+            raise TypeError("Given value is not boolean")
 
         try:
             self.res_iface.setProperty("shared", dbus.Boolean(shareable, variant_level=1))
@@ -296,7 +297,7 @@ class Resource(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(name, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         attribute = self.res_iface.getProperties()["attributes"][name]
         return attribute
@@ -311,7 +312,7 @@ class Resource(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(name, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         attribute = self.res_iface.getProperties()["attributes"][name]
         return type(attribute)
@@ -375,7 +376,7 @@ class Resource(object):
         :raise TypeError: Causes an exception in case the given parameter is not callable
         """
         if not callable(cb):
-            raise TypeError
+            raise TypeError("Given callback is not callable")
 
         self.cb_set = cb
         self.user_data = user_data
@@ -441,7 +442,8 @@ class ResourceSet(object):
             self.set_path  = conn.interface.createResourceSet()
 
         if not self.set_path:
-            raise ValueError
+            raise ValueError("Path to the resource set is not available; Either creation failed, or "
+                             "an invalid value was given to the initializer")
 
         self.bus       = conn.bus
         self.config    = conn.config
@@ -480,7 +482,7 @@ class ResourceSet(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(res, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         return Resource(self, res_name=res)
 
@@ -521,7 +523,7 @@ class ResourceSet(object):
         :raise TypeError: Causes an exception in case the given parameter is not a Resource object
         """
         if not isinstance(resource, Resource):
-            raise TypeError
+            raise TypeError("Given object is not an instance of Resource")
 
         return resource.delete()
 
@@ -584,7 +586,7 @@ class ResourceSet(object):
         :raise TypeError: Causes an exception in case the given parameter is not a string
         """
         if not isinstance(app_class, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         try:
             self.set_iface.setProperty("class", dbus.String(app_class, variant_level=1))
@@ -628,7 +630,7 @@ class ResourceSet(object):
         :raise TypeError: Causes an exception in case the given callback function is not callable
         """
         if not callable(cb):
-            raise TypeError
+            raise TypeError("Given callback is not callable")
 
         self.cb_set = cb
         self.user_data = user_data
@@ -683,7 +685,7 @@ class Connection(object):
         :return: Connection object created according to the given parameters
         """
         if not isinstance(config, DBusConfig):
-            raise TypeError
+            raise TypeError("Given configuration object is not an instance of DBusConfig")
 
         self.config = config
         self.bus = None
@@ -697,7 +699,7 @@ class Connection(object):
             self.bus = dbus.SystemBus()
 
         if not self.bus:
-            raise ValueError
+            raise ValueError("D-Bus bus connection was not initialized")
 
         self.proxy = self.bus.get_object(self.config.bus_name, self.config.object_path)
         self.interface = dbus.Interface(self.proxy, dbus_interface=MRP_MGR_IFACE)
@@ -742,7 +744,7 @@ class Connection(object):
         :return:         None in case of failure, ResourceSet object if successful
         """
         if not isinstance(set_path, str):
-            raise TypeError
+            raise TypeError("Given value is not a string")
 
         listing = self.interface.getProperties()["resourceSets"]
         if set_path in listing:
@@ -767,7 +769,7 @@ class Connection(object):
         :return:          Void
         """
         if not callable(cb):
-            raise TypeError
+            raise TypeError("Given callback is not callable")
 
         self.cb_set = cb
         self.user_data = user_data
