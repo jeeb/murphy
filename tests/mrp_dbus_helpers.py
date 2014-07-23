@@ -62,7 +62,7 @@ def example_callback(prop, value, original_thing, user_data):
     :param original_thing: Object from which this signal callback was registered from
     :param user_data:      Undefined "user data" object, which one sets when
                            registering the callback. This example implementation
-                           requires it to be a ChangeManager object
+                           requires it to be an instance of ChangeManager
 
     :return: Void
     """
