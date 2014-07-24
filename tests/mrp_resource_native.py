@@ -306,7 +306,7 @@ class Attribute(object):
                                                      name).contents
 
         if not self.attr:
-            raise MemoryError
+            raise MemoryError("An invalid attribute pointer was received")
 
     def set_value_to(self, value):
         """
@@ -409,7 +409,7 @@ class Resource(object):
                                                shared)
 
         if not res:
-            raise MemoryError
+            raise MemoryError("An invalid resource pointer was received")
 
         self.res = res.contents
 
@@ -529,7 +529,7 @@ class ResourceSet(object):
                                                    pointer(conn.udata))
 
         if not res_set:
-            raise MemoryError
+            raise MemoryError("An invalid resource set pointer was received")
 
         self.res_set = res_set.contents
 
@@ -731,7 +731,7 @@ class ResourceListing(ResourceSet):
             mrp_reslib.mrp_res_list_resources(self.conn.res_ctx)
 
         if not res_set:
-            raise MemoryError
+            raise MemoryError("An invalid resource set pointer was received")
 
         self.res_set = res_set.contents
 
