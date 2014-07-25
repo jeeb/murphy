@@ -599,9 +599,14 @@ AC_CHECK_PROG(fmbt_log_found,fmbt-log,yes,no)
 AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes" -a \
                                      "$fmbt_log_found" = "yes"])
 AC_SUBST(FMBT_AVAILABLE)
+
 if test "$fmbt_found" = "no" -o "$fmbt_log_found" = "no"; then
     AC_MSG_WARN([fMBT testing tool not found, fMBT-based tests are DISABLED.])
+else
+    AC_MSG_NOTICE([fMBT testing tools found, enabling fMBT-based tests.])
 fi
+
+
 
 # Check for documentation tools
 AC_ARG_WITH([documentation],
@@ -732,7 +737,6 @@ echo "Murphy console plugin and client: $enable_console"
 echo "Resource management support: $with_resources"
 echo "Websockets support: $enable_websockets"
 echo "systemd support: $enable_systemd"
-echo "fMBT tests: $fmbt_found"
 echo "Plugins:"
 echo "  - linked-in:"
 for plugin in ${INTERNAL_PLUGINS:-none}; do
