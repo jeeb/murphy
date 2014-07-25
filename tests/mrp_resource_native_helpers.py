@@ -280,6 +280,7 @@ class StateDump(object):
         self.names       = []
         self.res_objects = []
         self.state = res_set.get_state()
+        self.app_class = res_set.res_set.application_class
 
         for name in res_set.list_resource_names():
             self.names.append(name)
@@ -299,7 +300,7 @@ class StateDump(object):
             if not res.equals(other.resources[res.name]):
                 return False
 
-        return self.state == other.state
+        return self.state == other.state and self.app_class == other.app_class
 
     def print_differences(self, other):
         """
@@ -311,6 +312,9 @@ class StateDump(object):
         print("Resource Set:")
         if self.state != other.state:
             print("\tState: %s != %s" % (self.state, other.state))
+
+        if self.app_class != other.app_class:
+            print("\tClass: %s != %s" % (self.app_class, other.app_class))
 
         for res in self.res_objects:
             res.print_differences(other.resources[res.name])
