@@ -40,6 +40,15 @@ MRP_RES_IFACE     = "org.murphy.resource"
 
 # Ismo's pretty printing functions
 def pretty_str_dbus_value(val, level=0, suppress=False):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus value returned by Murphy's D-Bus API
+
+    :param val:      D-Bus value to represent
+    :param level:    Integer representing the indentation level of this element
+    :param suppress: Boolean, skip indentation for non-array/dictionary types
+    :return:         String containing the representation
+    """
     if type(val) == dbus.Array:
         return pretty_str_dbus_array(val, level)
     elif type(val) == dbus.Dictionary:
@@ -59,6 +68,14 @@ def pretty_str_dbus_value(val, level=0, suppress=False):
 
 
 def pretty_str_dbus_array(arr, level=0):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus array
+
+    :param arr:   D-Bus array to represent
+    :param level: Integer representing the indentation level of this element
+    :return:      String containing the representation
+    """
     prefix = level * "\t"
     s = "[\n"
     for v in arr:
@@ -69,6 +86,14 @@ def pretty_str_dbus_array(arr, level=0):
 
 
 def pretty_str_dbus_dict(d, level=0):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus dictionary
+
+    :param d:     D-Bus dictionary to represent
+    :param level: Integer representing the indentation level of this element
+    :return:      String containing the representation
+    """
     prefix = level * "\t"
     s = "{\n"
     for k, v in d.items():
