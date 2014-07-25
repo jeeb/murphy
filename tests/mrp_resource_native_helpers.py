@@ -85,6 +85,13 @@ def new_res_callback(new_res_set, opaque):
 
 
 def check_results(conn):
+    """
+    Example function used in testing; Iterates until the updated resource set is as
+    saved in a StateDump instance contained in the opaque "user data"
+
+    :param conn: Connection instance
+    :return:     Void
+    """
     while conn.iterate():
         print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
         if conn.get_opaque_data().res_set_changed:
@@ -95,9 +102,9 @@ def check_results(conn):
 def py_check_result(conn):
     """
     Example function used in testing; Compares the state of the resource set saved in the opaque
-    "user data" against a StateDump saved in the opaque "user data"
+    "user data" against a StateDump also contained in it
 
-    :param conn: Connection object
+    :param conn: Connection instance
     :return:     False if the StateDump and the resource set differ in state, True
                  otherwise
     """
