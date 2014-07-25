@@ -31,6 +31,73 @@
 import dbus
 
 
+# Ismo's pretty printing functions
+def pretty_str_dbus_value(val, level=0, suppress=False):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus value returned by Murphy's D-Bus API
+
+    :param val:      D-Bus value to represent
+    :param level:    Integer representing the indentation level of this element
+    :param suppress: Boolean, skip indentation for non-array/dictionary types
+    :return:         String containing the representation
+    """
+    if type(val) == dbus.Array:
+        return pretty_str_dbus_array(val, level)
+    elif type(val) == dbus.Dictionary:
+        return pretty_str_dbus_dict(val, level)
+    else:
+        s = ""
+        if not suppress:
+            s += level * "\t"
+        if type(val) == dbus.Boolean:
+            if val:
+                s += "True"
+            else:
+                s += "False"
+        else:
+            s += str(val)
+        return s
+
+
+def pretty_str_dbus_array(arr, level=0):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus array
+
+    :param arr:   D-Bus array to represent
+    :param level: Integer representing the indentation level of this element
+    :return:      String containing the representation
+    """
+    prefix = level * "\t"
+    s = "[\n"
+    for v in arr:
+        s += pretty_str_dbus_value(v, level+1)
+        s += "\n"
+    s += prefix + "]"
+    return s
+
+
+def pretty_str_dbus_dict(d, level=0):
+    """
+    Returns a string that contains a human-readable representation of the
+    contents of a D-Bus dictionary
+
+    :param d:     D-Bus dictionary to represent
+    :param level: Integer representing the indentation level of this element
+    :return:      String containing the representation
+    """
+    prefix = level * "\t"
+    s = "{\n"
+    for k, v in d.items():
+        s += prefix + "\t"
+        s += str(k) + ": "
+        s += pretty_str_dbus_value(v, level+1, True)
+        s += "\n"
+    s += prefix + "}"
+    return s
+
+
 def get_test_value_by_type(type):
     """
     Returns a value meant for testing of a given D-Bus value type
