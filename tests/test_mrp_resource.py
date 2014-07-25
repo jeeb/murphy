@@ -5,7 +5,8 @@ from mrp_resource_native_helpers import (StatusObj,
                                          py_status_callback,
                                          get_test_value_by_type,
                                          new_res_callback,
-                                         update_state_dumps)
+                                         update_state_dumps,
+                                         check_results)
 
 
 attr_name = "role"
@@ -73,6 +74,7 @@ def remove_res_set():
     update_state_dumps(conn, None)
 
     conn.get_opaque_data().res_set_changed = False
+    conn.get_opaque_data().res_set = None
 
     # Make sure that the new count of resource sets is according to expectations
     after_count = len(res_sets)
@@ -116,7 +118,8 @@ def modify_attribute(failure_expected=False):
     attr = res.get_attribute_by_name(res.list_attribute_names()[0])
     assert attr.set_value_to(get_test_value_by_type(attr.get_type()))
 
-    update_state_dumps(conn, res_sets[0])
+    if not failure_expected:
+        update_state_dumps(conn, res_sets[0])
 
 
 def make_resource_mandatory():
@@ -141,6 +144,7 @@ def acquire_set():
     set = res_sets[0]
     assert set.acquire()[0]
     conn.get_opaque_data().res_set_state.set_acquired()
+    check_results(conn)
 
 
 def release_set():
@@ -149,3 +153,4 @@ def release_set():
     set = res_sets[0]
     assert set.release()[0]
     conn.get_opaque_data().res_set_state.set_released()
+    check_results(conn)
