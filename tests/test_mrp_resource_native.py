@@ -3,18 +3,18 @@ os.environ["MRP_IN_TREE"] = "1"
 from mrp_resource_native import (Connection)
 from mrp_resource_native_helpers import (StatusObj,
                                          py_status_callback,
-                                         py_res_callback,
-                                         py_grab_resource_set,
-                                         py_check_result,
-                                         py_modify_attribute)
-
-
-attr_name = "role"
-attr_val = "testing_testing"
+                                         get_test_value_by_type,
+                                         check_results,
+                                         update_state_dumps,
+                                         new_res_callback)
 
 status = StatusObj()
 conn = Connection(py_status_callback, status)
 res_set = None
+classes = None
+res_names = None
+resource = None
+attr_names = None
 
 
 def connect():
@@ -27,36 +27,108 @@ def disconnect():
     conn.get_opaque_data().res_set_changed = False
 
     if conn.get_opaque_data().res_set:
-        conn.get_opaque_data().res_set.delete()
         conn.get_opaque_data().res_set = None
+
+    update_state_dumps(conn, None)
 
     conn.disconnect()
     print("We disconnect")
     print("")
 
 
-def issue_resource_order():
-    global conn
-    assert py_grab_resource_set(conn, py_res_callback)
+def create_res_set():
+    global conn, res_set, classes
+    res_set = conn.create_resource_set(new_res_callback, classes[0])
+    assert res_set
+
+    conn.get_opaque_data().res_set = res_set
+    update_state_dumps(conn, res_set)
 
 
-def issue_attribute_order():
-    global conn
-    assert py_modify_attribute(conn, py_res_callback, attr_name, attr_val)
+def get_class_list():
+    global conn, classes
+    classes = conn.list_application_classes()
+    assert classes
 
 
-def check_for_order_completion():
-    global conn
-    if conn.get_opaque_data().res_set.get_state() == "acquired":
-        return
-
-    while conn.iterate():
-        print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
-        if conn.get_opaque_data().res_set_changed:
-            py_check_result(conn)
-            return
+def list_system_resources():
+    global conn, res_names
+    temp_set = conn.list_resources()
+    res_names = temp_set.list_resource_names()
+    assert res_names
 
 
-def connected():
-    global conn
-    assert conn.get_state() == "connected"
+def remove_res_set():
+    global res_set
+    res_set.delete()
+    res_set = None
+    update_state_dumps(conn, None)
+
+
+def switch_autorelease(value_to_set):
+    global res_set
+    assert res_set.set_autorelease(value_to_set)
+
+
+def add_resource():
+    global res_set, res_names, resource
+    resource = res_set.create_resource(res_names[0])
+    update_state_dumps(conn, res_set)
+    assert resource
+
+
+def remove_resource():
+    global res_set, resource
+    res_set.delete_resource(resource)
+    update_state_dumps(conn, res_set)
+    resource = None
+
+
+def update_resource():
+    global resource
+    resource = None
+    resource = res_set.get_resource_by_name(res_names[0])
+
+
+def acquire_set():
+    global res_set
+    result, error = res_set.acquire()
+    if not result:
+        print("Acquisition failed due to error: %s" % (error))
+
+    assert result
+
+    conn.get_opaque_data().res_set_state.set_acquired()
+    check_results(conn)
+
+    # And, for now at least, we will have to update the resource, as it is now invalid
+    update_resource()
+
+
+def release_set():
+    global res_set
+    result, error = res_set.release()
+    if not result:
+        print("Release failed due to error: %s" % (error))
+
+    assert result
+
+    conn.get_opaque_data().res_set_state.set_released()
+    check_results(conn)
+
+    # And, for now at least, we will have to update the resource, as it is now invalid
+    update_resource()
+
+
+def list_attribute_names():
+    global resource, attr_names
+    attr_names = resource.list_attribute_names()
+    assert attr_names
+
+
+def modify_attribute():
+    global resource, attr_names
+    attribute = resource.get_attribute_by_name(attr_names[0])
+    assert attribute
+    assert attribute.set_value_to(get_test_value_by_type(attribute.get_type()))
+    update_state_dumps(conn, res_set)

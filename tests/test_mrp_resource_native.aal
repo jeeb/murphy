@@ -30,71 +30,189 @@ aal "murphy_resource" {
         from test_mrp_resource_native import *
     }
 
-    # preview-show-vars: conn_state, resource_state, change_type
-    # preview-depth: 5
+    # preview-show-vars: connected, app_classes_listed, system_resources_listed, set_created, set_acquired, set_locked, autorelease_enabled, resource_added, attributes_listed, attribute_modified
+    # preview-depth: 10
     variables {
-        conn_state, resource_state, change_type
+        connected, app_classes_listed, system_resources_listed, \
+        set_created, set_acquired, set_locked, autorelease_enabled, \
+        resource_added, attributes_listed, attribute_modified
     }
 
     initial_state {
-        conn_state = "disconnected"
-        resource_state = "not gotten"
-        change_type = "no change"
+        connected = False
+        app_classes_listed = False
+        system_resources_listed = False
+
+        set_created = False
+        set_acquired = False
+        set_locked = False
+        autorelease_enabled = False
+
+        resource_added = False
+        attributes_listed = False
+        attribute_modified = False
     }
 
+    # When we have no connection, we can just connect
     input "connect" {
-        guard { return conn_state != "connected" }
-        body  { conn_state = "connected" }
+        guard { return not connected }
+        body  { connected = True }
         adapter {
             connect()
         }
     }
 
-    input "disconnect" {
-        guard { return conn_state == "connected" and resource_state != "order issued" }
-        body {
-            conn_state = "disconnected"
-            resource_state = "not gotten"
+    # Now we have a connection
+    tag "connection available" {
+        guard { return connected }
+
+        input "disconnect" {
+            body {
+                connected = False
+                app_classes_listed = False
+                system_resources_listed = False
+
+                set_created = False
+                set_acquired = False
+                set_locked = False
+                autorelease_enabled = False
+
+                resource_added = False
+                attributes_listed = False
+                attribute_modified = False
+            }
+            adapter {
+                disconnect()
+            }
         }
-        adapter {
-            disconnect()
+
+        input "create_res_set" {
+            guard {
+                return not set_created and \
+                           app_classes_listed
+            }
+            body { set_created = True }
+            adapter {
+                create_res_set()
+            }
+        }
+
+        input "get_class_list" {
+            guard { return not app_classes_listed }
+            body { app_classes_listed = True }
+            adapter {
+                get_class_list()
+            }
+        }
+
+        input "list_system_resources" {
+            guard { return not system_resources_listed }
+            body { system_resources_listed = True }
+            adapter {
+                list_system_resources()
+            }
         }
     }
 
-    input "issue_resource_order" {
-        guard { return conn_state == "connected" and resource_state == "not gotten" }
-        body {
-            resource_state = "order issued"
-            change_type = "resource"
+    # Now we have a resource set available
+    tag "set available" {
+        guard { return set_created }
+
+        input "remove_res_set" {
+            body {
+                set_created = False
+                set_acquired = False
+                set_locked = False
+                autorelease_enabled = False
+
+                resource_added = False
+                attributes_listed = False
+                attribute_modified = False
+            }
+            adapter {
+                remove_res_set()
+            }
         }
-        adapter {
-            issue_resource_order()
+
+        input "switch_autorelease" {
+            guard { return not set_locked }
+            body {
+                if autorelease_enabled:
+                    autorelease_enabled = False
+                else:
+                    autorelease_enabled = True
+            }
+            adapter {
+                switch_autorelease(not autorelease_enabled)
+            }
+        }
+
+        input "add_resource" {
+            guard { return not resource_added }
+            body { resource_added = True }
+            adapter {
+                add_resource()
+            }
         }
     }
 
-    input "issue_attribute_order" {
-        guard { return conn_state == "connected" and resource_state == "not gotten" or resource_state == "gotten" }
-        body {
-            resource_state = "order issued"
-            change_type = "attribute"
-        }
-        adapter {
-            issue_attribute_order()
-        }
-    }
+    # Now we have added a resource to our set
+    tag "resource available" {
+        guard { return resource_added }
 
-    input "check_for_order_completion" {
-        guard { return resource_state == "order issued" }
-        body { resource_state = "gotten" }
-        adapter {
-            check_for_order_completion()
+        input "remove_resource" {
+            guard { return not set_locked }
+            body {
+                resource_added = False
+                attributes_listed = False
+                attribute_modified = False
+            }
+            adapter {
+                remove_resource()
+            }
         }
-    }
 
-    tag "connected" {
-        guard { conn_state == "connected" }
-        adapter {
-            connected()
+        input "acquire_set" {
+            guard { return not set_acquired }
+            body {
+                set_acquired = True
+                set_locked = True
+            }
+            adapter {
+                acquire_set()
+            }
+        }
+
+        input "release_set" {
+            body {
+                set_acquired = False
+                if not set_locked:
+                    set_locked = True
+            }
+            adapter {
+                release_set()
+            }
+        }
+
+        input "list_attribute_names" {
+            guard { return not attributes_listed }
+            body {
+                attributes_listed = True
+            }
+            adapter {
+                list_attribute_names()
+            }
+        }
+
+        input "modify_attribute" {
+            guard { return not set_locked and \
+                               attributes_listed }
+            body {
+                attribute_modified = True
+            }
+            adapter {
+                modify_attribute()
+            }
         }
     }
 }
