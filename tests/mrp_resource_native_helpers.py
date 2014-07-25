@@ -44,6 +44,90 @@ def get_test_value_by_type(type):
     }.get(type)
 
 
+def new_res_callback(new_res_set, opaque):
+    """
+    Example resource set status callback implementation
+
+    :param new_res_set: Current state of a resource set registered for this callback
+                        function as a ResourceSet object.
+    :param opaque:      Undefined "user data" object, which one sets when registering
+                        the callback. This example implementation requires it to be an
+                        instance of StatusObj
+    :return:            Void
+    """
+    print("ResCallBack: Entered")
+
+    # Get the current res set from the opaque data
+    res_set = opaque.res_set
+
+    # Check if this callback is for the resource set we have in userdata
+    if not new_res_set:
+        print("ResCallBack: No resource set yet set")
+        return
+    elif not res_set.equals(new_res_set):
+        print("ResCallBack: Callback not for carried resource set")
+        return
+
+    state = StateDump(res_set)
+    new_state = StateDump(new_res_set)
+
+    if new_state.equals(state):
+        print("ResCallBack: Resource set contents identical")
+    else:
+        print("ResCallBack: Resource set contents changed")
+        opaque.res_set_changed = True
+        state.print_differences(new_state)
+
+    # Remove and switch the userdata resource set to a new one
+    res_set.update(new_res_set)
+
+    print("ResCallBack: Exited\n")
+
+
+def check_results(conn):
+    while conn.iterate():
+        print("Iterated: res_set_changed = %s" % (conn.get_opaque_data().res_set_changed))
+        if conn.get_opaque_data().res_set_changed:
+            if py_check_result(conn):
+                return
+
+
+def py_check_result(conn):
+    """
+    Example function used in testing; Compares the state of the resource set saved in the opaque
+    "user data" against a StateDump saved in the opaque "user data"
+
+    :param conn: Connection object
+    :return:     False if the StateDump and the resource set differ in state, True
+                 otherwise
+    """
+    res_set = conn.get_opaque_data().res_set
+
+    desired_state = conn.get_opaque_data().res_set_state
+
+    curr_state = StateDump(res_set)
+
+    if not desired_state.equals(curr_state):
+        print("CheckResult: State did not meet expectations!\n")
+        desired_state.print_differences(curr_state)
+        return False
+    else:
+        print("CheckResult: State met expectations!\n")
+        return True
+
+
+def update_state_dumps(conn, res_set):
+    """
+    Updates the state dumps kept in the opaque user data
+    """
+    if not res_set:
+        conn.get_opaque_data().res_set_state          = None
+        conn.get_opaque_data().res_set_expected_state = None
+    else:
+        conn.get_opaque_data().res_set_state          = StateDump(res_set)
+        conn.get_opaque_data().res_set_expected_state = StateDump(res_set)
+
+
 def py_status_callback(conn, error_code, opaque):
     """
     Example connection status callback implementation
@@ -81,152 +165,6 @@ def py_status_callback(conn, error_code, opaque):
                     print("\tAttribute: %s = %s" % (attr_name, attr.get_value()))
 
     print('StatusCallback ErrCode: %s\n' % (error_code))
-
-
-def py_res_callback(new_res_set, opaque):
-    """
-    Example resource set status callback implementation
-
-    :param new_res_set: Current state of a resource set registered for this callback
-                        function as a ResourceSet object.
-    :param opaque:      Undefined "user data" object, which one sets when registering
-                        the callback. This example implementation requires it to be an
-                        instance of StatusObj
-    :return:            Void
-    """
-    print("ResCallBack: Entered")
-
-    # Get the old res set from the opaque data
-    res_set = opaque.res_set
-
-    # Check if this callback is for the resource set we have in userdata
-    if not new_res_set:
-        print("ResCallBack: No resource set yet set")
-        return
-    elif not res_set.equals(new_res_set):
-        print("ResCallBack: Callback not for carried resource set")
-        return
-
-    state = StateDump(res_set)
-    new_state = StateDump(new_res_set)
-
-    if new_state.equals(state):
-        print("ResCallBack: Resource set contents identical")
-    else:
-        print("ResCallBack: Resource set contents changed")
-        opaque.res_set_changed = True
-        state.print_differences(new_state)
-
-    # Remove and switch the userdata resource set to a new one
-    res_set.update(new_res_set)
-
-    print("ResCallBack: Exited\n")
-
-
-def create_res_set(conn, callback):
-    """
-    Example function used in testing; Creates a resource set with a specific
-    resource in it, as well as utilizes StateDumpers to save the state
-
-    :param conn:     Connection object
-    :param callback: Callback function which will be registered for resource status updates
-    :return:         Void
-    """
-    conn.get_opaque_data().res_set = conn.create_resource_set(callback, "player")
-    conn.get_opaque_data().res_set.create_resource("audio_playback")
-
-    # Create two state dumps of our resource set for current/expected state
-    conn.get_opaque_data().res_set_state = StateDump(conn.get_opaque_data().res_set)
-    conn.get_opaque_data().res_set_expected_state = StateDump(conn.get_opaque_data().res_set)
-
-
-def py_grab_resource_set(conn, callback):
-    """
-    Example function used in testing; Attempts to acquires a resource set
-
-    :param conn:     Connection object
-    :param callback: Callback function, which will be registered for resource status updates
-                     in case there is no resource set created yet
-    :return:         False if request for acquisition was unsuccessful, True otherwise
-    """
-    # Create a resource set in case it doesn't exist
-    if not conn.get_opaque_data().res_set:
-        create_res_set(conn, callback)
-
-    state = conn.get_opaque_data().res_set_state
-    res_set = conn.get_opaque_data().res_set
-
-    if res_set.get_state() != "acquired":
-        state.set_acquired()
-        return res_set.acquire()[0]
-    else:
-        return True
-
-
-def py_modify_attribute(conn, callback, name, value):
-    """
-    Example function used in testing; Attempts to modify a specific resource's
-    attribute
-
-    :param conn:     Connection object
-    :param callback: Callback function, which will be registered for resource status updates
-                     in case there is no resource set created yet
-    :param name:     Name of the attribute to modify in resource
-    :param value:    Value of the attribute to modify in resource
-    :return:         False if either attribute modification or resource set acquisition was
-                     unsuccessful, True otherwise
-    """
-    status = conn.get_opaque_data()
-
-    # Create a resource set in case it doesn't exist
-    if not status.res_set:
-        create_res_set(conn, callback)
-
-    # Bring the current res_set into local scope
-    res_set = status.res_set
-
-    # Update the current res_set state dump
-    status.res_set_state = StateDump(res_set)
-    state = status.res_set_state
-
-    # Do the simulated change to it
-    state.resources["audio_playback"].attributes[name].value = value
-
-    # Actually do the change
-    result = res_set.get_resource_by_name("audio_playback").get_attribute_by_name(name).set_value_to(value)
-
-    if not result:
-        return result
-
-    if res_set.get_state() != "acquired":
-        state.set_acquired()
-        return res_set.acquire()[0]
-    else:
-        return True
-
-
-def py_check_result(conn):
-    """
-    Example function used in testing; Compares the state of the resource set saved in the opaque
-    "user data" against a StateDump saved in the opaque "user data"
-
-    :param conn: Connection object
-    :return:     False if the StateDump and the resource set differ in state, True
-                 otherwise
-    """
-    res_set = conn.get_opaque_data().res_set
-
-    desired_state = conn.get_opaque_data().res_set_state
-
-    curr_state = StateDump(res_set)
-
-    if not desired_state.equals(curr_state):
-        print("CheckResult: State did not meet expectations!\n")
-        desired_state.print_differences(curr_state)
-        return False
-    else:
-        print("CheckResult: State met expectations!\n")
-        return True
 
 
 class StatusObj():
