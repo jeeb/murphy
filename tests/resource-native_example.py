@@ -31,14 +31,14 @@
 import os
 os.environ["MRP_IN_TREE"] = "1"
 from mrp_resource_native import (Connection)
-from mrp_resource_native_helpers import (py_res_callback, py_status_callback, StatusObj)
+from mrp_resource_native_helpers import (new_res_callback, py_status_callback, StatusObj)
 import sys
 
 
 def actual_test_steps(conn):
     # Create a clean, empty new resource set
     print("Entered actual test steps")
-    res_set = conn.create_resource_set(py_res_callback, "player")
+    res_set = conn.create_resource_set(new_res_callback, "player")
     if not res_set:
         print("Failed to create a resource set")
         return False
