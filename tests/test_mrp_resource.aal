@@ -144,7 +144,7 @@ aal "murphy_resource" {
         }
 
         input "remove_resource" {
-            guard { return set_acquired }
+            guard { return not resource_set_locked }
             body {
                 resource_state = "not available"
             }
