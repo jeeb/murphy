@@ -39,9 +39,6 @@ MRP_RES_SET_IFACE = "org.murphy.resourceset"
 MRP_RES_IFACE     = "org.murphy.resource"
 
 
-
-
-
 class DBusConfig(object):
     """
     Object containing the various configuration options for the D-Bus connection, including its type (session/system),
