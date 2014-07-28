@@ -49,6 +49,20 @@ if test "$enable_websockets" != "no"; then
             [websockets_cci=no])
         AC_MSG_RESULT([$websockets_cci])
 
+        # Check for the cipher list parameter in new context creation API.
+        if test "$websockets_cci" = "yes"; then
+            AC_MSG_CHECKING([for WEBSOCKETS cipher list in new context creation API])
+            AC_LINK_IFELSE(
+               [AC_LANG_PROGRAM(
+                     [[#include <stdlib.h>
+                       #include <libwebsockets.h>]],
+                     [[struct lws_context_creation_info cci;
+                       cci.ssl_cipher_list = NULL;]])],
+                [websockets_cipher_list=yes],
+                [websockets_cipher_list=no])
+            AC_MSG_RESULT([$websockets_cipher_list])
+        fi
+
         # Check for new libwebsockets_get_internal_extensions.
         AC_MSG_CHECKING([for WEBSOCKETS internal extension query API])
         AC_LINK_IFELSE(
@@ -178,6 +192,10 @@ if test "$enable_websockets" != "no"; then
     fi
     if test "$websockets_cci" = "yes"; then
         WEBSOCKETS_CFLAGS="$WEBSOCKETS_CFLAGS -DWEBSOCKETS_CONTEXT_INFO"
+
+        if test "$websockets_cipher_list" = "no"; then
+            WEBSOCKETS_CFLAGS="$WEBSOCKETS_CFLAGS -DWEBSOCKETS_WITHOUT_CIPHER_LIST"
+        fi
     fi
     if test "$websockets_query_ext" = "yes"; then
         WEBSOCKETS_CFLAGS="$WEBSOCKETS_CFLAGS -DWEBSOCKETS_QUERY_EXTENSIONS"

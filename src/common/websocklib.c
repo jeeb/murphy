@@ -743,7 +743,13 @@ wsl_ctx_t *wsl_create_context(mrp_mainloop_t *ml, wsl_ctx_cfg_t *cfg)
     cci.ssl_cert_filepath        = cfg->ssl_cert;
     cci.ssl_private_key_filepath = cfg->ssl_pkey;
     cci.ssl_ca_filepath          = cfg->ssl_ca;
+#ifdef WEBSOCKETS_WITHOUT_CIPHER_LIST
+    if (cfg->ssl_ciphers)
+        mrp_log_error("This version of libwebsockets does not support"
+                      "setting a cipher list; Parameter is ignored.\n");
+#else /* !WEBSOCKETS_WITHOUT_CIPHER_LIST */
     cci.ssl_cipher_list          = cfg->ssl_ciphers;
+#endif /* !WEBSOCKETS_WITHOUT_CIPHER_LIST */
 
     cci.options     = 0;
     cci.ka_time     = cfg->timeout;
