@@ -18,6 +18,7 @@ if test "$enable_websockets" != "no"; then
                       [have_websockets=yes], [have_websockets=no])
     if test "$have_websockets" = "yes"; then
         WEBSOCKETS_CFLAGS="`pkg-config --cflags libwebsockets`"
+        WEBSOCKETS_LIBS="`pkg-config --libs libwebsockets`"
         # Check for a couple of recent features we need to adopt to.
         saved_CFLAGS="$CFLAGS"
         saved_LDFLAGS="$LDFLAGS"
@@ -186,7 +187,7 @@ if test "$enable_websockets" != "no"; then
         AC_MSG_RESULT([$old_websockets])
     fi
 
-    WEBSOCKETS_LIBS="-lwebsockets"
+    # WEBSOCKETS_LIBS="-lwebsockets"
     if test "$old_websockets" = "yes"; then
         WEBSOCKETS_CFLAGS="$WEBSOCKETS_CFLAGS -DWEBSOCKETS_OLD"
     fi
