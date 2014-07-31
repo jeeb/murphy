@@ -530,6 +530,8 @@ if __name__ == "__main__":
     else:
         print("WebSocketExample: Set %s was unsuccessfully released!" % (set))
 
+    print("WebSocketExample: Set state now: %s" % connection.get_state(set))
+
     if connection.destroy_set(set):
         print("The set was successfully destroyed")
     else:
