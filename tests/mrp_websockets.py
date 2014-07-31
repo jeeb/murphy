@@ -31,7 +31,6 @@
 from __future__ import unicode_literals
 from threading import Event
 from ws4py.client.threadedclient import WebSocketClient
-from ws4py.messaging import TextMessage
 import json
 
 
@@ -99,7 +98,7 @@ class MessageManager(object):
         self.client.close()
 
     def check(self, message):
-        if isinstance(message, TextMessage):
+        if message.is_text:
             message_data = json.loads(message.data.decode("utf-8"))
             seq = message_data.get("seq")
             type = message_data.get("type")
