@@ -246,7 +246,8 @@ class MessageManager(object):
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
-            print("E: Listing resources for getting a resource failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            print("E: Listing resources for getting a resource failed with errcode %s (%s) :<" % \
+                  (errcode, response.get("message")))
             return None
 
         # Return the data of the resource asked for
@@ -292,7 +293,7 @@ class MessageManager(object):
         resource_data = []
 
         if not isinstance(resources, list):
-            resources = [ resources ]
+            resources = [resources]
 
         # Construct the list of resource data
         for res in resources:
@@ -316,7 +317,7 @@ class MessageManager(object):
             return None
 
         # Create a new entry for the
-        set = { response.get("id"): base }
+        set = {response.get("id"): base}
 
         self.own_sets.update(set)
         print("D: Added a set: %s" % (self.own_sets))
