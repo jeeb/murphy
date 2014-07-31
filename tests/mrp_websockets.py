@@ -108,17 +108,17 @@ class MessageManager(object):
                 print("E: Either sequence or type was not in the reply! (seq %s - type %s)" % (seq, type))
                 return
 
+            # Is this an event?
+            if type == "event":
+                print("D: Got an event! (seq %s - type %s)" % (seq, type))
+                self.events.append(message_data)
+                return
             # Is this a response to one of our messages?
-            if seq in self.queue:
+            elif seq in self.queue:
                 if type in self.queue.get(seq):
                     print("D: Got a response to a sent message! (seq %s - type %s)" % (seq, type))
                     self.queue.get(seq, {}).get(type).set_result(message_data)
                     return
-            # Is this an event?
-            elif type == "event":
-                print("D: Got an event! (seq %s - type %s)" % (seq, type))
-                self.events.append(message_data)
-                return
             # If the message is neither, it's unrelated/unknown
             else:
                 print("D: Got unrelated message (seq %s - type %s)" % (seq, type))
