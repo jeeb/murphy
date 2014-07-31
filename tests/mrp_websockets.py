@@ -471,6 +471,27 @@ class MurphyConnection(object):
         del(status)
         return True
 
+    def get_state(self, set_id):
+        set = self.own_sets.get(set_id)
+        state = dict()
+
+        set_acquisition_state = set.get("grant")
+        state["acquired"] = bool(set_acquisition_state)
+        state["resources"] = dict()
+
+        for res in set.get("resources"):
+            res_name = res.get("name")
+
+            # Create the dictionary for the in-resource data
+            state.get("resources")[res_name] = dict()
+
+            # Grab the newly created resource dictionary and add things to it
+            dict_res = state.get("resources").get(res_name)
+            dict_res["acquired"] = bool(set_acquisition_state & res.get("mask"))
+            dict_res["attributes"] = res.get("attributes")
+
+        return state
+
 
 if __name__ == "__main__":
     connection = MurphyConnection("ws://localhost:4000/murphy")
@@ -501,6 +522,8 @@ if __name__ == "__main__":
         print("WebSocketExample: Set %s was successfully acquired!" % (set))
     else:
         print("WebSocketExample: Set %s was unsuccessfully acquired!" % (set))
+
+    print("WebSocketExample: Set state now: %s" % connection.get_state(set))
 
     if connection.release_set(set):
         print("WebSocketExample: Set %s was successfully released!" % (set))
