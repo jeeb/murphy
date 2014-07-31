@@ -341,6 +341,42 @@ class MessageManager(object):
 
         return True
 
+    def acquire_set(self, set_id):
+        base = {"type": "acquire"}
+
+        base.update({"id": set_id})
+
+        response = self.send_msg(base)
+        if not response:
+            print("E: Sending message or receiving reply failed")
+            return None
+
+        # Status is C-like, zero is OK and nonzero are failure states
+        errcode = response.get("error")
+        if errcode:
+            print("E: Acquiring a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
+
+        return True
+
+    def release_set(self, set_id):
+        base = {"type": "release"}
+
+        base.update({"id": set_id})
+
+        response = self.send_msg(base)
+        if not response:
+            print("E: Sending message or receiving reply failed")
+            return None
+
+        # Status is C-like, zero is OK and nonzero are failure states
+        errcode = response.get("error")
+        if errcode:
+            print("E: Releasing a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
+
+        return True
+
 
 if __name__ == "__main__":
     manager = MessageManager("ws://localhost:4000/murphy")
@@ -354,7 +390,12 @@ if __name__ == "__main__":
     print(zones)
 
     set = manager.create_set(classes[0], zones[0], 0, resources[0])
+    manager.check_for_events()
 
+    manager.acquire_set(set)
+    manager.check_for_events()
+
+    manager.release_set(set)
     manager.check_for_events()
 
     if manager.destroy_set(set):
