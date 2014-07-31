@@ -148,9 +148,6 @@ class MurphyConnection(object):
             self.events.append(oldest_event)
             return None
 
-    def add_query_to_queue(self, query):
-        self.queue[query.get_type()][query.get_seq()] = query.stopper
-
     def add_to_queue(self, type, seq, status):
         if seq in self.queue:
             self.queue.get(seq)[type] = status
