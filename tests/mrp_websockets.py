@@ -100,15 +100,19 @@ class MessageManager(object):
 
     def check(self, message):
         if isinstance(message, TextMessage):
-            message_data = json.loads(str(message))
-            seq = message_data["seq"]
-            type = message_data["type"]
+            message_data = json.loads(message.data.decode("utf-8"))
+            seq = message_data.get("seq")
+            type = message_data.get("type")
+
+            if seq is None or type is None:
+                print("E: Either sequence or type was not in the reply! (seq %s - type %s)" % (seq, type))
+                return
 
             # Is this a response to one of our messages?
             if seq in self.queue:
-                if type in self.queue[seq]:
+                if type in self.queue.get(seq):
                     print("D: Got a response to a sent message! (seq %s - type %s)" % (seq, type))
-                    self.queue[seq][type].set_result(message_data)
+                    self.queue.get(seq, {}).get(type).set_result(message_data)
                     return
             # Is this an event?
             elif type == "event":
@@ -128,12 +132,18 @@ class MessageManager(object):
         # Grab the oldest event waiting for us
         oldest_event = self.events.pop(0)
 
-        id = oldest_event["id"]
+        id = oldest_event.get("id")
+
+        if id is None:
+            print("E: No id found in the event!")
+            return None
+
         if id in self.own_sets:
             print("D: We found an event for set %s" % (id))
             # Update the information in the set
-            self.own_sets[id].update(oldest_event)
-            print("D: %s" % (self.own_sets[id]))
+            self.own_sets.get(id).update(oldest_event)
+            print("D: %s" % (self.own_sets.get(id)))
+            return True
         else:
             print("D: We found an event for a set that is not yet in our books (id = %s)" % (id))
             self.events.append(oldest_event)
@@ -144,16 +154,16 @@ class MessageManager(object):
 
     def add_to_queue(self, type, seq, status):
         if seq in self.queue:
-            self.queue[seq][type] = status
+            self.queue.get(seq)[type] = status
         else:
             self.queue[seq] = {type: status}
 
     def remove_from_queue(self, type, seq):
         print("D: queue = %s" % (self.queue))
         if seq in self.queue:
-            if type in self.queue[seq]:
-                del(self.queue[seq][type])
-                if not self.queue[seq]:
+            if type in self.queue.get(seq):
+                del(self.queue.get(seq)[type])
+                if not self.queue.get(seq):
                     del(self.queue[seq])
                 return True
             else:
@@ -172,9 +182,9 @@ class MessageManager(object):
         local_seq = self.give_seq_and_increment()
 
         # Try getting the message type
-        try:
-            type = data_dict["type"]
-        except KeyError:
+
+        type = data_dict.get("type")
+        if not type:
             print("E: Message type not found in message data!")
             return None
 
@@ -214,16 +224,13 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Listing resources failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Listing resources failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
-        for res in response["resources"]:
-            resources.append(res["name"])
+        for res in response.get("resources"):
+            resources.append(res.get("name"))
 
         return resources
 
@@ -237,18 +244,15 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Listing resources for getting a resource failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Listing resources for getting a resource failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
         # Return the data of the resource asked for
-        resources = response["resources"]
+        resources = response.get("resources")
         for res in resources:
-            if res["name"] == name:
+            if res.get("name") == name:
                 return res
 
     def list_classes(self):
@@ -260,15 +264,12 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Listing application classes failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Listing application classes failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
-        return response["classes"]
+        return response.get("classes")
 
     def list_zones(self):
         base = {"type": "query-zones"}
@@ -279,15 +280,12 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Listing zones failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Listing zones failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
-        return response["zones"]
+        return response.get("zones")
 
     def create_set(self, app_class, zone, priority, resources):
         base = {"type": "create"}
@@ -312,21 +310,18 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Creating set failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Creating set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
         # Create a new entry for the
-        set = { response["id"]: base }
+        set = { response.get("id"): base }
 
         self.own_sets.update(set)
         print("D: Added a set: %s" % (self.own_sets))
 
-        return response["id"]
+        return response.get("id")
 
     def destroy_set(self, set_id):
         base = {"type": "destroy"}
@@ -339,13 +334,10 @@ class MessageManager(object):
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
-        try:
-            errcode = response["error"]
-            if errcode:
-                print("D: Listing resources failed with errcode %s (%s) :<" % (errcode, response["message"]))
-                return None
-        except KeyError:
-            pass
+        errcode = response.get("error")
+        if errcode:
+            print("E: Destroying a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            return None
 
         return True
 
