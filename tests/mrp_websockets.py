@@ -37,17 +37,35 @@ import sys
 
 class InternalClient(WebSocketClient):
     def __init__(self, address, protocols):
+        """
+        Simple WebSocketClient that lets you set the callback with a function
+
+        :param address:   WebSocket (ws/wss/ws+sock) address to which to connect
+        :param protocols: A list of protocols that you speak
+        """
         super(InternalClient, self).__init__(address, protocols=protocols)
         self.iclient_callback_set = False
         self.iclient_callback = None
 
     def received_message(self, message):
+        """
+        Called when the underlying WebSocketClient implementation receives a message,
+        calls a callback function if set
+
+        :param message: Instance of ws4py.messaging.Message received
+        """
         if not self.iclient_callback_set:
             pass
         else:
             self.iclient_callback(message)
 
     def set_callback(self, func):
+        """
+        Sets the callback to a function of your choice
+
+        :param func: A callable that you wish to set as the callback
+        :raises TypeError if the object you provided is not callable
+        """
         if not callable(func):
             raise TypeError("Set checker function is not callable!")
 
@@ -57,26 +75,57 @@ class InternalClient(WebSocketClient):
 
 class Status(object):
     def __init__(self):
+        """
+        Status object that can contain a result (object) and has an Event built in
+        """
         self.state = Event()
         self.result = None
 
     def ready(self):
+        """
+        Queries if the state of this Status object is that its ready
+
+        :return: True or False depending on the Status object's state
+        """
         return self.state.is_set()
 
     def mark_ready(self):
+        """
+        Marks this Status object as ready - everything waiting for it will stop blocking
+
+        :return: Void
+        """
         self.state.set()
 
     def get_result(self):
+        """
+        Returns the object stored in this Status object
+        :return: None, or object that is stored in this Status object
+        """
         if not self.state:
             pass
         else:
             return self.result
 
     def set_result(self, result):
+        """
+        Sets the object to be stored in this Status object
+
+        :param result: Object to be stored in this Status object
+        :return:       Void
+        """
         self.result = result
         self.mark_ready()
 
     def wait(self, timeout=None):
+        """
+        Blocks until this Status object is ready.
+
+        :param timeout: Floating point value that defines how many seconds this Status object will
+                        block in case it is not yet ready.
+        :return:        Returns a boolean state of whether or not this State object was ready when it
+                        stopped blocking; This can be used to check whether or not this call timed out.
+        """
         return self.state.wait(timeout)
 
 # FIXME: This will not be needed when we switch from list to dict for resources
