@@ -245,7 +245,7 @@ class MurphyConnection(object):
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
-            print("E: Listing resources for getting a resource failed with errcode %s (%s) :<" % \
+            print("E: Listing resources for getting a resource failed with errcode %s (%s) :<" %
                   (errcode, response.get("message")))
             return None
 
