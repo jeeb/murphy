@@ -97,6 +97,9 @@ class MurphyConnection(object):
     def disconnect(self):
         self.client.close()
 
+    def daemonize(self, value=True):
+        self.client.daemon = value
+
     def check(self, message):
         if message.is_text:
             message_data = json.loads(message.data.decode("utf-8"))
@@ -376,28 +379,29 @@ class MurphyConnection(object):
 
 
 if __name__ == "__main__":
-    manager = MurphyConnection("ws://localhost:4000/murphy")
-    manager.connect()
+    connection = MurphyConnection("ws://localhost:4000/murphy")
+    connection.daemonize(False)
+    connection.connect()
 
-    resources = manager.list_resources()
-    classes = manager.list_classes()
-    zones = manager.list_zones()
+    resources = connection.list_resources()
+    classes = connection.list_classes()
+    zones = connection.list_zones()
     print(resources)
     print(classes)
     print(zones)
 
-    set = manager.create_set(classes[0], zones[0], 0, resources[0])
-    manager.check_for_events()
+    set = connection.create_set(classes[0], zones[0], 0, resources[0])
+    connection.check_for_events()
 
-    manager.acquire_set(set)
-    manager.check_for_events()
+    connection.acquire_set(set)
+    connection.check_for_events()
 
-    manager.release_set(set)
-    manager.check_for_events()
+    connection.release_set(set)
+    connection.check_for_events()
 
-    if manager.destroy_set(set):
+    if connection.destroy_set(set):
         print("The set was successfully destroyed")
     else:
         print("Failed to destroy the set")
 
-    manager.disconnect()
+    connection.disconnect()
