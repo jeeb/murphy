@@ -188,9 +188,7 @@ class MurphyConnection(object):
         if local_seq is None:
             local_seq = self.give_seq_and_increment()
 
-
         # Try getting the message type
-
         type = data_dict.get("type")
         if not type:
             print("E: Message type not found in message data!")
