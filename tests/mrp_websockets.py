@@ -486,9 +486,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("WebSocketExample: System Dump")
-    print("\tAvailable Resources: %s" % (resources))
-    print("\tAvailable Classes: %s" % (classes))
-    print("\tAvailable Zones: %s" %(zones))
+    print("\tAvailable Resources: %s" % (", ".join( str(x) for x in resources)))
+    print("\tAvailable Classes: %s" % (", ".join( str(x) for x in classes)))
+    print("\tAvailable Zones: %s" %(", ".join( str(x) for x in zones)))
 
     set = connection.create_set(classes[0], zones[0], 0, resources[0])
     if set is None:
