@@ -32,6 +32,7 @@ from __future__ import unicode_literals
 from threading import Event
 from ws4py.client.threadedclient import WebSocketClient
 import json
+import sys
 
 
 class InternalClient(WebSocketClient):
@@ -479,18 +480,32 @@ if __name__ == "__main__":
     resources = connection.list_resources()
     classes = connection.list_classes()
     zones = connection.list_zones()
-    print(resources)
-    print(classes)
-    print(zones)
+
+    if resources is None or classes is None or zones is None:
+        print("WebSocketExample: System information queries failed :<")
+        sys.exit(1)
+
+    print("WebSocketExample: System Dump")
+    print("\tAvailable Resources: %s" % (resources))
+    print("\tAvailable Classes: %s" % (classes))
+    print("\tAvailable Zones: %s" %(zones))
 
     set = connection.create_set(classes[0], zones[0], 0, resources[0])
-    connection.check_for_events()
+    if set is None:
+        print("WebSocketExample: Set creation failed :<")
+        sys.exit(1)
+    print("WebSocketExample: Set %s was created!" % (set))
 
-    connection.acquire_set(set)
-    connection.check_for_events()
 
-    connection.release_set(set)
-    connection.check_for_events()
+    if connection.acquire_set(set):
+        print("WebSocketExample: Set %s was successfully acquired!" % (set))
+    else:
+        print("WebSocketExample: Set %s was unsuccessfully acquired!" % (set))
+
+    if connection.release_set(set):
+        print("WebSocketExample: Set %s was successfully released!" % (set))
+    else:
+        print("WebSocketExample: Set %s was unsuccessfully released!" % (set))
 
     if connection.destroy_set(set):
         print("The set was successfully destroyed")
