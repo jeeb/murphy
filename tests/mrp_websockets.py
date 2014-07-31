@@ -78,6 +78,18 @@ class Status(object):
     def wait(self, timeout=None):
         return self.state.wait(timeout)
 
+# FIXME: This will not be needed when we switch from list to dict for resources
+def update_resources(old_res, new_res):
+    for res in new_res:
+        for ores in old_res:
+            if ores.get("name") == res.get("name"):
+                mask = ores.get("mask")
+                ores = res
+                ores.update({"mask": mask})
+                break
+
+    return old_res
+
 
 class MurphyConnection(object):
     def __init__(self, address):
@@ -147,6 +159,10 @@ class MurphyConnection(object):
 
         if id in self.own_sets:
             print("D: We found an event for set %s" % (id))
+            # Update the resources to the updated set separately, as otherwise we lose information
+            # that is no longer transferred to us (such as the bitmask)
+            oldest_event["resources"] = update_resources(self.own_sets.get(id).get("resources"),
+                                                         oldest_event.get("resources"))
             # Update the information in the set
             self.own_sets.get(id).update(oldest_event)
             print("D: %s" % (self.own_sets.get(id)))
@@ -401,6 +417,10 @@ class MurphyConnection(object):
             print("E: Timed out on the acquisition response event (waited five seconds")
             return None
 
+        # Update the resources to the updated set separately, as otherwise we lose information
+        # that is no longer transferred to us (such as the bitmask)
+        status.get_result()["resources"] = update_resources(self.own_sets.get(set_id).get("resources"),
+                                                            status.get_result().get("resources"))
         self.own_sets.get(set_id).update(status.get_result())
         print("D: Acquired a resource set and the state was updated to: %s" % (self.own_sets.get(set_id)))
 
@@ -440,6 +460,10 @@ class MurphyConnection(object):
             print("E: Timed out on the release response event (waited five seconds")
             return None
 
+        # Update the resources to the updated set separately, as otherwise we lose information
+        # that is no longer transferred to us (such as the bitmask)
+        status.get_result()["resources"] = update_resources(self.own_sets.get(set_id).get("resources"),
+                                                            status.get_result().get("resources"))
         self.own_sets.get(set_id).update(status.get_result())
         print("D: Released a resource set and the state was updated to: %s" % (self.own_sets.get(set_id)))
 
