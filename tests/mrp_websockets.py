@@ -113,6 +113,11 @@ class MurphyConnection(object):
             # Is this an event?
             if type == "event":
                 print("D: Got an event! (seq %s - type %s)" % (seq, type))
+                if seq in self.queue and type in self.queue.get(seq):
+                    print("D: Got an event that is a response to a sent message!")
+                    self.queue.get(seq, {}).get(type).set_result(message_data)
+                    return
+
                 self.events.append(message_data)
                 return
             # Is this a response to one of our messages?
@@ -175,10 +180,14 @@ class MurphyConnection(object):
         self.global_seq += 1
         return current
 
-    def send_msg(self, data_dict):
+    def send_msg(self, data_dict, seq_num=None):
         # Initialize the status object and the current sequence number
         status = Status()
-        local_seq = self.give_seq_and_increment()
+
+        local_seq = seq_num
+        if local_seq is None:
+            local_seq = self.give_seq_and_increment()
+
 
         # Try getting the message type
 
@@ -290,6 +299,7 @@ class MurphyConnection(object):
     def create_set(self, app_class, zone, priority, resources):
         base = {"type": "create"}
         resource_data = []
+        status = Status()
 
         if not isinstance(resources, list):
             resources = [resources]
@@ -304,22 +314,41 @@ class MurphyConnection(object):
         base.update({"zone": zone})
         base.update({"priority": priority})
 
-        response = self.send_msg(base)
+        # We need to know the sequence id, so we grab it here already
+        local_seq = self.give_seq_and_increment()
+
+        # Add the expected event to the queue
+        self.add_to_queue("event", local_seq, status)
+
+        # Send the query message out with known sequence id
+        response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
+            self.remove_from_queue("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Creating set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            self.remove_from_queue("event", local_seq)
+            return None
+
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue("event", local_seq)
+
+        if not gatekeeper:
+            print("E: Timed out on the acquisition response event (waited five seconds")
             return None
 
         # Create a new entry for the
-        set = {response.get("id"): base}
+        set = {response.get("id"): status.get_result()}
 
+        # Add the new set to the listing
         self.own_sets.update(set)
-        print("D: Added a set: %s" % (self.own_sets))
+        print("D: Added a set: %s" % (self.own_sets.get(response.get("id"))))
+
+        del(status)
 
         return response.get("id")
 
@@ -343,38 +372,80 @@ class MurphyConnection(object):
 
     def acquire_set(self, set_id):
         base = {"type": "acquire"}
+        status = Status()
 
         base.update({"id": set_id})
 
-        response = self.send_msg(base)
+        # We need to know the sequence id, so we grab it here already
+        local_seq = self.give_seq_and_increment()
+
+        # Add the expected event to the queue
+        self.add_to_queue("event", local_seq, status)
+
+        # Send the query message out with known sequence id
+        response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
+            self.remove_from_queue("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Acquiring a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            self.remove_from_queue("event", local_seq)
             return None
 
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue("event", local_seq)
+
+        if not gatekeeper:
+            print("E: Timed out on the acquisition response event (waited five seconds")
+            return None
+
+        self.own_sets.get(set_id).update(status.get_result())
+        print("D: Acquired a resource set and the state was updated to: %s" % (self.own_sets.get(set_id)))
+
+        del(status)
         return True
 
     def release_set(self, set_id):
         base = {"type": "release"}
+        status = Status()
 
         base.update({"id": set_id})
 
-        response = self.send_msg(base)
+        # We need to know the sequence id, so we grab it here already
+        local_seq = self.give_seq_and_increment()
+
+        # Add the expected event to the queue
+        self.add_to_queue("event", local_seq, status)
+
+        # Send the query message out with known sequence id
+        response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
+            self.remove_from_queue("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Releasing a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
+            self.remove_from_queue("event", local_seq)
             return None
 
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue("event", local_seq)
+
+        if not gatekeeper:
+            print("E: Timed out on the release response event (waited five seconds")
+            return None
+
+        self.own_sets.get(set_id).update(status.get_result())
+        print("D: Released a resource set and the state was updated to: %s" % (self.own_sets.get(set_id)))
+
+        del(status)
         return True
 
 
