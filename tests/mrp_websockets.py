@@ -79,7 +79,7 @@ class Status(object):
         return self.state.wait(timeout)
 
 
-class MessageManager(object):
+class MurphyConnection(object):
     def __init__(self, address):
         self.global_seq = 0
         self.queue = dict()
@@ -379,7 +379,7 @@ class MessageManager(object):
 
 
 if __name__ == "__main__":
-    manager = MessageManager("ws://localhost:4000/murphy")
+    manager = MurphyConnection("ws://localhost:4000/murphy")
     manager.connect()
 
     resources = manager.list_resources()
