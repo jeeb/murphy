@@ -32,7 +32,6 @@ from __future__ import unicode_literals
 from threading import Event
 from ws4py.client.threadedclient import WebSocketClient
 import json
-import sys
 
 
 class InternalClient(WebSocketClient):
@@ -598,72 +597,3 @@ class MurphyConnection(object):
             dict_res["attributes"] = res.get("attributes")
 
         return state
-
-
-if __name__ == "__main__":
-    connection = MurphyConnection("ws://localhost:4000/murphy")
-    connection.daemonize(False)
-    connection.connect()
-
-    resources = connection.list_resources()
-    classes = connection.list_classes()
-    zones = connection.list_zones()
-
-    if resources is None or classes is None or zones is None:
-        print("WebSocketExample: System information queries failed :<")
-        sys.exit(1)
-
-    print("WebSocketExample: System Dump")
-    print("\tAvailable Resources: %s" % (", ".join( str(x) for x in resources)))
-    print("\tAvailable Classes: %s" % (", ".join( str(x) for x in classes)))
-    print("\tAvailable Zones: %s" %(", ".join( str(x) for x in zones)))
-
-    # Grab a Resource
-    resource = connection.get_resource(resources[0])
-
-    # Change the flags around
-    resource.optional = True
-    resource.optional = False
-
-    resource.shared = True
-    resource.shared = False
-
-    # Grab the attributes and modify them
-    attributes = resource.attributes
-    attributes.update({"role": "delivery"})
-
-    # Finally, try and create a set with the resource (you can also create it with a list of Resources)
-    set = connection.create_set(classes[0], zones[0], 0, resource)
-    if set is None:
-        print("WebSocketExample: Set creation failed :<")
-        sys.exit(1)
-    print("WebSocketExample: Set %s was created!" % (set))
-
-
-    if connection.acquire_set(set):
-        print("WebSocketExample: Set %s was successfully acquired!" % (set))
-    else:
-        print("WebSocketExample: Set %s was unsuccessfully acquired!" % (set))
-
-    print("WebSocketExample: Set state now: %s" % connection.get_state(set))
-
-    try:
-        while True:
-            if connection.parse_received_events():
-                print(connection.get_state(set))
-    except KeyboardInterrupt:
-        pass
-
-    if connection.release_set(set):
-        print("WebSocketExample: Set %s was successfully released!" % (set))
-    else:
-        print("WebSocketExample: Set %s was unsuccessfully released!" % (set))
-
-    print("WebSocketExample: Set state now: %s" % connection.get_state(set))
-
-    if connection.destroy_set(set):
-        print("The set was successfully destroyed")
-    else:
-        print("Failed to destroy the set")
-
-    connection.disconnect()
