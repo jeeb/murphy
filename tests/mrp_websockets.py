@@ -188,6 +188,10 @@ class Resource(object):
     def internals(self):
         return self.res_structure
 
+    @property
+    def name(self):
+        return self.res_structure.get("name")
+
 
 class MurphyConnection(object):
     def __init__(self, address):
