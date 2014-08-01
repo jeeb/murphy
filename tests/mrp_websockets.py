@@ -194,15 +194,9 @@ class MurphyConnection(object):
         else:
             print("D: Got le binary message!?")
 
-    def check_for_events(self):
-        if not self.events:
-            return None
 
-        # Grab the oldest event waiting for us
-        oldest_event = self.events.pop(0)
-
-        id = oldest_event.get("id")
-
+    def parse_event(self, event):
+        id = event.get("id")
         if id is None:
             print("E: No id found in the event!")
             return None
@@ -211,16 +205,31 @@ class MurphyConnection(object):
             print("D: We found an event for set %s" % (id))
             # Update the resources to the updated set separately, as otherwise we lose information
             # that is no longer transferred to us (such as the bitmask)
-            oldest_event["resources"] = update_resources(self.own_sets.get(id).get("resources"),
-                                                         oldest_event.get("resources"))
+            event["resources"] = update_resources(self.own_sets.get(id).get("resources"),
+                                                  event.get("resources"))
             # Update the information in the set
-            self.own_sets.get(id).update(oldest_event)
+            self.own_sets.get(id).update(event)
             print("D: %s" % (self.own_sets.get(id)))
             return True
         else:
             print("D: We found an event for a set that is not yet in our books (id = %s)" % (id))
-            self.events.append(oldest_event)
+            return False
+
+
+    def parse_received_events(self):
+        if not self.events:
             return None
+
+        for event in list(self.events):
+            result = self.parse_event(event)
+
+            # Either the event was invalid or a set was updated with its information,
+            # remove the event from the list
+            if result is None or result:
+                self.events.remove(event)
+            # Otherwise we just keep iterating
+
+        return True
 
     def add_to_queue(self, type, seq, status):
         if seq in self.queue:
@@ -573,6 +582,13 @@ if __name__ == "__main__":
         print("WebSocketExample: Set %s was unsuccessfully acquired!" % (set))
 
     print("WebSocketExample: Set state now: %s" % connection.get_state(set))
+
+    try:
+        while True:
+            if connection.parse_received_events():
+                print(connection.get_state(set))
+    except KeyboardInterrupt:
+        pass
 
     if connection.release_set(set):
         print("WebSocketExample: Set %s was successfully released!" % (set))
