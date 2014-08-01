@@ -242,7 +242,6 @@ class MurphyConnection(object):
         else:
             print("D: Got le binary message!?")
 
-
     def parse_event(self, event):
         id = event.get("id")
         if id is None:
@@ -262,7 +261,6 @@ class MurphyConnection(object):
         else:
             print("D: We found an event for a set that is not yet in our books (id = %s)" % (id))
             return False
-
 
     def parse_received_events(self):
         if not self.events:
