@@ -214,52 +214,52 @@ class MurphyConnection(object):
         if message.is_text:
             message_data = json.loads(message.data.decode("utf-8"))
             seq = message_data.get("seq")
-            type = message_data.get("type")
+            msg_type = message_data.get("type")
 
-            if seq is None or type is None:
-                print("E: Either sequence or type was not in the reply! (seq %s - type %s)" % (seq, type))
+            if seq is None or msg_type is None:
+                print("E: Either sequence or type was not in the reply! (seq %s - type %s)" % (seq, msg_type))
                 return
 
             # Is this an event?
-            if type == "event":
-                print("D: Got an event! (seq %s - type %s)" % (seq, type))
-                if seq in self.queue and type in self.queue.get(seq):
+            if msg_type == "event":
+                print("D: Got an event! (seq %s - type %s)" % (seq, msg_type))
+                if seq in self.queue and msg_type in self.queue.get(seq):
                     print("D: Got an event that is a response to a sent message!")
-                    self.queue.get(seq, {}).get(type).set_result(message_data)
+                    self.queue.get(seq, {}).get(msg_type).set_result(message_data)
                     return
                 else:
                     self.events.append(message_data)
                     return
             # Is this a response to one of our messages?
             elif seq in self.queue:
-                if type in self.queue.get(seq):
-                    print("D: Got a response to a sent message! (seq %s - type %s)" % (seq, type))
-                    self.queue.get(seq, {}).get(type).set_result(message_data)
+                if msg_type in self.queue.get(seq):
+                    print("D: Got a response to a sent message! (seq %s - type %s)" % (seq, msg_type))
+                    self.queue.get(seq, {}).get(msg_type).set_result(message_data)
                     return
             # If the message is neither, it's unrelated/unknown
             else:
-                print("D: Got unrelated message (seq %s - type %s)" % (seq, type))
+                print("D: Got unrelated message (seq %s - type %s)" % (seq, msg_type))
         else:
             print("D: Got le binary message!?")
 
     def parse_event(self, event):
-        id = event.get("id")
-        if id is None:
+        event_id = event.get("id")
+        if event_id is None:
             print("E: No id found in the event!")
             return None
 
-        if id in self.own_sets:
-            print("D: We found an event for set %s" % (id))
+        if event_id in self.own_sets:
+            print("D: We found an event for set %s" % (event_id))
             # Update the resources to the updated set separately, as otherwise we lose information
             # that is no longer transferred to us (such as the bitmask)
-            event["resources"] = update_resources(self.own_sets.get(id).get("resources"),
+            event["resources"] = update_resources(self.own_sets.get(event_id).get("resources"),
                                                   event.get("resources"))
             # Update the information in the set
-            self.own_sets.get(id).update(event)
-            print("D: %s" % (self.own_sets.get(id)))
+            self.own_sets.get(event_id).update(event)
+            print("D: %s" % (self.own_sets.get(event_id)))
             return True
         else:
-            print("D: We found an event for a set that is not yet in our books (id = %s)" % (id))
+            print("D: We found an event for a set that is not yet in our books (id = %s)" % (event_id))
             return False
 
     def parse_received_events(self):
@@ -277,17 +277,17 @@ class MurphyConnection(object):
 
         return True
 
-    def add_to_queue(self, type, seq, status):
+    def add_to_queue(self, msg_type, seq, status):
         if seq in self.queue:
-            self.queue.get(seq)[type] = status
+            self.queue.get(seq)[msg_type] = status
         else:
-            self.queue[seq] = {type: status}
+            self.queue[seq] = {msg_type: status}
 
-    def remove_from_queue(self, type, seq):
+    def remove_from_queue(self, msg_type, seq):
         print("D: queue = %s" % (self.queue))
         if seq in self.queue:
-            if type in self.queue.get(seq):
-                del(self.queue.get(seq)[type])
+            if msg_type in self.queue.get(seq):
+                del(self.queue.get(seq)[msg_type])
                 if not self.queue.get(seq):
                     del(self.queue[seq])
                 return True
@@ -310,13 +310,13 @@ class MurphyConnection(object):
             local_seq = self.give_seq_and_increment()
 
         # Try getting the message type
-        type = data_dict.get("type")
-        if not type:
+        msg_type = data_dict.get("type")
+        if not msg_type:
             print("E: Message type not found in message data!")
             return None
 
         # Add the message to response queue
-        self.add_to_queue(type, local_seq, status)
+        self.add_to_queue(msg_type, local_seq, status)
 
         # Add the sequence to the data and send the actual message
         data_dict.update({"seq": local_seq})
@@ -324,11 +324,11 @@ class MurphyConnection(object):
 
         # Wait for the response callback to be hit
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue(type, local_seq)
+        self.remove_from_queue(msg_type, local_seq)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (local_seq, type))
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (local_seq, msg_type))
             return None
 
         # Get the response data from the status object
@@ -461,10 +461,10 @@ class MurphyConnection(object):
             return None
 
         # Create a new entry for the
-        set = {response.get("id"): status.get_result()}
+        r_set = {response.get("id"): status.get_result()}
 
         # Add the new set to the listing
-        self.own_sets.update(set)
+        self.own_sets.update(r_set)
         print("D: Added a set: %s" % (self.own_sets.get(response.get("id"))))
 
         del(status)
@@ -576,14 +576,14 @@ class MurphyConnection(object):
         return True
 
     def get_state(self, set_id):
-        set = self.own_sets.get(set_id)
+        r_set = self.own_sets.get(set_id)
         state = dict()
 
-        set_acquisition_state = set.get("grant")
+        set_acquisition_state = r_set.get("grant")
         state["acquired"] = bool(set_acquisition_state)
         state["resources"] = dict()
 
-        for res in set.get("resources"):
+        for res in r_set.get("resources"):
             res_name = res.get("name")
 
             # Create the dictionary for the in-resource data
