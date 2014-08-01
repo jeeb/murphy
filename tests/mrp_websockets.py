@@ -128,6 +128,7 @@ class Status(object):
         """
         return self.state.wait(timeout)
 
+
 # FIXME: This will not be needed when we switch from list to dict for resources
 def update_resources(old_res, new_res):
     for res in new_res:
@@ -139,6 +140,54 @@ def update_resources(old_res, new_res):
                 break
 
     return old_res
+
+
+class Resource(object):
+    def __init__(self, resource_data):
+        self.res_structure = resource_data
+        self.res_structure.update({"flags": list()})
+
+    @property
+    def shared(self):
+        return bool(self.res_structure.get("flags").count("shared"))
+
+    @shared.setter
+    def shared(self, flag):
+        if flag:
+            if self.res_structure.get("flags").count("shared"):
+                return
+            else:
+                self.res_structure.get("flags").append("shared")
+        else:
+            try:
+                self.res_structure.get("flags").remove("shared")
+            except ValueError:
+                return
+
+    @property
+    def optional(self):
+        return bool(self.res_structure.get("flags").count("optional"))
+
+    @optional.setter
+    def optional(self, flag):
+        if flag:
+            if self.res_structure.get("flags").count("optional"):
+                return
+            else:
+                self.res_structure.get("flags").append("optional")
+        else:
+            try:
+                self.res_structure.get("flags").remove("optional")
+            except ValueError:
+                return
+
+    @property
+    def attributes(self):
+        return self.res_structure.get("attributes")
+
+    @property
+    def internals(self):
+        return self.res_structure
 
 
 class MurphyConnection(object):
@@ -335,7 +384,7 @@ class MurphyConnection(object):
         resources = response.get("resources")
         for res in resources:
             if res.get("name") == name:
-                return res
+                return Resource(res)
 
     def list_classes(self):
         base = {"type": "query-classes"}
@@ -379,7 +428,7 @@ class MurphyConnection(object):
 
         # Construct the list of resource data
         for res in resources:
-            resource_data.append(self.get_resource(res))
+            resource_data.append(res.internals)
 
         # Put it all into a single structure
         base.update({"resources": resource_data})
@@ -569,7 +618,22 @@ if __name__ == "__main__":
     print("\tAvailable Classes: %s" % (", ".join( str(x) for x in classes)))
     print("\tAvailable Zones: %s" %(", ".join( str(x) for x in zones)))
 
-    set = connection.create_set(classes[0], zones[0], 0, resources[0])
+    # Grab a Resource
+    resource = connection.get_resource(resources[0])
+
+    # Change the flags around
+    resource.optional = True
+    resource.optional = False
+
+    resource.shared = True
+    resource.shared = False
+
+    # Grab the attributes and modify them
+    attributes = resource.attributes
+    attributes.update({"role": "delivery"})
+
+    # Finally, try and create a set with the resource (you can also create it with a list of Resources)
+    set = connection.create_set(classes[0], zones[0], 0, resource)
     if set is None:
         print("WebSocketExample: Set creation failed :<")
         sys.exit(1)
