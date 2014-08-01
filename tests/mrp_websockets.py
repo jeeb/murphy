@@ -179,9 +179,9 @@ class MurphyConnection(object):
                     print("D: Got an event that is a response to a sent message!")
                     self.queue.get(seq, {}).get(type).set_result(message_data)
                     return
-
-                self.events.append(message_data)
-                return
+                else:
+                    self.events.append(message_data)
+                    return
             # Is this a response to one of our messages?
             elif seq in self.queue:
                 if type in self.queue.get(seq):
