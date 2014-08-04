@@ -130,6 +130,14 @@ class Status(object):
 
 # FIXME: This will not be needed when we switch from list to dict for resources
 def update_resources(old_res, new_res):
+    """
+    Updates the resource, with the exception of pushing the per-resource mask to the new version
+    in order to not lose it as the updates do not contain it.
+
+    :param old_res: Old/current resource list
+    :param new_res: New resource list
+    :return:        Updated list of resources with the mask information kept
+    """
     for res in new_res:
         for ores in old_res:
             if ores.get("name") == res.get("name"):
@@ -143,15 +151,30 @@ def update_resources(old_res, new_res):
 
 class Resource(object):
     def __init__(self, resource_data):
+        """
+        Abstraction of the flags and attributes of resources for simplified modification and viewing
+
+        :param resource_data: Dictionary containing the resource structure collected from the JSON reader
+        """
         self.res_structure = resource_data
         self.res_structure.update({"flags": list()})
 
     @property
     def shared(self):
+        """
+        Checks the state of the 'shared' flag for this resource
+
+        :return: Boolean that notes if the flag is set
+        """
         return bool(self.res_structure.get("flags").count("shared"))
 
     @shared.setter
     def shared(self, flag):
+        """
+        Sets the 'shared' flag for this resource
+
+        :param flag: Boolean value to set this flag to
+        """
         if flag:
             if self.res_structure.get("flags").count("shared"):
                 return
@@ -165,10 +188,20 @@ class Resource(object):
 
     @property
     def optional(self):
+        """
+        Checks the state of the 'optional' flag for this resource
+
+        :return: Boolean that notes if the flag is set
+        """
         return bool(self.res_structure.get("flags").count("optional"))
 
     @optional.setter
     def optional(self, flag):
+        """
+        Sets the 'optional' flag for this resource
+
+        :param flag: Boolean value to set this flag to
+        """
         if flag:
             if self.res_structure.get("flags").count("optional"):
                 return
@@ -182,19 +215,39 @@ class Resource(object):
 
     @property
     def attributes(self):
+        """
+        Retrieves the dictionary containing the attributes of this resource
+
+        :return: Dict containing the attributes of this resource
+        """
         return self.res_structure.get("attributes")
 
     @property
     def internals(self):
+        """
+        Retrieves the raw dictionary structure of this resource
+
+        :return: Dict containing the internal representation of this resource
+        """
         return self.res_structure
 
     @property
     def name(self):
+        """
+        Retrieves the name of this resource
+
+        :return: String containing the name of this resource
+        """
         return self.res_structure.get("name")
 
 
 class MurphyConnection(object):
     def __init__(self, address):
+        """
+        Abstraction around a WebSockets connection to Murphy
+
+        :param address: A string containing the WebSocket URL at which Murphy is listening
+        """
         self.global_seq = 0
         self.queue = dict()
 
@@ -206,15 +259,31 @@ class MurphyConnection(object):
         self.own_sets = dict()
 
     def connect(self):
+        """
+        Connect the WebSocket client to Murphy
+        """
         self.client.connect()
 
     def disconnect(self):
+        """
+        Disconnect the WebSocket client from Murphy
+        """
         self.client.close()
 
     def daemonize(self, value=True):
+        """
+        Specifies whether or not the client's thread should be a daemon
+
+        :param value: Boolean value to set this flag to
+        """
         self.client.daemon = value
 
     def check(self, message):
+        """
+        Function set to be the callback for when new messages are received in the connection
+
+        :param message: Message received by a WebSocket client
+        """
         if message.is_text:
             message_data = json.loads(message.data.decode("utf-8"))
             seq = message_data.get("seq")
@@ -247,6 +316,13 @@ class MurphyConnection(object):
             print("D: Got le binary message!?")
 
     def parse_event(self, event):
+        """
+        Parses a received event
+
+        :param event: Message containing an event
+        :return:      None if invalid, False if an event that wasn't expected, True if an event
+                      that was expected.
+        """
         event_id = event.get("id")
         if event_id is None:
             print("E: No id found in the event!")
@@ -267,6 +343,11 @@ class MurphyConnection(object):
             return False
 
     def parse_received_events(self):
+        """
+        Checks received events, meant for manual calling outside of callbacks
+
+        :return: None if no events were received, True if events were parsed
+        """
         if not self.events:
             return None
 
@@ -282,12 +363,26 @@ class MurphyConnection(object):
         return True
 
     def add_to_queue(self, msg_type, seq, status):
+        """
+        Add a message to the 'responses expected' queue
+
+        :param msg_type: Type of message to add to queue
+        :param seq:      Sequence ID of the message to add to queue
+        :param status:   Status object for this queue entry
+        """
         if seq in self.queue:
             self.queue.get(seq)[msg_type] = status
         else:
             self.queue[seq] = {msg_type: status}
 
     def remove_from_queue(self, msg_type, seq):
+        """
+        Remove a message from the 'responses expected' queue
+
+        :param msg_type: Type of message to remove from queue
+        :param seq:      Sequence ID of the message to remove from queue
+        :return:         False if message was not in queue, True if it was
+        """
         print("D: queue = %s" % (self.queue))
         if seq in self.queue:
             if msg_type in self.queue.get(seq):
@@ -301,11 +396,27 @@ class MurphyConnection(object):
             return False
 
     def give_seq_and_increment(self):
+        """
+        Returns the current value of the internal counter for sequence IDs, and
+        increments it by one.
+
+        :return: Integer value representing the current value of the internal
+                 counter for sequence IDs
+        """
         current = self.global_seq
         self.global_seq += 1
         return current
 
     def send_msg(self, data_dict, seq_num=None):
+        """
+        Sends a message out to a WebSockets client; Expects a response.
+
+        :param data_dict: Dictionary containing the data to be sent out as JSON
+        :param seq_num:   Optional parameter that sets the sequence number (ID) before hand;
+                          If unset, the sequence number is gotten within the function.
+        :return:          None if sending message or getting the response was unsuccessful,
+                          otherwise the contents of the response.
+        """
         # Initialize the status object and the current sequence number
         status = Status()
 
@@ -345,6 +456,11 @@ class MurphyConnection(object):
         return response
 
     def list_resources(self):
+        """
+        Retrieves a list of the names of the available resources
+
+        :return: None if a failure occurred, a list containing the names otherwise
+        """
         base = {"type": "query-resources"}
         resources = []
 
@@ -366,6 +482,12 @@ class MurphyConnection(object):
         return resources
 
     def get_resource(self, name):
+        """
+        Retrieves the information on a resource wrapped in a Resource object
+
+        :param name: Name of the resource to be retrieved
+        :return:     None if a failure occurred, a Resource object otherwise
+        """
         base = {"type": "query-resources"}
 
         # We send the query-messages message, and get a response
@@ -388,6 +510,11 @@ class MurphyConnection(object):
                 return Resource(res)
 
     def list_classes(self):
+        """
+        Retrieves a list of the available application classes
+
+        :return: None if a failure occurred, a list containing the names otherwise
+        """
         base = {"type": "query-classes"}
 
         response = self.send_msg(base)
@@ -404,6 +531,11 @@ class MurphyConnection(object):
         return response.get("classes")
 
     def list_zones(self):
+        """
+        Retrieves a list of the available zones
+
+        :return None if a failure occurred, a list containing the names otherwise
+        """
         base = {"type": "query-zones"}
 
         response = self.send_msg(base)
@@ -420,6 +552,15 @@ class MurphyConnection(object):
         return response.get("zones")
 
     def create_set(self, app_class, zone, priority, resources):
+        """
+        Creates a resource set and returns its ID
+
+        :param app_class: String containing the application class of this set
+        :param zone:      String containing the zone of this set
+        :param priority:  Number containing the priority of this set (zero is default)
+        :param resources: A Resource object, or a list of Resource objects, to be added to this set
+        :return:          None if a failure occurred, set ID returned by the response otherwise
+        """
         base = {"type": "create"}
         resource_data = []
         status = Status()
@@ -476,6 +617,12 @@ class MurphyConnection(object):
         return response.get("id")
 
     def destroy_set(self, set_id):
+        """
+        Destroys a resource set by its ID
+
+        :param set_id: Set ID of the resource set to destroy
+        :return:       None if a failure occurred, True otherwise.
+        """
         base = {"type": "destroy"}
 
         base.update({"id": set_id})
@@ -494,6 +641,13 @@ class MurphyConnection(object):
         return True
 
     def acquire_set(self, set_id):
+        """
+        Requests an acquisition of a resource set by its ID
+
+        :param set_id: Set ID of the resource set to acquire
+        :return:       None if a failure occurred, True if a response was received without errors.
+                       User has to check the actual received state separately with get_state()
+        """
         base = {"type": "acquire"}
         status = Status()
 
@@ -537,6 +691,13 @@ class MurphyConnection(object):
         return True
 
     def release_set(self, set_id):
+        """
+        Requests a release of a resource set by its ID
+
+        :param set_id: Set ID of the resource set to release
+        :return:       None if a failure occurred, True if a response was received without errors.
+                       User has to check the actual received state separately with get_state()
+        """
         base = {"type": "release"}
         status = Status()
 
@@ -580,6 +741,12 @@ class MurphyConnection(object):
         return True
 
     def get_state(self, set_id):
+        """
+        Retrieves the current state of a resource set by its ID
+
+        :param set_id: Set ID of the resource set from which to retrieve the status
+        :return:       A dict containing the current state of a resource set
+        """
         r_set = self.own_sets.get(set_id)
         state = dict()
 
