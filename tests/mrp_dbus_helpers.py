@@ -385,7 +385,7 @@ class ChangeManager():
         available_changes = self.get_changes(object)
         print("Beep: %s" % (available_changes))
         if available_changes:
-            for c in available_changes:
+            for c in list(available_changes):
                 if c.check(key, value):
                     print(c)
                     self.remove_change(object, c)
