@@ -638,6 +638,9 @@ class MurphyConnection(object):
             print("E: Destroying a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
             return None
 
+        # Finally, remove the set from the own_sets dict
+        del(self.own_sets[set_id])
+
         return True
 
     def acquire_set(self, set_id):
