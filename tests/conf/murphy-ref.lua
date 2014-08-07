@@ -41,7 +41,7 @@ end
 if m:plugin_exists('resource-wrt') then
     m:try_load_plugin('resource-wrt', {
                           address = "wsck:127.0.0.1:4000/murphy",
-                          httpdir = "src/plugins/resource-wrt",
+                          httpdir = "../src/plugins/resource-wrt",
 --                          sslcert = 'src/plugins/resource-wrt/resource.crt',
 --                          sslpkey = 'src/plugins/resource-wrt/resource.key'
                       })
