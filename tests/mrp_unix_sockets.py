@@ -39,7 +39,7 @@ except NameError:
 from socket import *
 import struct
 
-MRP_DEFAULT_ADDRESS = b"\0murphy-resource-native"
+MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_MSG_TAG_DEFAULT = 0x0
 
 (MRP_MSG_FIELD_INVALID,
@@ -137,6 +137,14 @@ def message_type_to_string(type):
     }.get(type, "Unknown")
 
 
+def protocol_to_family(protocol):
+    return {
+        b"unxs:": AF_UNIX,
+        b"tcp4:": AF_INET,
+        b"tcp6:": AF_INET6,
+    }.get(protocol)
+
+
 def read_value(data_string, data_type):
     if data_type == "s":
         # the data length contains the null, which we don't want to parse away
@@ -150,6 +158,31 @@ def read_value(data_string, data_type):
 
     value = struct.unpack(data_type, data_string[:size])[0]
     return value, real_size
+
+
+def write_value(value, value_type):
+    return struct.pack(value_type, value)
+
+
+def write_uint16(value):
+    return write_value(value, "!H")
+
+
+def write_uint32(value):
+    return write_value(value, "!L")
+
+
+def write_field(field_type, value):
+    if field_type == RESPROTO_SEQUENCE_NO:
+        string = write_uint16(RESPROTO_SEQUENCE_NO) + write_uint16(MRP_MSG_FIELD_UINT32) + \
+                 write_uint32(value)
+    elif field_type == RESPROTO_REQUEST_TYPE:
+        string = write_uint16(RESPROTO_REQUEST_TYPE) + write_uint16(MRP_MSG_FIELD_UINT16) + \
+                 write_uint16(value)
+    else:
+        raise ValueError("Unknown field type: %s" % (field_type))
+
+    return string
 
 
 class MurphyMessage(object):
@@ -352,24 +385,78 @@ def parse_message(data):
     return message
 
 
+class MurphyConnection(object):
+    def __init__(self, address):
+        family = protocol_to_family(address[:5])
+        if not family:
+            raise ValueError("Unknown protocol %s!" % (address[:5]))
+
+        address = address[5:]
+
+        if family is AF_UNIX and address[0] == b"@"[0]:
+            address = b"\0" + address[1:]
+
+        self.s = socket(family=family, type=SOCK_STREAM)
+
+        self.family = family
+        self.address = address
+        self._internal_counter = 1
+
+    def connect(self):
+        if not self.s:
+            self.s = socket(family=self.family, type=SOCK_STREAM)
+
+        self.s.connect(self.address)
+
+    def disconnect(self):
+        self.s.close()
+        self.s = None
+
+    def send(self, message):
+        return self.s.send(message)
+
+    def receive(self):
+        data = self.s.recv(4096)
+        message = parse_message(data)
+
+        return message
+
+    def give_seq_and_increment(self):
+        """
+        Returns the current value of the internal counter for sequence IDs, and
+        increments it by one.
+
+        :return: Integer value representing the current value of the internal
+                 counter for sequence IDs
+        """
+        current = self._internal_counter
+        self._internal_counter += 1
+        return current
+
+    def write_sequence_number(self):
+        return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
+
+    def list_resources(self):
+        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+        byte_stream += write_uint16(2)
+        byte_stream += self.write_sequence_number()
+        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_RESOURCES)
+
+        byte_stream = write_uint32(len(byte_stream)) + byte_stream
+
+        print(parse_message(byte_stream).pretty_print())
+
+        if self.send(byte_stream) is not len(byte_stream):
+            print("Message was not fully sent")
+            return None
+
+        return self.receive()
+
+
+
 if __name__ == "__main__":
-    s = socket(family=AF_UNIX, type=SOCK_STREAM)
-    s.connect(MRP_DEFAULT_ADDRESS)
-
-    # Message length
-    msg1 = b"\0\0\0\22"
-    sent = s.send(msg1)
-    assert(sent == len(msg1))
-
-    # Request for available resources
-    msg2 = b"\0\0\0\2\0\3\0\n\0\0\0\1\0\4\0\10\0\2"
-    sent = s.send(msg2)
-    assert(sent == len(msg2))
-
-    print(parse_message(msg1 + msg2).pretty_print())
-
-    data = s.recv(4096)
-    message = parse_message(data)
-    print("Length of received data: %s - Noted length in packet: %s" % (len(data), message.length))
+    conn = MurphyConnection(MRP_DEFAULT_ADDRESS)
+    conn.connect()
+    message = conn.list_resources()
 
     print(message.pretty_print())
