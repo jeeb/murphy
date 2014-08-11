@@ -82,7 +82,7 @@ MRP_MSG_FIELD_END = 0x00
  RESPROTO_ZONE_NAME,
  RESPROTO_ATTRIBUTE_INDEX,
  RESPROTO_ATTRIBUTE_NAME,
- RESPROTO_ATTRIBUTE_VALUE) = range(0x00, 0x13)
+ RESPROTO_ATTRIBUTE_VALUE) = MRP_RANGE(0x00, 0x13)
 
 
 def type_to_string(type):
@@ -106,7 +106,35 @@ def type_to_string(type):
         RESPROTO_ATTRIBUTE_INDEX: "AttrIdx",
         RESPROTO_ATTRIBUTE_NAME: "AttrName",
         RESPROTO_ATTRIBUTE_VALUE: "AttrValue",
-    }.get(type)
+    }.get(type, "Unknown")
+
+
+(RESPROTO_QUERY_RESOURCES,
+ RESPROTO_QUERY_CLASSES,
+ RESPROTO_QUERY_ZONES,
+ RESPROTO_CREATE_RESOURCE_SET,
+ RESPROTO_DESTROY_RESOURCE_SET,
+ RESPROTO_ACQUIRE_RESOURCE_SET,
+ RESPROTO_RELEASE_RESOURCE_SET,
+ RESPROTO_RESOURCES_EVENT) = MRP_RANGE(0x00, 0x08)
+
+def request_type_to_string(type):
+    return {
+        RESPROTO_QUERY_RESOURCES: "Resource Listing",
+        RESPROTO_QUERY_CLASSES: "Application Class Listing",
+        RESPROTO_QUERY_ZONES: "Application Zone Listing",
+        RESPROTO_CREATE_RESOURCE_SET: "Resource Set Creation",
+        RESPROTO_DESTROY_RESOURCE_SET: "Resource Set Destruction",
+        RESPROTO_ACQUIRE_RESOURCE_SET: "Resource Set Acquisition",
+        RESPROTO_RELEASE_RESOURCE_SET: "Resource Set Release",
+        RESPROTO_RESOURCES_EVENT: "Resource Event",
+    }.get(type, "Unknown")
+
+
+def message_type_to_string(type):
+    return {
+        0: "Default",
+    }.get(type, "Unknown")
 
 
 def read_value(data_string, data_type):
@@ -159,10 +187,14 @@ class MurphyMessage(object):
     def pretty_print(self):
         string = "Message:\n"\
                  "\tLength: %d\n"\
-                 "\tType: %d\n\n" % (self.length, self.type)
+                 "\tType: %s (%d)\n\n" % (self.length, message_type_to_string(self.type), self.type)
 
         for field in self.fields:
-            string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
+            if field.type == RESPROTO_REQUEST_TYPE:
+                string += "\tField: %s (%d) | %s (%s)\n" % (type_to_string(field.type), field.type,
+                                                            request_type_to_string(field.value), field.value)
+            else:
+                string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
 
         return string
 
@@ -330,21 +362,14 @@ if __name__ == "__main__":
     assert(sent == len(msg1))
 
     # Request for available resources
-    msg2 = b"\0\0\0\2\0\3\0\n\0\0\0\1\0\4\0\10\0\0"
+    msg2 = b"\0\0\0\2\0\3\0\n\0\0\0\1\0\4\0\10\0\2"
     sent = s.send(msg2)
     assert(sent == len(msg2))
 
-    parse_message(msg1 + msg2)
+    print(parse_message(msg1 + msg2).pretty_print())
 
     data = s.recv(4096)
     message = parse_message(data)
     print("Length of received data: %s - Noted length in packet: %s" % (len(data), message.length))
 
     print(message.pretty_print())
-
-    # print("Received: %s" % convert_number(data))
-    # for chars in data:
-        # print(chars)
-        # print(hex(ord(chars)))
-
-    #length = ntohl(int())
