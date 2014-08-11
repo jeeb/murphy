@@ -62,6 +62,53 @@ MRP_MSG_TAG_DEFAULT = 0x0
  MRP_MSG_FIELD_ARRAY) = (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
                          0x0d, 0x0e, 0x0e, 0x0f, 0x80)
 
+MRP_MSG_FIELD_END = 0x00
+
+(RESPROTO_MESSAGE_END,
+ RESPROTO_SECTION_END,
+ RESPROTO_ARRAY_DIMENSION,
+ RESPROTO_SEQUENCE_NO,
+ RESPROTO_REQUEST_TYPE,
+ RESPROTO_REQUEST_STATUS,
+ RESPROTO_RESOURCE_SET_ID,
+ RESPROTO_RESOURCE_STATE,
+ RESPROTO_RESOURCE_GRANT,
+ RESPROTO_RESOURCE_ADVICE,
+ RESPROTO_RESOURCE_ID,
+ RESPROTO_RESOURCE_NAME,
+ RESPROTO_RESOURCE_FLAGS,
+ RESPROTO_RESOURCE_PRIORITY,
+ RESPROTO_CLASS_NAME,
+ RESPROTO_ZONE_NAME,
+ RESPROTO_ATTRIBUTE_INDEX,
+ RESPROTO_ATTRIBUTE_NAME,
+ RESPROTO_ATTRIBUTE_VALUE) = range(0x00, 0x13)
+
+
+def type_to_string(type):
+    return {
+        RESPROTO_MESSAGE_END: "MsgEnd",
+        RESPROTO_SECTION_END: "SecEnd",
+        RESPROTO_ARRAY_DIMENSION: "ArrDim",
+        RESPROTO_SEQUENCE_NO: "SeqNum",
+        RESPROTO_REQUEST_TYPE: "ReqType",
+        RESPROTO_REQUEST_STATUS: "ReqStatus",
+        RESPROTO_RESOURCE_SET_ID: "SetID",
+        RESPROTO_RESOURCE_STATE: "ResStatus",
+        RESPROTO_RESOURCE_GRANT: "ResGrant",
+        RESPROTO_RESOURCE_ADVICE: "ResAdvice",
+        RESPROTO_RESOURCE_ID: "ResID",
+        RESPROTO_RESOURCE_NAME: "ResName",
+        RESPROTO_RESOURCE_FLAGS: "ResFlags",
+        RESPROTO_RESOURCE_PRIORITY: "ResPriority",
+        RESPROTO_CLASS_NAME: "ClassName",
+        RESPROTO_ZONE_NAME: "ZoneName",
+        RESPROTO_ATTRIBUTE_INDEX: "AttrIdx",
+        RESPROTO_ATTRIBUTE_NAME: "AttrName",
+        RESPROTO_ATTRIBUTE_VALUE: "AttrValue",
+    }.get(type)
+
+
 def read_value(data_string, data_type):
     if data_type == "s":
         # the data length contains the null, which we don't want to parse away
@@ -115,7 +162,7 @@ class MurphyMessage(object):
                  "\tType: %d\n\n" % (self.length, self.type)
 
         for field in self.fields:
-            string += "\tField: %d | %s\n" % (field.type, field.value)
+            string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
 
         return string
 
