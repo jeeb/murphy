@@ -121,13 +121,8 @@ class Field(object):
         return self.__field_value
 
 
-def read_field(data):
+def read_field_value(data, type):
     original_data_length = len(data)
-    tag, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
-
-    type, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
 
     if type == MRP_MSG_FIELD_STRING:
         # We actually read the length first
@@ -176,13 +171,44 @@ def read_field(data):
 
         value = data[:length]
         data = data[length:]
+    elif type & MRP_MSG_FIELD_ARRAY:
+        type = type & ~MRP_MSG_FIELD_ARRAY
+        counter, bytes_read = read_value(data, "!L")
+        data = data[bytes_read:]
+
+        value = []
+
+        for i in MRP_RANGE(counter):
+            parsed_value, bytes_read = read_field_value(data, type)
+            value.append(parsed_value)
+            data = data[bytes_read:]
     else:
-        print("huehue")
-        return None, None
+        print("Unknown type %s found!" % (type))
+        value = None
 
     final_length = len(data)
 
-    return Field(tag, value), (original_data_length - final_length)
+    return value, (original_data_length - final_length)
+
+
+def read_field(data):
+    general_read_amount = 0
+
+    tag, bytes_read = read_value(data, "!H")
+    data = data[bytes_read:]
+
+    general_read_amount += bytes_read
+
+    type, bytes_read = read_value(data, "!H")
+    data = data[bytes_read:]
+
+    general_read_amount += bytes_read
+
+    value, bytes_read = read_field_value(data, type)
+
+    general_read_amount += bytes_read
+
+    return Field(tag, value), general_read_amount
 
 
 def parse_default(data, message):
@@ -198,6 +224,7 @@ def parse_default(data, message):
     # [data (0, resources list)]
     field_count, bytes_read = read_value(data, "!H")
     data = data[bytes_read:]
+    print("Field count in message: %s" % (field_count))
 
     for i in MRP_RANGE(field_count):
         field, bytes_read = read_field(data)
@@ -247,6 +274,8 @@ if __name__ == "__main__":
     msg2 = b"\0\0\0\2\0\3\0\n\0\0\0\1\0\4\0\10\0\0"
     sent = s.send(msg2)
     assert(sent == len(msg2))
+
+    parse_message(msg1 + msg2)
 
     data = s.recv(4096)
     message = parse_message(data)
