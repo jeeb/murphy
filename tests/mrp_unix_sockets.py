@@ -106,6 +106,19 @@ class MurphyMessage(object):
     def add_field(self, val):
         self._msg_fields.append(val)
 
+    def convert_to_byte_stream(self):
+        pass
+
+    def pretty_print(self):
+        string = "Message:\n"\
+                 "\tLength: %d\n"\
+                 "\tType: %d\n\n" % (self.length, self.type)
+
+        for field in self.fields:
+            string += "\tField: %d | %s\n" % (field.type, field.value)
+
+        return string
+
 
 class Field(object):
     def __init__(self, field_type, field_value):
@@ -231,9 +244,6 @@ def parse_default(data, message):
         data = data[bytes_read:]
         message.add_field(field)
 
-    for field in message.fields:
-        print("Field: %s | %s" % (field.type, field.value))
-
     return message
 
 
@@ -256,7 +266,9 @@ def parse_message(data):
 
     if message.type == MRP_MSG_TAG_DEFAULT:
         parse_default(data, message)
-        pass
+    else:
+        print("Unknown message type %s" % (message.type))
+        return None
 
     return message
 
@@ -281,10 +293,7 @@ if __name__ == "__main__":
     message = parse_message(data)
     print("Length of received data: %s - Noted length in packet: %s" % (len(data), message.length))
 
-    print("")
-    print("Message:")
-    print("\tLength: %s" % message.length)
-    print("\tType: %s" % message.type)
+    print(message.pretty_print())
 
     # print("Received: %s" % convert_number(data))
     # for chars in data:
