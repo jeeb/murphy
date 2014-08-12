@@ -42,7 +42,7 @@ from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
 import struct
 import asyncore
 
-from mrp_status import Status
+from mrp_status import Status, StatusQueue
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_MSG_TAG_DEFAULT = 0x0
@@ -413,48 +413,6 @@ class Field(object):
     @property
     def value(self):
         return self.__field_value
-
-
-class StatusQueue(object):
-    def __init__(self):
-        self._dict = dict()
-
-    def add(self, msg_type, seq, status):
-        """
-        Add a message to the 'responses expected' queue
-
-        :param msg_type: Type of message to add to queue
-        :param seq:      Sequence ID of the message to add to queue
-        :param status:   Status object for this queue entry
-        """
-        if seq in self._dict:
-            self._dict.get(seq)[msg_type] = status
-        else:
-            self._dict[seq] = {msg_type: status}
-
-    def remove(self, msg_type, seq):
-        """
-        Remove a message from the 'responses expected' queue
-
-        :param msg_type: Type of message to remove from queue
-        :param seq:      Sequence ID of the message to remove from queue
-        :return:         False if message was not in queue, True if it was
-        """
-        print("D: queue = %s" % (self._dict))
-        if seq in self._dict:
-            if msg_type in self._dict.get(seq):
-                del(self._dict.get(seq)[msg_type])
-                if not self._dict.get(seq):
-                    del(self._dict[seq])
-                return True
-            else:
-                return False
-        else:
-            return False
-
-    @property
-    def contents(self):
-        return self._dict
 
 
 class MurphyConnection(asyncore.dispatcher_with_send):
