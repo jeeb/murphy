@@ -30,7 +30,7 @@
 
 
 from __future__ import unicode_literals
-from mrp_status import Status
+from mrp_status import Status, StatusQueue
 from ws4py.client.threadedclient import WebSocketClient
 import json
 
@@ -194,7 +194,7 @@ class MurphyConnection(object):
         :param address: A string containing the WebSocket URL at which Murphy is listening
         """
         self.global_seq = 0
-        self.queue = dict()
+        self.queue = StatusQueue()
 
         self.client = InternalClient(address, protocols=["murphy"])
         self.client.set_callback(self.check)
@@ -238,21 +238,23 @@ class MurphyConnection(object):
                 print("E: Either sequence or type was not in the reply! (seq %s - type %s)" % (seq, msg_type))
                 return
 
+            queue = self.queue.contents
+
             # Is this an event?
             if msg_type == "event":
                 print("D: Got an event! (seq %s - type %s)" % (seq, msg_type))
-                if seq in self.queue and msg_type in self.queue.get(seq):
+                if seq in queue and msg_type in queue.get(seq):
                     print("D: Got an event that is a response to a sent message!")
-                    self.queue.get(seq, {}).get(msg_type).set_result(message_data)
+                    queue.get(seq, {}).get(msg_type).set_result(message_data)
                     return
                 else:
                     self.events.append(message_data)
                     return
             # Is this a response to one of our messages?
-            elif seq in self.queue:
-                if msg_type in self.queue.get(seq):
+            elif seq in queue:
+                if msg_type in queue.get(seq):
                     print("D: Got a response to a sent message! (seq %s - type %s)" % (seq, msg_type))
-                    self.queue.get(seq, {}).get(msg_type).set_result(message_data)
+                    queue.get(seq, {}).get(msg_type).set_result(message_data)
                     return
             # If the message is neither, it's unrelated/unknown
             else:
@@ -307,39 +309,6 @@ class MurphyConnection(object):
 
         return True
 
-    def add_to_queue(self, msg_type, seq, status):
-        """
-        Add a message to the 'responses expected' queue
-
-        :param msg_type: Type of message to add to queue
-        :param seq:      Sequence ID of the message to add to queue
-        :param status:   Status object for this queue entry
-        """
-        if seq in self.queue:
-            self.queue.get(seq)[msg_type] = status
-        else:
-            self.queue[seq] = {msg_type: status}
-
-    def remove_from_queue(self, msg_type, seq):
-        """
-        Remove a message from the 'responses expected' queue
-
-        :param msg_type: Type of message to remove from queue
-        :param seq:      Sequence ID of the message to remove from queue
-        :return:         False if message was not in queue, True if it was
-        """
-        print("D: queue = %s" % (self.queue))
-        if seq in self.queue:
-            if msg_type in self.queue.get(seq):
-                del(self.queue.get(seq)[msg_type])
-                if not self.queue.get(seq):
-                    del(self.queue[seq])
-                return True
-            else:
-                return False
-        else:
-            return False
-
     def give_seq_and_increment(self):
         """
         Returns the current value of the internal counter for sequence IDs, and
@@ -376,7 +345,7 @@ class MurphyConnection(object):
             return None
 
         # Add the message to response queue
-        self.add_to_queue(msg_type, local_seq, status)
+        self.queue.add(msg_type, local_seq, status)
 
         # Add the sequence to the data and send the actual message
         data_dict.update({"seq": local_seq})
@@ -384,7 +353,7 @@ class MurphyConnection(object):
 
         # Wait for the response callback to be hit
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue(msg_type, local_seq)
+        self.queue.remove(msg_type, local_seq)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
@@ -527,24 +496,24 @@ class MurphyConnection(object):
         local_seq = self.give_seq_and_increment()
 
         # Add the expected event to the queue
-        self.add_to_queue("event", local_seq, status)
+        self.queue.add("event", local_seq, status)
 
         # Send the query message out with known sequence id
         response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Creating set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue("event", local_seq)
+        self.queue.remove("event", local_seq)
 
         if not gatekeeper:
             print("E: Timed out on the acquisition response event (waited five seconds")
@@ -605,24 +574,24 @@ class MurphyConnection(object):
         local_seq = self.give_seq_and_increment()
 
         # Add the expected event to the queue
-        self.add_to_queue("event", local_seq, status)
+        self.queue.add("event", local_seq, status)
 
         # Send the query message out with known sequence id
         response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Acquiring a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue("event", local_seq)
+        self.queue.remove("event", local_seq)
 
         if not gatekeeper:
             print("E: Timed out on the acquisition response event (waited five seconds")
@@ -655,24 +624,24 @@ class MurphyConnection(object):
         local_seq = self.give_seq_and_increment()
 
         # Add the expected event to the queue
-        self.add_to_queue("event", local_seq, status)
+        self.queue.add("event", local_seq, status)
 
         # Send the query message out with known sequence id
         response = self.send_msg(base, seq_num=local_seq)
         if not response:
             print("E: Sending message or receiving reply failed")
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         # Status is C-like, zero is OK and nonzero are failure states
         errcode = response.get("error")
         if errcode:
             print("E: Releasing a set failed with errcode %s (%s) :<" % (errcode, response.get("message")))
-            self.remove_from_queue("event", local_seq)
+            self.queue.remove("event", local_seq)
             return None
 
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue("event", local_seq)
+        self.queue.remove("event", local_seq)
 
         if not gatekeeper:
             print("E: Timed out on the release response event (waited five seconds")
