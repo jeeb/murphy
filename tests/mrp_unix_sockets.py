@@ -539,15 +539,55 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return response
 
     def list_classes(self):
+        status = Status()
         byte_stream = self.create_request(RESPROTO_QUERY_CLASSES)
 
-        print(parse_message(byte_stream).pretty_print())
+        message = parse_message(byte_stream)
+        self.add_to_queue(message.req_type, message.seq_num, status)
 
         self.send(byte_stream)
+
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue(message.req_type, message.seq_num)
+
+        # If gatekeeper tells us that we didn't get a response, we timed out
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            return None
+
+        # Get the response data from the status object
+        response = status.get_result()
+        print("D: Response gotten:\n%s" % (response.pretty_print()))
+
+        # Delete the status object itself
+        del(status)
+
+        return response
 
     def list_zones(self):
+        status = Status()
         byte_stream = self.create_request(RESPROTO_QUERY_ZONES)
 
-        print(parse_message(byte_stream).pretty_print())
+        message = parse_message(byte_stream)
+        self.add_to_queue(message.req_type, message.seq_num, status)
 
         self.send(byte_stream)
+
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue(message.req_type, message.seq_num)
+
+        # If gatekeeper tells us that we didn't get a response, we timed out
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            return None
+
+        # Get the response data from the status object
+        response = status.get_result()
+        print("D: Response gotten:\n%s" % (response.pretty_print()))
+
+        # Delete the status object itself
+        del(status)
+
+        return response
