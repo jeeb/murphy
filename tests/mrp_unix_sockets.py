@@ -36,7 +36,6 @@ try:
 except NameError:
     MRP_RANGE = range
 
-# from socket import *
 from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
 import struct
 import asyncore
@@ -467,11 +466,5 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self.send(byte_stream)
 
-if __name__ == "__main__":
-    conn = MurphyConnection(MRP_DEFAULT_ADDRESS)
-
-    conn.list_resources()
-    # conn.list_classes()
-    # conn.list_zones()
-
-    asyncore.loop()
+    def loop(self):
+        asyncore.loop()
