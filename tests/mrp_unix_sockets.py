@@ -36,8 +36,10 @@ try:
 except NameError:
     MRP_RANGE = range
 
-from socket import *
+# from socket import *
+from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
 import struct
+import asyncore
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_MSG_TAG_DEFAULT = 0x0
@@ -385,8 +387,10 @@ def parse_message(data):
     return message
 
 
-class MurphyConnection(object):
+class MurphyConnection(asyncore.dispatcher_with_send):
     def __init__(self, address):
+        asyncore.dispatcher_with_send.__init__(self)
+
         family = protocol_to_family(address[:5])
         if not family:
             raise ValueError("Unknown protocol %s!" % (address[:5]))
@@ -396,30 +400,28 @@ class MurphyConnection(object):
         if family is AF_UNIX and address[0] == b"@"[0]:
             address = b"\0" + address[1:]
 
-        self.s = socket(family=family, type=SOCK_STREAM)
+        self.create_socket(family, SOCK_STREAM)
+        self.connect(address)
 
         self.family = family
         self.address = address
         self._internal_counter = 1
 
-    def connect(self):
-        if not self.s:
-            self.s = socket(family=self.family, type=SOCK_STREAM)
+        self.callback_func = None
 
-        self.s.connect(self.address)
+    def handle_read(self):
+        read_buffer = self.recv(4096)
 
-    def disconnect(self):
-        self.s.close()
-        self.s = None
+        print(parse_message(read_buffer).pretty_print())
 
-    def send(self, message):
-        return self.s.send(message)
+        if self.callback_func:
+            self.callback_func(read_buffer)
 
-    def receive(self):
-        data = self.s.recv(4096)
-        message = parse_message(data)
+    def set_callback(self, func):
+        if not callable(func):
+            raise TypeError("Given function for the receiving callback is not callable!")
 
-        return message
+        self.callback_func = func
 
     def give_seq_and_increment(self):
         """
@@ -436,27 +438,40 @@ class MurphyConnection(object):
     def write_sequence_number(self):
         return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
 
-    def list_resources(self):
+    def create_request(self, value):
         byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
         byte_stream += write_uint16(2)
         byte_stream += self.write_sequence_number()
-        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_RESOURCES)
+        byte_stream += write_field(RESPROTO_REQUEST_TYPE, value)
 
-        byte_stream = write_uint32(len(byte_stream)) + byte_stream
+        return write_uint32(len(byte_stream)) + byte_stream
+
+    def list_resources(self):
+        byte_stream = self.create_request(RESPROTO_QUERY_RESOURCES)
 
         print(parse_message(byte_stream).pretty_print())
 
-        if self.send(byte_stream) is not len(byte_stream):
-            print("Message was not fully sent")
-            return None
+        self.send(byte_stream)
 
-        return self.receive()
+    def list_classes(self):
+        byte_stream = self.create_request(RESPROTO_QUERY_CLASSES)
 
+        print(parse_message(byte_stream).pretty_print())
 
+        self.send(byte_stream)
+
+    def list_zones(self):
+        byte_stream = self.create_request(RESPROTO_QUERY_ZONES)
+
+        print(parse_message(byte_stream).pretty_print())
+
+        self.send(byte_stream)
 
 if __name__ == "__main__":
     conn = MurphyConnection(MRP_DEFAULT_ADDRESS)
-    conn.connect()
-    message = conn.list_resources()
 
-    print(message.pretty_print())
+    conn.list_resources()
+    # conn.list_classes()
+    # conn.list_zones()
+
+    asyncore.loop()
