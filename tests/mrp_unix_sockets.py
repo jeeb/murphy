@@ -31,6 +31,8 @@
 from __future__ import unicode_literals
 
 # For basic Py2/Py3 compatibility
+import threading
+
 try:
     MRP_RANGE = xrange
 except NameError:
@@ -39,6 +41,8 @@ except NameError:
 from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
 import struct
 import asyncore
+
+from mrp_status import Status
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_MSG_TAG_DEFAULT = 0x0
@@ -187,67 +191,6 @@ def write_field(field_type, value):
     return string
 
 
-class MurphyMessage(object):
-    def __init__(self):
-        self.__msg_len = -1
-        self.__msg_type = -1
-        self._msg_fields = []
-
-    @property
-    def length(self):
-        return self.__msg_len
-
-    @length.setter
-    def length(self, val):
-        self.__msg_len = val
-
-    @property
-    def type(self):
-        return self.__msg_type
-
-    @type.setter
-    def type(self, val):
-        self.__msg_type = val
-
-    @property
-    def fields(self):
-        return self._msg_fields
-
-    def add_field(self, val):
-        self._msg_fields.append(val)
-
-    def convert_to_byte_stream(self):
-        pass
-
-    def pretty_print(self):
-        string = "Message:\n"\
-                 "\tLength: %d\n"\
-                 "\tType: %s (%d)\n\n" % (self.length, message_type_to_string(self.type), self.type)
-
-        for field in self.fields:
-            if field.type == RESPROTO_REQUEST_TYPE:
-                string += "\tField: %s (%d) | %s (%s)\n" % (type_to_string(field.type), field.type,
-                                                            request_type_to_string(field.value), field.value)
-            else:
-                string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
-
-        return string
-
-
-class Field(object):
-    def __init__(self, field_type, field_value):
-        self.__field_type = field_type
-        self.__field_value = field_value
-
-    @property
-    def type(self):
-        return self.__field_type
-
-    @property
-    def value(self):
-        return self.__field_value
-
-
 def read_field_value(data, value_type):
     original_data_length = len(data)
 
@@ -356,6 +299,12 @@ def parse_default(data, message):
     for i in MRP_RANGE(field_count):
         field, bytes_read = read_field(data)
         data = data[bytes_read:]
+
+        if field.type is RESPROTO_SEQUENCE_NO:
+            message.seq_num = field.value
+        elif field.type is RESPROTO_REQUEST_TYPE:
+            message.req_type = field.value
+
         message.add_field(field)
 
     return message
@@ -387,8 +336,87 @@ def parse_message(data):
     return message
 
 
+class MurphyMessage(object):
+    def __init__(self):
+        self.__msg_len = -1
+        self.__msg_type = -1
+        self.__req_type = -1
+        self.__seq_num = -1
+        self._msg_fields = []
+
+    @property
+    def length(self):
+        return self.__msg_len
+
+    @length.setter
+    def length(self, val):
+        self.__msg_len = val
+
+    @property
+    def type(self):
+        return self.__msg_type
+
+    @type.setter
+    def type(self, val):
+        self.__msg_type = val
+
+    @property
+    def fields(self):
+        return self._msg_fields
+
+    def add_field(self, val):
+        self._msg_fields.append(val)
+
+    @property
+    def seq_num(self):
+        return self.__seq_num
+
+    @seq_num.setter
+    def seq_num(self, val):
+        self.__seq_num = val
+
+    @property
+    def req_type(self):
+        return self.__req_type
+
+    @req_type.setter
+    def req_type(self, val):
+        self.__req_type = val
+
+    def convert_to_byte_stream(self):
+        pass
+
+    def pretty_print(self):
+        string = "Message:\n"\
+                 "\tLength: %d\n"\
+                 "\tType: %s (%d)\n\n" % (self.length, message_type_to_string(self.type), self.type)
+
+        for field in self.fields:
+            if field.type == RESPROTO_REQUEST_TYPE:
+                string += "\tField: %s (%d) | %s (%s)\n" % (type_to_string(field.type), field.type,
+                                                            request_type_to_string(field.value), field.value)
+            else:
+                string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
+
+        return string
+
+
+class Field(object):
+    def __init__(self, field_type, field_value):
+        self.__field_type = field_type
+        self.__field_value = field_value
+
+    @property
+    def type(self):
+        return self.__field_type
+
+    @property
+    def value(self):
+        return self.__field_value
+
+
 class MurphyConnection(asyncore.dispatcher_with_send):
-    def __init__(self, address):
+    def __init__(self, address, daemonize=True):
         asyncore.dispatcher_with_send.__init__(self)
 
         family = protocol_to_family(address[:5])
@@ -407,21 +435,24 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.address = address
         self._internal_counter = 1
 
-        self.callback_func = None
+        self.events = []
+        self.queue = dict()
+        self.own_sets = dict()
+
+        self.thread = threading.Thread(target=asyncore.loop)
+        self.thread.daemon = daemonize
+        self.thread.start()
 
     def handle_read(self):
         read_buffer = self.recv(4096)
 
-        print(parse_message(read_buffer).pretty_print())
+        message = parse_message(read_buffer)
 
-        if self.callback_func:
-            self.callback_func(read_buffer)
-
-    def set_callback(self, func):
-        if not callable(func):
-            raise TypeError("Given function for the receiving callback is not callable!")
-
-        self.callback_func = func
+        if message.seq_num in self.queue:
+            if message.req_type in self.queue.get(message.seq_num):
+                print("D: Got a response to a sent message! (seq %s - type %s)" % (message.seq_num, message.req_type))
+                self.queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
+                return
 
     def give_seq_and_increment(self):
         """
@@ -435,6 +466,39 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_counter += 1
         return current
 
+    def add_to_queue(self, msg_type, seq, status):
+        """
+        Add a message to the 'responses expected' queue
+
+        :param msg_type: Type of message to add to queue
+        :param seq:      Sequence ID of the message to add to queue
+        :param status:   Status object for this queue entry
+        """
+        if seq in self.queue:
+            self.queue.get(seq)[msg_type] = status
+        else:
+            self.queue[seq] = {msg_type: status}
+
+    def remove_from_queue(self, msg_type, seq):
+        """
+        Remove a message from the 'responses expected' queue
+
+        :param msg_type: Type of message to remove from queue
+        :param seq:      Sequence ID of the message to remove from queue
+        :return:         False if message was not in queue, True if it was
+        """
+        print("D: queue = %s" % (self.queue))
+        if seq in self.queue:
+            if msg_type in self.queue.get(seq):
+                del(self.queue.get(seq)[msg_type])
+                if not self.queue.get(seq):
+                    del(self.queue[seq])
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def write_sequence_number(self):
         return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
 
@@ -447,11 +511,32 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return write_uint32(len(byte_stream)) + byte_stream
 
     def list_resources(self):
+        status = Status()
         byte_stream = self.create_request(RESPROTO_QUERY_RESOURCES)
 
-        print(parse_message(byte_stream).pretty_print())
+        message = parse_message(byte_stream)
+
+        self.add_to_queue(message.req_type, message.seq_num, status)
 
         self.send(byte_stream)
+
+        gatekeeper = status.wait(5.0)
+        self.remove_from_queue(message.req_type, message.seq_num)
+
+        # If gatekeeper tells us that we didn't get a response, we timed out
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            return None
+
+        # Get the response data from the status object
+        response = status.get_result()
+        print("D: Response gotten:\n%s" % (response.pretty_print()))
+
+        # Delete the status object itself
+        del(status)
+
+        return response
 
     def list_classes(self):
         byte_stream = self.create_request(RESPROTO_QUERY_CLASSES)
@@ -466,7 +551,3 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         print(parse_message(byte_stream).pretty_print())
 
         self.send(byte_stream)
-
-    @staticmethod
-    def loop():
-        asyncore.loop()
