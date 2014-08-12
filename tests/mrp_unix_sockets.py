@@ -86,7 +86,7 @@ MRP_MSG_FIELD_END = 0x00
  RESPROTO_ATTRIBUTE_VALUE) = MRP_RANGE(0x00, 0x13)
 
 
-def type_to_string(type):
+def type_to_string(field_type):
     return {
         RESPROTO_MESSAGE_END: "MsgEnd",
         RESPROTO_SECTION_END: "SecEnd",
@@ -107,7 +107,7 @@ def type_to_string(type):
         RESPROTO_ATTRIBUTE_INDEX: "AttrIdx",
         RESPROTO_ATTRIBUTE_NAME: "AttrName",
         RESPROTO_ATTRIBUTE_VALUE: "AttrValue",
-    }.get(type, "Unknown")
+    }.get(field_type, "Unknown")
 
 
 (RESPROTO_QUERY_RESOURCES,
@@ -119,7 +119,8 @@ def type_to_string(type):
  RESPROTO_RELEASE_RESOURCE_SET,
  RESPROTO_RESOURCES_EVENT) = MRP_RANGE(0x00, 0x08)
 
-def request_type_to_string(type):
+
+def request_type_to_string(query_type):
     return {
         RESPROTO_QUERY_RESOURCES: "Resource Listing",
         RESPROTO_QUERY_CLASSES: "Application Class Listing",
@@ -129,13 +130,13 @@ def request_type_to_string(type):
         RESPROTO_ACQUIRE_RESOURCE_SET: "Resource Set Acquisition",
         RESPROTO_RELEASE_RESOURCE_SET: "Resource Set Release",
         RESPROTO_RESOURCES_EVENT: "Resource Event",
-    }.get(type, "Unknown")
+    }.get(query_type, "Unknown")
 
 
-def message_type_to_string(type):
+def message_type_to_string(message_type):
     return {
         0: "Default",
-    }.get(type, "Unknown")
+    }.get(message_type, "Unknown")
 
 
 def protocol_to_family(protocol):
@@ -188,7 +189,7 @@ def write_field(field_type, value):
 
 class MurphyMessage(object):
     def __init__(self):
-        self.__msg_len  = -1
+        self.__msg_len = -1
         self.__msg_type = -1
         self._msg_fields = []
 
@@ -247,10 +248,10 @@ class Field(object):
         return self.__field_value
 
 
-def read_field_value(data, type):
+def read_field_value(data, value_type):
     original_data_length = len(data)
 
-    if type == MRP_MSG_FIELD_STRING:
+    if value_type == MRP_MSG_FIELD_STRING:
         # We actually read the length first
         length, bytes_read = read_value(data, "!L")
         data = data[bytes_read:]
@@ -258,58 +259,58 @@ def read_field_value(data, type):
         # And then we read the actual string
         value, bytes_read = read_value(data[:length], "s")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_BOOL:
+    elif value_type == MRP_MSG_FIELD_BOOL:
         # According to mrp_msg_default_encode uint32 is used for bool
         value, bytes_read = read_value(data, "!L")
         value = bool(value)
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_UINT8:
+    elif value_type == MRP_MSG_FIELD_UINT8:
         value, bytes_read = read_value(data, "!B")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_SINT8:
+    elif value_type == MRP_MSG_FIELD_SINT8:
         value, bytes_read = read_value(data, "!b")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_UINT16:
+    elif value_type == MRP_MSG_FIELD_UINT16:
         value, bytes_read = read_value(data, "!H")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_SINT16:
+    elif value_type == MRP_MSG_FIELD_SINT16:
         value, bytes_read = read_value(data, "!h")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_UINT32:
+    elif value_type == MRP_MSG_FIELD_UINT32:
         value, bytes_read = read_value(data, "!L")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_SINT32:
+    elif value_type == MRP_MSG_FIELD_SINT32:
         value, bytes_read = read_value(data, "!l")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_UINT64:
+    elif value_type == MRP_MSG_FIELD_UINT64:
         value, bytes_read = read_value(data, "!Q")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_SINT64:
+    elif value_type == MRP_MSG_FIELD_SINT64:
         value, bytes_read = read_value(data, "!q")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_DOUBLE:
+    elif value_type == MRP_MSG_FIELD_DOUBLE:
         value, bytes_read = read_value(data, "d")
         data = data[bytes_read:]
-    elif type == MRP_MSG_FIELD_BLOB:
+    elif value_type == MRP_MSG_FIELD_BLOB:
         # Read the length first
         length, bytes_read = read_value(data, "!L")
         data = data[bytes_read:]
 
         value = data[:length]
         data = data[length:]
-    elif type & MRP_MSG_FIELD_ARRAY:
-        type = type & ~MRP_MSG_FIELD_ARRAY
+    elif value_type & MRP_MSG_FIELD_ARRAY:
+        value_type &= ~MRP_MSG_FIELD_ARRAY
         counter, bytes_read = read_value(data, "!L")
         data = data[bytes_read:]
 
         value = []
 
         for i in MRP_RANGE(counter):
-            parsed_value, bytes_read = read_field_value(data, type)
+            parsed_value, bytes_read = read_field_value(data, value_type)
             value.append(parsed_value)
             data = data[bytes_read:]
     else:
-        print("Unknown type %s found!" % (type))
+        print("Unknown type %s found!" % (value_type))
         value = None
 
     final_length = len(data)
@@ -325,12 +326,12 @@ def read_field(data):
 
     general_read_amount += bytes_read
 
-    type, bytes_read = read_value(data, "!H")
+    value_type, bytes_read = read_value(data, "!H")
     data = data[bytes_read:]
 
     general_read_amount += bytes_read
 
-    value, bytes_read = read_field_value(data, type)
+    value, bytes_read = read_field_value(data, value_type)
 
     general_read_amount += bytes_read
 
@@ -466,5 +467,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self.send(byte_stream)
 
-    def loop(self):
+    @staticmethod
+    def loop():
         asyncore.loop()
