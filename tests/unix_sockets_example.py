@@ -34,5 +34,5 @@ if __name__ == "__main__":
     conn = mrp.MurphyConnection(mrp.MRP_DEFAULT_ADDRESS)
 
     conn.list_resources()
-    # conn.list_classes()
-    # conn.list_zones()
+    conn.list_classes()
+    conn.list_zones()
