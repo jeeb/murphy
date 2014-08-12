@@ -415,6 +415,48 @@ class Field(object):
         return self.__field_value
 
 
+class StatusQueue(object):
+    def __init__(self):
+        self._dict = dict()
+
+    def add(self, msg_type, seq, status):
+        """
+        Add a message to the 'responses expected' queue
+
+        :param msg_type: Type of message to add to queue
+        :param seq:      Sequence ID of the message to add to queue
+        :param status:   Status object for this queue entry
+        """
+        if seq in self._dict:
+            self._dict.get(seq)[msg_type] = status
+        else:
+            self._dict[seq] = {msg_type: status}
+
+    def remove(self, msg_type, seq):
+        """
+        Remove a message from the 'responses expected' queue
+
+        :param msg_type: Type of message to remove from queue
+        :param seq:      Sequence ID of the message to remove from queue
+        :return:         False if message was not in queue, True if it was
+        """
+        print("D: queue = %s" % (self._dict))
+        if seq in self._dict:
+            if msg_type in self._dict.get(seq):
+                del(self._dict.get(seq)[msg_type])
+                if not self._dict.get(seq):
+                    del(self._dict[seq])
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    @property
+    def contents(self):
+        return self._dict
+
+
 class MurphyConnection(asyncore.dispatcher_with_send):
     def __init__(self, address, daemonize=True):
         asyncore.dispatcher_with_send.__init__(self)
@@ -436,7 +478,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_counter = 1
 
         self.events = []
-        self.queue = dict()
+        self.queue = StatusQueue()
         self.own_sets = dict()
 
         self.thread = threading.Thread(target=asyncore.loop)
@@ -448,10 +490,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         message = parse_message(read_buffer)
 
-        if message.seq_num in self.queue:
-            if message.req_type in self.queue.get(message.seq_num):
+        queue = self.queue.contents
+
+        if message.seq_num in queue:
+            if message.req_type in queue.get(message.seq_num):
                 print("D: Got a response to a sent message! (seq %s - type %s)" % (message.seq_num, message.req_type))
-                self.queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
+                queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
                 return
 
     def give_seq_and_increment(self):
@@ -465,39 +509,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         current = self._internal_counter
         self._internal_counter += 1
         return current
-
-    def add_to_queue(self, msg_type, seq, status):
-        """
-        Add a message to the 'responses expected' queue
-
-        :param msg_type: Type of message to add to queue
-        :param seq:      Sequence ID of the message to add to queue
-        :param status:   Status object for this queue entry
-        """
-        if seq in self.queue:
-            self.queue.get(seq)[msg_type] = status
-        else:
-            self.queue[seq] = {msg_type: status}
-
-    def remove_from_queue(self, msg_type, seq):
-        """
-        Remove a message from the 'responses expected' queue
-
-        :param msg_type: Type of message to remove from queue
-        :param seq:      Sequence ID of the message to remove from queue
-        :return:         False if message was not in queue, True if it was
-        """
-        print("D: queue = %s" % (self.queue))
-        if seq in self.queue:
-            if msg_type in self.queue.get(seq):
-                del(self.queue.get(seq)[msg_type])
-                if not self.queue.get(seq):
-                    del(self.queue[seq])
-                return True
-            else:
-                return False
-        else:
-            return False
 
     def write_sequence_number(self):
         return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
@@ -516,12 +527,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         message = parse_message(byte_stream)
 
-        self.add_to_queue(message.req_type, message.seq_num, status)
+        self.queue.add(message.req_type, message.seq_num, status)
 
         self.send(byte_stream)
 
         gatekeeper = status.wait(5.0)
-        self.remove_from_queue(message.req_type, message.seq_num)
+        self.queue.remove(message.req_type, message.seq_num)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
