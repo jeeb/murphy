@@ -28,8 +28,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+
 from __future__ import unicode_literals
-from threading import Event
+from mrp_status import Status
 from ws4py.client.threadedclient import WebSocketClient
 import json
 
@@ -70,62 +71,6 @@ class InternalClient(WebSocketClient):
 
         self.iclient_callback = func
         self.iclient_callback_set = True
-
-
-class Status(object):
-    def __init__(self):
-        """
-        Status object that can contain a result (object) and has an Event built in
-        """
-        self.state = Event()
-        self.result = None
-
-    def ready(self):
-        """
-        Queries if the state of this Status object is that its ready
-
-        :return: True or False depending on the Status object's state
-        """
-        return self.state.is_set()
-
-    def mark_ready(self):
-        """
-        Marks this Status object as ready - everything waiting for it will stop blocking
-
-        :return: Void
-        """
-        self.state.set()
-
-    def get_result(self):
-        """
-        Returns the object stored in this Status object
-        :return: None, or object that is stored in this Status object
-        """
-        if not self.state:
-            pass
-        else:
-            return self.result
-
-    def set_result(self, result):
-        """
-        Sets the object to be stored in this Status object
-
-        :param result: Object to be stored in this Status object
-        :return:       Void
-        """
-        self.result = result
-        self.mark_ready()
-
-    def wait(self, timeout=None):
-        """
-        Blocks until this Status object is ready.
-
-        :param timeout: Floating point value that defines how many seconds this Status object will
-                        block in case it is not yet ready.
-        :return:        Returns a boolean state of whether or not this State object was ready when it
-                        stopped blocking; This can be used to check whether or not this call timed out.
-        """
-        return self.state.wait(timeout)
 
 
 # FIXME: This will not be needed when we switch from list to dict for resources
