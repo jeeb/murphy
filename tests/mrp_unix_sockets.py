@@ -188,6 +188,7 @@ def read_value(data_string, data_type):
     value = unpack(data_type, data_string[:size])[0]
     return value, real_size
 
+
 def write_uint16(value):
     return pack("!H", value)
 
@@ -199,7 +200,6 @@ def write_uint32(value):
 def write_string(value):
     string = pack("s", value)
     return pack("!L", len(string)) + string
-
 
 
 def write_field_value(data_type, value):
