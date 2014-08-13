@@ -204,7 +204,7 @@ def write_string(value):
 
 def write_field_value(data_type, value):
     if data_type is not None:
-        if data_type[1] is "s":
+        if data_type[1] == "s":
             str_len = len(value)
             type_str = "%ss" % (str_len)
         else:
