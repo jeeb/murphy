@@ -39,7 +39,7 @@ except NameError:
     MRP_RANGE = range
 
 from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
-import struct
+from struct import (calcsize, pack, unpack)
 import asyncore
 
 from mrp_status import Status, StatusQueue
@@ -114,6 +114,29 @@ def type_to_string(field_type):
     }.get(field_type, "Unknown")
 
 
+def type_to_data_type(field_type):
+    return {
+        RESPROTO_SECTION_END: (MRP_MSG_FIELD_UINT8, "!B"),
+        # RESPROTO_ARRAY_DIMENSION
+        RESPROTO_SEQUENCE_NO: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_REQUEST_TYPE: (MRP_MSG_FIELD_UINT16, "!H"),
+        RESPROTO_REQUEST_STATUS: (MRP_MSG_FIELD_SINT16, "!h"),
+        RESPROTO_RESOURCE_SET_ID: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_RESOURCE_STATE: (MRP_MSG_FIELD_UINT16, "!H"),
+        RESPROTO_RESOURCE_GRANT: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_RESOURCE_ADVICE: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_RESOURCE_ID: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_RESOURCE_NAME: (MRP_MSG_FIELD_STRING, "s"),
+        RESPROTO_RESOURCE_FLAGS: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_RESOURCE_PRIORITY: (MRP_MSG_FIELD_UINT32, "!L"),
+        RESPROTO_CLASS_NAME: (MRP_MSG_FIELD_STRING, "s"),
+        RESPROTO_ZONE_NAME: (MRP_MSG_FIELD_STRING, "s"),
+        # RESPROTO_ATTRIBUTE_INDEX
+        RESPROTO_ATTRIBUTE_NAME: (MRP_MSG_FIELD_STRING, "s"),
+        # RESPROTO_ATTRIBUTE_VALUE -> None (default)
+    }.get(field_type, None)
+
+
 (RESPROTO_QUERY_RESOURCES,
  RESPROTO_QUERY_CLASSES,
  RESPROTO_QUERY_ZONES,
@@ -159,34 +182,60 @@ def read_value(data_string, data_type):
         data_type = "%ss" % (size)
     else:
         # If we're not dealing with a string, real size and "size" match
-        size = struct.calcsize(data_type)
+        size = calcsize(data_type)
         real_size = size
 
-    value = struct.unpack(data_type, data_string[:size])[0]
+    value = unpack(data_type, data_string[:size])[0]
     return value, real_size
 
-
-def write_value(value, value_type):
-    return struct.pack(value_type, value)
-
-
 def write_uint16(value):
-    return write_value(value, "!H")
+    return pack("!H", value)
 
 
 def write_uint32(value):
-    return write_value(value, "!L")
+    return pack("!L", value)
+
+
+def write_string(value):
+    string = pack("s", value)
+    return pack("!L", len(string)) + string
+
+
+
+def write_field_value(data_type, value):
+    if data_type is not None:
+        if data_type[1] is "s":
+            str_len = len(value)
+            type_str = "%ss" % (str_len)
+        else:
+            type_str = data_type[1]
+
+        header = write_uint16(data_type[0])
+        string = pack(type_str, value)
+
+        if data_type[0] == MRP_MSG_FIELD_STRING:
+            string = write_uint32(len(string)) + string
+
+        string = header + string
+    else:
+        if isinstance(value, int):
+            if value < 0:
+                string = write_field_value((MRP_MSG_FIELD_SINT32, "!l"), value)
+            else:
+                string = write_field_value((MRP_MSG_FIELD_UINT32, "!L"), value)
+        elif isinstance(value, float):
+            string = write_field_value((MRP_MSG_FIELD_DOUBLE, "d"), value)
+        elif isinstance(value, str) or isinstance(value, bytes):
+            string = write_field_value((MRP_MSG_FIELD_STRING, "s"), value)
+        else:
+            print("welp")
+            return None
+
+    return string
 
 
 def write_field(field_type, value):
-    if field_type == RESPROTO_SEQUENCE_NO:
-        string = write_uint16(RESPROTO_SEQUENCE_NO) + write_uint16(MRP_MSG_FIELD_UINT32) + \
-                 write_uint32(value)
-    elif field_type == RESPROTO_REQUEST_TYPE:
-        string = write_uint16(RESPROTO_REQUEST_TYPE) + write_uint16(MRP_MSG_FIELD_UINT16) + \
-                 write_uint16(value)
-    else:
-        raise ValueError("Unknown field type: %s" % (field_type))
+    string = write_uint16(field_type) + write_field_value(type_to_data_type(field_type), value)
 
     return string
 
@@ -515,3 +564,54 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
     def list_zones(self):
         return self.send_request(RESPROTO_QUERY_ZONES)
+
+    def create_set(self, resources=None):
+        status = Status()
+
+        # Message length here
+
+        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+
+        # Field count
+        byte_stream += write_uint16(14)
+
+        byte_stream += self.write_sequence_number()
+        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
+        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 0)
+        byte_stream += write_field(RESPROTO_RESOURCE_PRIORITY, 0)
+        byte_stream += write_field(RESPROTO_CLASS_NAME, b"player")
+        byte_stream += write_field(RESPROTO_ZONE_NAME, b"driver")
+        byte_stream += write_field(RESPROTO_RESOURCE_NAME, b"audio_playback")
+        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 3)
+        byte_stream += write_field(RESPROTO_ATTRIBUTE_NAME, b"role")
+        byte_stream += write_field(RESPROTO_ATTRIBUTE_VALUE, b"video")
+        byte_stream += write_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
+        byte_stream += write_field(RESPROTO_RESOURCE_NAME, b"video_playback")
+        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 1)
+        byte_stream += write_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
+
+        byte_stream = write_uint32(len(byte_stream)) + byte_stream
+
+        message = parse_message(byte_stream)
+
+        self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status)
+
+        self.send(byte_stream)
+
+        gatekeeper = status.wait(5.0)
+        self.queue.remove(message.req_type, message.seq_num)
+
+        # If gatekeeper tells us that we didn't get a response, we timed out
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            return None
+
+        # Get the response data from the status object
+        response = status.get_result()
+        print("D: Response gotten:\n%s" % (response.pretty_print()))
+
+        # Delete the status object itself
+        del(status)
+
+        return response
