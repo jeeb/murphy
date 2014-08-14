@@ -29,7 +29,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from threading import Thread
-from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
+from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM, SHUT_RDWR)
 from struct import (calcsize, pack, unpack)
 import asyncore
 
@@ -475,6 +475,10 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.thread = Thread(target=asyncore.loop)
         self.thread.daemon = daemonize
         self.thread.start()
+
+    def close(self):
+        self.socket.shutdown(SHUT_RDWR)
+        asyncore.dispatcher_with_send.close(self)
 
     def read_message(self, read_buffer):
         header_size = calcsize("!L")
