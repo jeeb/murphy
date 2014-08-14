@@ -37,3 +37,4 @@ if __name__ == "__main__":
     conn.list_classes()
     conn.list_zones()
     conn.create_set()
+    conn.close()
