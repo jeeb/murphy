@@ -476,9 +476,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.thread.daemon = daemonize
         self.thread.start()
 
-    def handle_read(self):
-        read_buffer = self.recv(MRP_DEFAULT_RECEIVE_SIZE)
-
+    def read_message(self, read_buffer):
         header_size = calcsize("!L")
         full_size = len(read_buffer)
 
@@ -486,8 +484,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         # we try to get data until we have the needed amount
         while len(read_buffer) < header_size:
             read_buffer += self.recv(MRP_DEFAULT_RECEIVE_SIZE)
-
-        print("Data: %s" % read_buffer)
 
         # Now we should have at least enough to read the size
         message_size = unpack("!L", read_buffer[:header_size])[0]
@@ -497,10 +493,11 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         # Read until we have the full message
         while len(read_buffer) < message_size:
-            read_buffer += self.recv(message_size - len(read_buffer))
+            read_buffer += self.recv(MRP_DEFAULT_RECEIVE_SIZE)
 
-        message = parse_message(read_buffer)
+        return read_buffer, message_size
 
+    def check_message(self, message):
         queue = self.queue.contents
 
         if message.seq_num in queue:
@@ -508,6 +505,18 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 print("D: Got a response to a sent message! (seq %s - type %s)" % (message.seq_num, message.req_type))
                 queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
                 return
+
+    def handle_read(self):
+        # Do an initial read
+        read_buffer = self.recv(MRP_DEFAULT_RECEIVE_SIZE)
+
+        while len(read_buffer) > 0:
+            read_buffer, message_size = self.read_message(read_buffer)
+            message = parse_message(read_buffer)
+            self.check_message(message)
+            print(message.pretty_print())
+            read_buffer = read_buffer[message_size:]
+            print("Reader length: %s" % (len(read_buffer)))
 
     def send_message(self, buffer):
         amount_to_write = len(buffer)
@@ -615,7 +624,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         # Get the response data from the status object
         response = status.get_result()
-        print("D: Response gotten:\n%s" % (response.pretty_print()))
 
         # Delete the status object itself
         del(status)
