@@ -522,10 +522,10 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             read_buffer = read_buffer[message_size:]
             print("Reader length: %s" % (len(read_buffer)))
 
-    def send_message(self, buffer):
-        amount_to_write = len(buffer)
+    def send_message(self, msg_buffer):
+        amount_to_write = len(msg_buffer)
 
-        self.send(pack("!L", amount_to_write) + buffer)
+        self.send(pack("!L", amount_to_write) + msg_buffer)
 
     def give_seq_and_increment(self):
         """
