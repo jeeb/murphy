@@ -567,7 +567,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         # Get the response data from the status object
         response = status.get_result()
-        print("D: Response gotten:\n%s" % (response.pretty_print()))
 
         # Delete the status object itself
         del(status)
