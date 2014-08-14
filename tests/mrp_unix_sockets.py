@@ -29,20 +29,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from __future__ import unicode_literals
-
-# For basic Py2/Py3 compatibility
-import threading
-
-try:
-    MRP_RANGE = xrange
-except NameError:
-    MRP_RANGE = range
-
+from threading import Thread
 from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM)
 from struct import (calcsize, pack, unpack)
 import asyncore
 
 from mrp_status import Status, StatusQueue
+
+# For basic Py2/Py3 compatibility
+try:
+    MRP_RANGE = xrange
+except NameError:
+    MRP_RANGE = range
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_MSG_TAG_DEFAULT = 0x0
@@ -492,7 +490,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.queue = StatusQueue()
         self.own_sets = dict()
 
-        self.thread = threading.Thread(target=asyncore.loop)
+        self.thread = Thread(target=asyncore.loop)
         self.thread.daemon = daemonize
         self.thread.start()
 
