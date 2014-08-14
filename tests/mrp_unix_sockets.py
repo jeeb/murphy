@@ -205,7 +205,8 @@ def write_string(value):
 def write_field_value(data_type, value):
     if data_type is not None:
         if data_type[1] == "s":
-            str_len = len(value)
+            # We don't have a trailing null in Python strings, this pads the output with a null byte
+            str_len = len(value) + 1
             type_str = "%ss" % (str_len)
         else:
             type_str = data_type[1]
