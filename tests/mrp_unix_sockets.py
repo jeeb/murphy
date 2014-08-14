@@ -584,6 +584,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
     def create_set(self, resources=None):
         status = Status()
+        status2 = Status()
 
         byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
 
@@ -609,10 +610,14 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         print(message.pretty_print())
 
         self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status)
+        self.queue.add(message.req_type, message.seq_num, status2)
 
         self.send_message(byte_stream)
 
         gatekeeper = status.wait(5.0)
+        gatekeeper = status2.wait(5.0)
+
+        self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
         self.queue.remove(message.req_type, message.seq_num)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
