@@ -42,6 +42,7 @@ except NameError:
     MRP_RANGE = range
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
+MRP_DEFAULT_RECEIVE_SIZE = 4096
 MRP_MSG_TAG_DEFAULT = 0x0
 
 (MRP_MSG_FIELD_INVALID,
@@ -361,17 +362,9 @@ def parse_default(data, message):
 
 
 def parse_message(data):
-    # Message structure for the default type:
-    # Socket message header:
-    # [uint32 = message length]
-    #
     # Message header:
     # [uint16 = data type tag (0x0 = default)]
     message = MurphyMessage()
-
-    # Socket message header
-    message.length, bytes_read = read_value(data, "!L")
-    data = data[bytes_read:]
 
     # Message type
     message.type, bytes_read = read_value(data, "!H")
@@ -388,19 +381,10 @@ def parse_message(data):
 
 class MurphyMessage(object):
     def __init__(self):
-        self.__msg_len = -1
         self.__msg_type = -1
         self.__req_type = -1
         self.__seq_num = -1
         self._msg_fields = []
-
-    @property
-    def length(self):
-        return self.__msg_len
-
-    @length.setter
-    def length(self, val):
-        self.__msg_len = val
 
     @property
     def type(self):
@@ -438,8 +422,7 @@ class MurphyMessage(object):
 
     def pretty_print(self):
         string = "Message:\n"\
-                 "\tLength: %d\n"\
-                 "\tType: %s (%d)\n\n" % (self.length, message_type_to_string(self.type), self.type)
+                 "\tType: %s (%d)\n\n" % (message_type_to_string(self.type), self.type)
 
         for field in self.fields:
             if field.type == RESPROTO_REQUEST_TYPE:
@@ -494,7 +477,27 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.thread.start()
 
     def handle_read(self):
-        read_buffer = self.recv(4096)
+        read_buffer = self.recv(MRP_DEFAULT_RECEIVE_SIZE)
+
+        header_size = calcsize("!L")
+        full_size = len(read_buffer)
+
+        # If we don't have the size header amount of data,
+        # we try to get data until we have the needed amount
+        while len(read_buffer) < header_size:
+            read_buffer += self.recv(MRP_DEFAULT_RECEIVE_SIZE)
+
+        print("Data: %s" % read_buffer)
+
+        # Now we should have at least enough to read the size
+        message_size = unpack("!L", read_buffer[:header_size])[0]
+        read_buffer = read_buffer[header_size:]
+
+        print("Full size %s = %s + %s" % (full_size, message_size, header_size))
+
+        # Read until we have the full message
+        while len(read_buffer) < message_size:
+            read_buffer += self.recv(message_size - len(read_buffer))
 
         message = parse_message(read_buffer)
 
@@ -505,6 +508,11 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 print("D: Got a response to a sent message! (seq %s - type %s)" % (message.seq_num, message.req_type))
                 queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
                 return
+
+    def send_message(self, buffer):
+        amount_to_write = len(buffer)
+
+        self.send(pack("!L", amount_to_write) + buffer)
 
     def give_seq_and_increment(self):
         """
@@ -527,7 +535,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         byte_stream += self.write_sequence_number()
         byte_stream += write_field(RESPROTO_REQUEST_TYPE, value)
 
-        return write_uint32(len(byte_stream)) + byte_stream
+        return byte_stream
 
     def send_request(self, request_type):
         status = Status()
@@ -537,7 +545,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self.queue.add(message.req_type, message.seq_num, status)
 
-        self.send(byte_stream)
+        self.send_message(byte_stream)
 
         gatekeeper = status.wait(5.0)
         self.queue.remove(message.req_type, message.seq_num)
@@ -569,8 +577,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def create_set(self, resources=None):
         status = Status()
 
-        # Message length here
-
         byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
 
         # Field count
@@ -591,13 +597,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 1)
         byte_stream += write_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
 
-        byte_stream = write_uint32(len(byte_stream)) + byte_stream
-
         message = parse_message(byte_stream)
+        print(message.pretty_print())
 
         self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status)
 
-        self.send(byte_stream)
+        self.send_message(byte_stream)
 
         gatekeeper = status.wait(5.0)
         self.queue.remove(message.req_type, message.seq_num)
