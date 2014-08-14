@@ -176,17 +176,20 @@ def protocol_to_family(protocol):
 
 def read_value(data_string, data_type):
     if data_type == "s":
-        # the data length contains the null, which we don't want to parse away
-        real_size = len(data_string)
-        size = real_size - 1
+        # With a string, we check the given length and set data type accordingly
+        size = len(data_string)
         data_type = "%ss" % (size)
     else:
-        # If we're not dealing with a string, real size and "size" match
+        # If we're not dealing with a string, we can get the size from struct
         size = calcsize(data_type)
-        real_size = size
 
     value = unpack(data_type, data_string[:size])[0]
-    return value, real_size
+
+    # If the read string ends with a null, we remove it
+    if (isinstance(value, str) or isinstance(value, bytes)) and value[-1] == b"\0"[0]:
+        value = value[:-1]
+
+    return value, size
 
 
 def write_uint16(value):
