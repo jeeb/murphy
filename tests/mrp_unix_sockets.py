@@ -589,6 +589,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def create_set(self, resources=None):
         status = Status()
         status2 = Status()
+        set_id = None
 
         byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
 
@@ -613,27 +614,53 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         message = parse_message(byte_stream)
         print(message.pretty_print())
 
-        self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status)
-        self.queue.add(message.req_type, message.seq_num, status2)
+        # The response to the query, should always come
+        self.queue.add(message.req_type, message.seq_num, status)
+
+        # The event that should come if the creation is successful
+        self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status2)
 
         self.send_message(byte_stream)
 
+        # We wait for the response, and exit if we don't get one
         gatekeeper = status.wait(5.0)
-        gatekeeper = status2.wait(5.0)
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            self.queue.remove(message.req_type, message.seq_num)
+            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+            return None
 
-        self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+        # We grab the response
+        response = status.get_result()
         self.queue.remove(message.req_type, message.seq_num)
+
+        # Check the status value of the response
+        for field in response.fields:
+            if field.type is RESPROTO_REQUEST_STATUS and field.value:
+                print("E: Request status error code is nonzero! (%s)" % (field.value))
+                self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+                return None
+            elif field.type is RESPROTO_RESOURCE_SET_ID:
+                set_id = field.value
+                print("I: The resource set ID for the newly created set is %s" % (field.value))
+
+        # We wait for the actual event
+        gatekeeper = status2.wait(5.0)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
             print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
                                                                                             message.req_type))
+            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
             return None
 
         # Get the response data from the status object
-        response = status.get_result()
+        response = status2.get_result()
+        self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
 
         # Delete the status object itself
         del(status)
+        del(status2)
 
         return response
