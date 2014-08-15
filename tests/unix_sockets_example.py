@@ -34,11 +34,11 @@ if __name__ == "__main__":
     conn = mrp.MurphyConnection(mrp.MRP_DEFAULT_ADDRESS)
 
     resources = conn.list_resources()
-    print(resources.pretty_print())
+    print(resources)
 
     classes = conn.list_classes()
     zones = conn.list_zones()
     print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
     print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
-    conn.create_set()
+    conn.create_set(None, classes[0], zones[0])
     conn.close()

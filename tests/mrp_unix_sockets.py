@@ -638,13 +638,21 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.queue = StatusQueue()
         self.own_sets = dict()
 
-        self.thread = Thread(target=asyncore.loop)
+        self._internal_set = ResourceSet()
+
+        self._running = True
+        self.thread = Thread(target=self.run_loop)
         self.thread.daemon = daemonize
         self.thread.start()
 
     def close(self):
+        self._running = False
         self.socket.shutdown(SHUT_RDWR)
         asyncore.dispatcher_with_send.close(self)
+
+    def run_loop(self):
+        while self._running:
+            asyncore.loop(count=1)
 
     def read_message(self, read_buffer):
         header_size = calcsize("!L")
@@ -758,10 +766,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         set = ResourceSet()
 
+        names = []
+
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_NAME:
                 res = Resource()
                 res.name = field.value
+                names.append(field.value)
             elif field.type is RESPROTO_ATTRIBUTE_NAME:
                 attr_name = field.value
             elif field.type is RESPROTO_ATTRIBUTE_VALUE:
@@ -774,7 +785,9 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 set.add_resource(res)
                 res = None
 
-        return set
+        self._internal_set = set
+
+        return names
 
     def list_classes(self):
         response = self.send_request(RESPROTO_QUERY_CLASSES)
@@ -802,7 +815,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         print("E: Zone listing in zone listing request not found!")
         return None
 
-    def create_set(self, resources=None):
+    def create_set(self, resources, app_class, zone):
         status = Status()
         status2 = Status()
         set_id = None
