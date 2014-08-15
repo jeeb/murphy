@@ -593,16 +593,23 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.send_message(byte_stream)
 
         gatekeeper = status.wait(5.0)
-        self.queue.remove(message.req_type, message.seq_num)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
             print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
                                                                                             message.req_type))
+            self.queue.remove(message.req_type, message.seq_num)
             return None
 
         # Get the response data from the status object
         response = status.get_result()
+        self.queue.remove(message.req_type, message.seq_num)
+
+        # Check the status value of the response
+        for field in response.fields:
+            if field.type is RESPROTO_REQUEST_STATUS and field.value:
+                print("E: Request status error code is nonzero! (%s)" % (field.value))
+                return None
 
         # Delete the status object itself
         del(status)
