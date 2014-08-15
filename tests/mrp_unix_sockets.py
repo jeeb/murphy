@@ -553,6 +553,7 @@ class Resource(object):
 
         return string + "\n"
 
+
 class ResourceSet(object):
     def __init__(self):
         self._set_id = None
@@ -592,6 +593,7 @@ class ResourceSet(object):
             string += res.pretty_print()
 
         return string
+
 
 class Field(object):
     def __init__(self, field_type, data_type, field_value):
