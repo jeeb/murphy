@@ -65,6 +65,29 @@ MRP_MSG_TAG_DEFAULT = 0x0
  MRP_MSG_FIELD_ARRAY) = (0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c,
                          0x0d, 0x0e, 0x0e, 0x0f, 0x80)
 
+
+def data_type_to_string(data_type):
+    return {
+        MRP_MSG_FIELD_INVALID: "Invalid",
+        MRP_MSG_FIELD_STRING: "String",
+        MRP_MSG_FIELD_INTEGER: "Int",
+        MRP_MSG_FIELD_UNSIGNED: "UInt",
+        MRP_MSG_FIELD_DOUBLE: "Double",
+        MRP_MSG_FIELD_BOOL: "Bool",
+        MRP_MSG_FIELD_UINT8: "UInt8",
+        MRP_MSG_FIELD_SINT8: "SInt8",
+        MRP_MSG_FIELD_UINT16: "UInt16",
+        MRP_MSG_FIELD_SINT16: "SInt16",
+        MRP_MSG_FIELD_UINT32: "UInt32",
+        MRP_MSG_FIELD_SINT32: "SInt32",
+        MRP_MSG_FIELD_UINT64: "UInt64",
+        MRP_MSG_FIELD_SINT64: "SInt64",
+        MRP_MSG_FIELD_BLOB: "Blob",
+        MRP_MSG_FIELD_ANY: "Any",
+        MRP_MSG_FIELD_ARRAY: "Array",
+    }.get(data_type, "Unknown")
+
+
 MRP_MSG_FIELD_END = 0x00
 
 (RESPROTO_MESSAGE_END,
@@ -329,7 +352,7 @@ def read_field(data):
 
     general_read_amount += bytes_read
 
-    return Field(tag, value), general_read_amount
+    return Field(tag, value_type, value), general_read_amount
 
 
 def parse_default(data, message):
@@ -426,22 +449,31 @@ class MurphyMessage(object):
 
         for field in self.fields:
             if field.type == RESPROTO_REQUEST_TYPE:
-                string += "\tField: %s (%d) | %s (%s)\n" % (type_to_string(field.type), field.type,
-                                                            request_type_to_string(field.value), field.value)
+                string += "\tField: %s (%d) = <%s> %s (%s)\n" % (type_to_string(field.type), field.type,
+                                                                 data_type_to_string(field.data_type),
+                                                                 request_type_to_string(field.value),
+                                                                 field.value)
             else:
-                string += "\tField: %s (%d) | %s\n" % (type_to_string(field.type), field.type, field.value)
+                string += "\tField: %s (%d) = <%s> %s\n" % (type_to_string(field.type), field.type,
+                                                            data_type_to_string(field.data_type),
+                                                            field.value)
 
         return string
 
 
 class Field(object):
-    def __init__(self, field_type, field_value):
+    def __init__(self, field_type, data_type, field_value):
         self.__field_type = field_type
+        self.__data_type = data_type
         self.__field_value = field_value
 
     @property
     def type(self):
         return self.__field_type
+
+    @property
+    def data_type(self):
+        return self.__data_type
 
     @property
     def value(self):
