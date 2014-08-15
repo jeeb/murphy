@@ -815,6 +815,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         print("E: Zone listing in zone listing request not found!")
         return None
 
+    def get_resource(self, res_name):
+        resource = self._internal_set.resources.get(res_name)
+        if resource is None:
+            return None
+
+        return resource
+
     def create_set(self, resources, app_class, zone):
         status = Status()
         status2 = Status()

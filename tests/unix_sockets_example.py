@@ -36,6 +36,10 @@ if __name__ == "__main__":
     resources = conn.list_resources()
     print(resources)
 
+    resource = conn.get_resource(resources[0])
+    resource.shareable = True
+    print(resource.pretty_print())
+
     classes = conn.list_classes()
     zones = conn.list_zones()
     print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
