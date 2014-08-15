@@ -461,6 +461,138 @@ class MurphyMessage(object):
         return string
 
 
+class Attribute(object):
+    def __init__(self, name, data_type, value):
+        self._name = name
+        self._data_type = data_type
+        self._value = value
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def data_type(self):
+        return self._data_type
+
+    @property
+    def value(self):
+        return self._value
+
+    def pretty_print(self):
+        return "      %s -> %s (%s)\n" % (self.name, self.value, data_type_to_string(self.data_type))
+
+
+class Resource(object):
+    def __init__(self):
+        self._name = None
+        self._shareable = False
+        self._mandatory = True
+        self._acquired = False
+        self._available = False
+
+        self._attributes = dict()
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, val):
+        self._name = val
+
+    @property
+    def shareable(self):
+        return self._shareable
+
+    @shareable.setter
+    def shareable(self, val):
+        self._shareable = val
+
+    @property
+    def mandatory(self):
+        return self._mandatory
+
+    @mandatory.setter
+    def mandatory(self, val):
+        self._mandatory = val
+
+    @property
+    def acquired(self):
+        return self._acquired
+
+    @acquired.setter
+    def acquired(self, val):
+        self._acquired = val
+
+    @property
+    def available(self):
+        return self._available
+
+    @available.setter
+    def available(self, val):
+        self._available = val
+
+    @property
+    def attributes(self):
+        return self._attributes
+
+    def add_attribute(self, attr):
+        self._attributes[attr.name] = attr
+
+    def pretty_print(self):
+        string = "  Resource %s:\n" \
+                 "    Shareable: %s\n" \
+                 "    Mandatory: %s\n" \
+                 "    Acquired: %s\n" \
+                 "    Available: %s\n\n" \
+                 "    Attributes:\n" % (self.name, self.shareable, self.mandatory, self.acquired, self.available)
+
+        for attr in self.attributes.values():
+            string += attr.pretty_print()
+
+        return string + "\n"
+
+class ResourceSet(object):
+    def __init__(self):
+        self._set_id = None
+        self._acquired = False
+
+        self._resources = dict()
+
+    @property
+    def id(self):
+        return self._set_id
+
+    @id.setter
+    def id(self, val):
+        self._set_id = val
+
+    @property
+    def acquired(self):
+        return self._acquired
+
+    @acquired.setter
+    def acquired(self, val):
+        self._acquired = val
+
+    @property
+    def resources(self):
+        return self._resources
+
+    def add_resource(self, res):
+        self._resources[res.name] = res
+
+    def pretty_print(self):
+        string = "Resource Set %s:\n" \
+                 "  Acquired: %s\n" \
+                 "  Resources:\n\n" % (self.id, self.acquired)
+
+        for res in self.resources.values():
+            string += res.pretty_print()
+
+        return string
+
 class Field(object):
     def __init__(self, field_type, data_type, field_value):
         self.__field_type = field_type
@@ -617,13 +749,56 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return response
 
     def list_resources(self):
-        return self.send_request(RESPROTO_QUERY_RESOURCES)
+        response = self.send_request(RESPROTO_QUERY_RESOURCES)
+        if response is None:
+            print("E: Resource listing request failed")
+            return None
+
+        set = ResourceSet()
+
+        for field in response.fields:
+            if field.type is RESPROTO_RESOURCE_NAME:
+                res = Resource()
+                res.name = field.value
+            elif field.type is RESPROTO_ATTRIBUTE_NAME:
+                attr_name = field.value
+            elif field.type is RESPROTO_ATTRIBUTE_VALUE:
+                attr = Attribute(attr_name, field.data_type, field.value)
+                res.add_attribute(attr)
+
+                attr_name = None
+                attr = None
+            elif field.type is RESPROTO_SECTION_END:
+                set.add_resource(res)
+                res = None
+
+        return set
 
     def list_classes(self):
-        return self.send_request(RESPROTO_QUERY_CLASSES)
+        response = self.send_request(RESPROTO_QUERY_CLASSES)
+        if response is None:
+            print("E: Application class listing request failed!")
+            return None
+
+        for field in response.fields:
+            if field.type is RESPROTO_CLASS_NAME:
+                return field.value
+
+        print("E: Class listing in application class listing request not found!")
+        return None
 
     def list_zones(self):
-        return self.send_request(RESPROTO_QUERY_ZONES)
+        response = self.send_request(RESPROTO_QUERY_ZONES)
+        if response is None:
+            print("E: Zone listing request failed")
+            return None
+
+        for field in response.fields:
+            if field.type is RESPROTO_ZONE_NAME:
+                return field.value
+
+        print("E: Zone listing in zone listing request not found!")
+        return None
 
     def create_set(self, resources=None):
         status = Status()
