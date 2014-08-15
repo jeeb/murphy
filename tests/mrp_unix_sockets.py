@@ -764,7 +764,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             print("E: Resource listing request failed")
             return None
 
-        set = ResourceSet()
+        res_set = ResourceSet()
 
         names = []
 
@@ -782,10 +782,10 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 attr_name = None
                 attr = None
             elif field.type is RESPROTO_SECTION_END:
-                set.add_resource(res)
+                res_set.add_resource(res)
                 res = None
 
-        self._internal_set = set
+        self._internal_set = res_set
 
         return names
 
