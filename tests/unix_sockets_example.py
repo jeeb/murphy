@@ -33,8 +33,12 @@ import mrp_unix_sockets as mrp
 if __name__ == "__main__":
     conn = mrp.MurphyConnection(mrp.MRP_DEFAULT_ADDRESS)
 
-    conn.list_resources()
-    conn.list_classes()
-    conn.list_zones()
+    resources = conn.list_resources()
+    print(resources.pretty_print())
+
+    classes = conn.list_classes()
+    zones = conn.list_zones()
+    print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
+    print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
     conn.create_set()
     conn.close()
