@@ -414,8 +414,8 @@ class MurphyMessage(object):
     def fields(self):
         return self._msg_fields
 
-    def add_field(self, type, value):
-        field = Field(type, type_to_data_type(type)[0], value)
+    def add_field(self, field_type, field_value):
+        field = Field(field_type, type_to_data_type(field_type)[0], field_value)
         self.fields.append(field)
 
     def add_field_obj(self, obj):
