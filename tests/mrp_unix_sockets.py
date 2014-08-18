@@ -765,7 +765,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self.send(pack("!L", amount_to_write) + msg_buffer)
 
-    def give_seq_and_increment(self):
+    @property
+    def next_seq_num(self):
         """
         Returns the current value of the internal counter for sequence IDs, and
         increments it by one.
@@ -780,7 +781,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def send_request(self, request_type):
         status = Status()
 
-        message = DefaultMessage(self.give_seq_and_increment())
+        message = DefaultMessage(self.next_seq_num)
         message.add_field(RESPROTO_REQUEST_TYPE, request_type)
 
         self.queue.add(message.req_type, message.seq_num, status)
@@ -899,7 +900,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         if not isinstance(resources, list):
             resources = [resources]
 
-        message = DefaultMessage(self.give_seq_and_increment())
+        message = DefaultMessage(self.next_seq_num)
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
         message.add_field(RESPROTO_RESOURCE_FLAGS, 0)
@@ -965,7 +966,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def destroy_set(self, set_id):
         status = Status()
 
-        message = DefaultMessage(self.give_seq_and_increment())
+        message = DefaultMessage(self.next_seq_num)
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
         message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
