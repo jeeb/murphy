@@ -604,6 +604,15 @@ class Resource(object):
     def add_attribute(self, attr):
         self._attributes[attr.name] = attr
 
+    def copy(self):
+        res = Resource()
+        res.name = self.name
+
+        for attr in self.attributes.values():
+            res.add_attribute(Attribute(attr.name, attr.data_type, attr.value))
+
+        return res
+
     def pretty_print(self):
         string = "  Resource %s:\n" \
                  "    Shareable: %s\n" \
@@ -885,7 +894,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         if resource is None:
             return None
 
-        return resource
+        return resource.copy()
 
     def create_set(self, resources, app_class, zone):
         status = Status()
