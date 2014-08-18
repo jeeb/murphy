@@ -36,14 +36,19 @@ if __name__ == "__main__":
     resources = conn.list_resources()
     print(resources)
 
-    resource = conn.get_resource(resources[0])
-    resource.shareable = True
-    print(resource.pretty_print())
-
     classes = conn.list_classes()
     zones = conn.list_zones()
     print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
     print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
-    set_id, set = conn.create_set(None, classes[0], zones[0])
+
+    resource_list = []
+
+    resource_list.append(conn.get_resource(resources[0]))
+    resource_list.append(conn.get_resource(resources[1]))
+
+    for resource in resource_list:
+        print(resource.pretty_print())
+
+    set_id, set = conn.create_set(resource_list, classes[0], zones[0])
     conn.destroy_set(set_id)
     conn.close()

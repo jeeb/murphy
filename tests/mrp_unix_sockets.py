@@ -824,22 +824,34 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         names = []
 
+        cached_value = None
+
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_NAME:
                 res = Resource()
                 res.name = field.value
                 names.append(field.value)
-            elif field.type is RESPROTO_ATTRIBUTE_NAME:
-                attr_name = field.value
-            elif field.type is RESPROTO_ATTRIBUTE_VALUE:
-                attr = Attribute(attr_name, field.data_type, field.value)
-                res.add_attribute(attr)
 
-                attr_name = None
-                attr = None
+            elif field.type is RESPROTO_RESOURCE_FLAGS:
+                res.mandatory = bool(field.value & 1)
+                res.shareable = bool(field.value & 2)
+
+            elif field.type is RESPROTO_RESOURCE_PRIORITY:
+                res.priority = field.value
+
+            elif field.type is RESPROTO_ATTRIBUTE_NAME:
+                cached_value = field.value
+
+            elif field.type is RESPROTO_ATTRIBUTE_VALUE:
+                if cached_value is None:
+                    ValueError("Parser error: Attribute value without name!?")
+
+                res.add_attribute(Attribute(cached_value, field.data_type, field.value))
+
             elif field.type is RESPROTO_SECTION_END:
                 res_set.add_resource(res)
                 res = None
+                cached_value = None
 
         self._internal_set = res_set
 
