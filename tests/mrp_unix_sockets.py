@@ -477,9 +477,12 @@ class MurphyMessage(object):
 
 
 class DefaultMessage(MurphyMessage):
-    def __init__(self):
+    def __init__(self, seq_num):
         super(DefaultMessage, self).__init__()
         self.type = MRP_MSG_TAG_DEFAULT
+
+        if seq_num is not None:
+            self.seq_num = seq_num
 
     def convert_to_byte_stream(self):
         byte_stream = write_uint16(self.type)
@@ -756,13 +759,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
     def send_request(self, request_type):
         status = Status()
-        byte_stream = self.create_request(request_type)
 
-        message = parse_message(byte_stream)
+        message = DefaultMessage(self.give_seq_and_increment())
+        message.add_field(RESPROTO_REQUEST_TYPE, request_type)
 
         self.queue.add(message.req_type, message.seq_num, status)
 
-        self.send_message(byte_stream)
+        self.send_message(message.convert_to_byte_stream())
 
         gatekeeper = status.wait(5.0)
 
@@ -934,8 +937,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def destroy_set(self, set_id):
         status = Status()
 
-        message = DefaultMessage()
-        message.seq_num = self.give_seq_and_increment()
+        message = DefaultMessage(self.give_seq_and_increment())
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
         message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
