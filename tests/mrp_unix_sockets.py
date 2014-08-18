@@ -830,6 +830,10 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 names.append(field.value)
 
             elif field.type is RESPROTO_RESOURCE_FLAGS:
+                # We're not yet parsing a resource
+                if res is None:
+                    continue
+
                 res.mandatory = bool(field.value & 1)
                 res.shareable = bool(field.value & 2)
 
