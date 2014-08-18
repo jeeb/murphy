@@ -438,7 +438,7 @@ class MurphyMessage(object):
 
         self.add_field(RESPROTO_RESOURCE_FLAGS, res_flags)
 
-        for attr in resource.attributes:
+        for attr in resource.attributes.values():
             self.add_attribute(attr.name, attr.data_type, attr.value)
 
         self.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
