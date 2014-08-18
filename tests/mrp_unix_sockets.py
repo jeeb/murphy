@@ -777,9 +777,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_counter += 1
         return current
 
-    def write_sequence_number(self):
-        return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
-
     def send_request(self, request_type):
         status = Status()
 
