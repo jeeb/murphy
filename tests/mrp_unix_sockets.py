@@ -899,4 +899,46 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         del(status)
         del(status2)
 
-        return response
+        return set_id, response
+
+    def destroy_set(self, set_id):
+        status = Status()
+
+        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+
+        # Field count
+        byte_stream += write_uint16(3)
+
+        byte_stream += self.write_sequence_number()
+        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
+        byte_stream += write_field(RESPROTO_RESOURCE_SET_ID, set_id)
+
+        message = parse_message(byte_stream)
+
+        self.queue.add(message.req_type, message.seq_num, status)
+
+        self.send_message(byte_stream)
+
+        # We wait for the response, and exit if we don't get one
+        gatekeeper = status.wait(5.0)
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            self.queue.remove(message.req_type, message.seq_num)
+
+        # We grab the response
+        response = status.get_result()
+        self.queue.remove(message.req_type, message.seq_num)
+
+        # Check the status value of the response
+        for field in response.fields:
+            if field.type is RESPROTO_REQUEST_STATUS:
+                if field.value:
+                    print("E: Request status error code is nonzero! (%s)" % (field.value))
+                    self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+                    return None
+                else:
+                    break
+
+        # The resource set was successfully destroyed
+        return True
