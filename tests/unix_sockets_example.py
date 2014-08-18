@@ -50,5 +50,6 @@ if __name__ == "__main__":
         print(resource.pretty_print())
 
     set_id, set = conn.create_set(resource_list, classes[0], zones[0])
+    conn.acquire_set(set_id)
     conn.destroy_set(set_id)
     conn.close()
