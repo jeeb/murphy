@@ -1032,3 +1032,37 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         # The resource set's acquisition was successfully requested
         return True
+
+    def release_set(self, set_id):
+        status = Status()
+
+        message = DefaultMessage(self.next_seq_num)
+        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_RELEASE_RESOURCE_SET)
+        message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+
+        self.queue.add(message.req_type, message.seq_num, status)
+
+        self.send_message(message.convert_to_byte_stream())
+
+        # We wait for the response, and exit if we don't get one
+        gatekeeper = status.wait(5.0)
+        if not gatekeeper:
+            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
+                                                                                            message.req_type))
+            self.queue.remove(message.req_type, message.seq_num)
+
+        response = status.get_result()
+        self.queue.remove(message.req_type, message.seq_num)
+
+        # Check the status value of the response
+        for field in response.fields:
+            if field.type is RESPROTO_REQUEST_STATUS:
+                if field.value:
+                    print("E: Request status error code is nonzero! (%s)" % (field.value))
+                    self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+                    return None
+                else:
+                    break
+
+        # The resource set's release was successfully requested
+        return True
