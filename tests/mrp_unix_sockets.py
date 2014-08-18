@@ -322,7 +322,7 @@ def read_field_value(data, value_type):
 
         value = []
 
-        for i in MRP_RANGE(counter):
+        for _ in MRP_RANGE(counter):
             parsed_value, bytes_read = read_field_value(data, value_type)
             value.append(parsed_value)
             data = data[bytes_read:]
@@ -370,7 +370,7 @@ def parse_default(data, message):
     data = data[bytes_read:]
     print("Field count in message: %s" % (field_count))
 
-    for i in MRP_RANGE(field_count):
+    for _ in MRP_RANGE(field_count):
         field, bytes_read = read_field(data)
         data = data[bytes_read:]
 
