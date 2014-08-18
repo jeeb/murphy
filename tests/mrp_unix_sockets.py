@@ -421,6 +421,10 @@ class MurphyMessage(object):
     def add_field_obj(self, obj):
         self.fields.append(obj)
 
+    def add_attribute(self, attr_name, attr_type, attr_value):
+        self.add_field_obj(Field(RESPROTO_ATTRIBUTE_NAME, MRP_MSG_FIELD_STRING , attr_name))
+        self.add_field_obj(Field(RESPROTO_ATTRIBUTE_VALUE, attr_type, attr_value))
+
     @property
     def seq_num(self):
         if self.fields:
@@ -848,27 +852,21 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         status2 = Status()
         set_id = None
 
-        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+        message = DefaultMessage(self.give_seq_and_increment())
 
-        # Field count
-        byte_stream += write_uint16(14)
+        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
+        message.add_field(RESPROTO_RESOURCE_FLAGS, 0)
+        message.add_field(RESPROTO_RESOURCE_PRIORITY, 0)
+        message.add_field(RESPROTO_CLASS_NAME, app_class)
+        message.add_field(RESPROTO_ZONE_NAME, zone)
+        message.add_field(RESPROTO_RESOURCE_NAME, b"audio_playback")
+        message.add_field(RESPROTO_RESOURCE_FLAGS, 3)
+        message.add_attribute(b"role", MRP_MSG_FIELD_STRING, b"video")
+        message.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
+        message.add_field(RESPROTO_RESOURCE_NAME, b"video_playback")
+        message.add_field(RESPROTO_RESOURCE_FLAGS, 1)
+        message.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
 
-        byte_stream += self.write_sequence_number()
-        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
-        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 0)
-        byte_stream += write_field(RESPROTO_RESOURCE_PRIORITY, 0)
-        byte_stream += write_field(RESPROTO_CLASS_NAME, b"player")
-        byte_stream += write_field(RESPROTO_ZONE_NAME, b"driver")
-        byte_stream += write_field(RESPROTO_RESOURCE_NAME, b"audio_playback")
-        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 3)
-        byte_stream += write_field(RESPROTO_ATTRIBUTE_NAME, b"role")
-        byte_stream += write_field(RESPROTO_ATTRIBUTE_VALUE, b"video")
-        byte_stream += write_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
-        byte_stream += write_field(RESPROTO_RESOURCE_NAME, b"video_playback")
-        byte_stream += write_field(RESPROTO_RESOURCE_FLAGS, 1)
-        byte_stream += write_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
-
-        message = parse_message(byte_stream)
         print(message.pretty_print())
 
         # The response to the query, should always come
@@ -877,7 +875,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         # The event that should come if the creation is successful
         self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status2)
 
-        self.send_message(byte_stream)
+        self.send_message(message.convert_to_byte_stream())
 
         # We wait for the response, and exit if we don't get one
         gatekeeper = status.wait(5.0)
