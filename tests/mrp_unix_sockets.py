@@ -479,9 +479,10 @@ class MurphyMessage(object):
 class DefaultMessage(MurphyMessage):
     def __init__(self):
         super(DefaultMessage, self).__init__()
+        self.type = MRP_MSG_TAG_DEFAULT
 
     def convert_to_byte_stream(self):
-        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+        byte_stream = write_uint16(self.type)
         byte_stream += write_uint16(self.length)
 
         for field in self.fields:
@@ -938,10 +939,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
         message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
-
-        message.pretty_print()
-
-        parse_message(message.convert_to_byte_stream()).pretty_print()
 
         self.queue.add(message.req_type, message.seq_num, status)
 
