@@ -44,5 +44,6 @@ if __name__ == "__main__":
     zones = conn.list_zones()
     print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
     print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
-    conn.create_set(None, classes[0], zones[0])
+    set_id, set = conn.create_set(None, classes[0], zones[0])
+    conn.destroy_set(set_id)
     conn.close()
