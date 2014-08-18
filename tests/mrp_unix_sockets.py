@@ -422,8 +422,30 @@ class MurphyMessage(object):
         self.fields.append(obj)
 
     def add_attribute(self, attr_name, attr_type, attr_value):
-        self.add_field_obj(Field(RESPROTO_ATTRIBUTE_NAME, MRP_MSG_FIELD_STRING , attr_name))
+        self.add_field_obj(Field(RESPROTO_ATTRIBUTE_NAME, MRP_MSG_FIELD_STRING, attr_name))
         self.add_field_obj(Field(RESPROTO_ATTRIBUTE_VALUE, attr_type, attr_value))
+
+    def add_resource(self, resource):
+        res_flags = 0
+
+        self.add_field(RESPROTO_RESOURCE_NAME, resource.name)
+
+        if resource.mandatory:
+            res_flags += 1
+
+        if resource.shareable:
+            res_flags += 2
+
+        self.add_field(RESPROTO_RESOURCE_FLAGS, res_flags)
+
+        for attr in resource.attributes:
+            self.add_attribute(attr.name, attr.data_type, attr.value)
+
+        self.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
+
+    def add_resources(self, resources):
+        for resource in resources:
+            self.add_resource(resource)
 
     @property
     def seq_num(self):
@@ -852,6 +874,9 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         status2 = Status()
         set_id = None
 
+        if not isinstance(resources, list):
+            resources = [resources]
+
         message = DefaultMessage(self.give_seq_and_increment())
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
@@ -859,13 +884,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         message.add_field(RESPROTO_RESOURCE_PRIORITY, 0)
         message.add_field(RESPROTO_CLASS_NAME, app_class)
         message.add_field(RESPROTO_ZONE_NAME, zone)
-        message.add_field(RESPROTO_RESOURCE_NAME, b"audio_playback")
-        message.add_field(RESPROTO_RESOURCE_FLAGS, 3)
-        message.add_attribute(b"role", MRP_MSG_FIELD_STRING, b"video")
-        message.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
-        message.add_field(RESPROTO_RESOURCE_NAME, b"video_playback")
-        message.add_field(RESPROTO_RESOURCE_FLAGS, 1)
-        message.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
+
+        message.add_resources(resources)
 
         print(message.pretty_print())
 
