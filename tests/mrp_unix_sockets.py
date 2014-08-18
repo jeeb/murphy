@@ -545,7 +545,6 @@ class Resource(object):
         self._mandatory = True
         self._acquired = False
         self._available = False
-        self._priority = 0
 
         self._attributes = dict()
 
@@ -588,14 +587,6 @@ class Resource(object):
     @available.setter
     def available(self, val):
         self._available = val
-
-    @property
-    def priority(self):
-        return self._priority
-
-    @priority.setter
-    def priority(self, val):
-        self._priority = val
 
     @property
     def attributes(self):
