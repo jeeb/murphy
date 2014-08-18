@@ -450,10 +450,6 @@ class MurphyMessage(object):
         # We didn't have the request type available
         return None
 
-    @req_type.setter
-    def req_type(self, val):
-        self.__req_type = val
-
     @property
     def length(self):
         return len(self._msg_fields)
@@ -748,14 +744,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
     def write_sequence_number(self):
         return write_field(RESPROTO_SEQUENCE_NO, self.give_seq_and_increment())
-
-    def create_request(self, value):
-        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
-        byte_stream += write_uint16(2)
-        byte_stream += self.write_sequence_number()
-        byte_stream += write_field(RESPROTO_REQUEST_TYPE, value)
-
-        return byte_stream
 
     def send_request(self, request_type):
         status = Status()
