@@ -374,12 +374,7 @@ def parse_default(data, message):
         field, bytes_read = read_field(data)
         data = data[bytes_read:]
 
-        if field.type is RESPROTO_SEQUENCE_NO:
-            message.seq_num = field.value
-        elif field.type is RESPROTO_REQUEST_TYPE:
-            message.req_type = field.value
-
-        message.add_field(field)
+        message.add_field_obj(field)
 
     return message
 
@@ -405,8 +400,6 @@ def parse_message(data):
 class MurphyMessage(object):
     def __init__(self):
         self.__msg_type = -1
-        self.__req_type = -1
-        self.__seq_num = -1
         self._msg_fields = []
 
     @property
@@ -421,27 +414,49 @@ class MurphyMessage(object):
     def fields(self):
         return self._msg_fields
 
-    def add_field(self, val):
-        self._msg_fields.append(val)
+    def add_field(self, type, value):
+        field = Field(type, type_to_data_type(type)[0], value)
+        self.fields.append(field)
+
+    def add_field_obj(self, obj):
+        self.fields.append(obj)
 
     @property
     def seq_num(self):
-        return self.__seq_num
+        if self.fields:
+            field = self.fields[0]
+            if field.type is not RESPROTO_SEQUENCE_NO:
+                raise ValueError("We have fields, but the sequence number is not the first one!")
+            else:
+                return field.value
+        else:
+            # The sequence number is not yet set
+            return None
 
     @seq_num.setter
     def seq_num(self, val):
-        self.__seq_num = val
+        if self.seq_num:
+            field = self.fields[0]
+            field.value = val
+        else:
+            self.add_field(RESPROTO_SEQUENCE_NO, val)
 
     @property
     def req_type(self):
-        return self.__req_type
+        for field in self.fields:
+            if field.type == RESPROTO_REQUEST_TYPE:
+                return field.value
+
+        # We didn't have the request type available
+        return None
 
     @req_type.setter
     def req_type(self, val):
         self.__req_type = val
 
-    def convert_to_byte_stream(self):
-        pass
+    @property
+    def length(self):
+        return len(self._msg_fields)
 
     def pretty_print(self):
         string = "Message:\n"\
@@ -459,6 +474,20 @@ class MurphyMessage(object):
                                                             field.value)
 
         return string
+
+
+class DefaultMessage(MurphyMessage):
+    def __init__(self):
+        super(DefaultMessage, self).__init__()
+
+    def convert_to_byte_stream(self):
+        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+        byte_stream += write_uint16(self.length)
+
+        for field in self.fields:
+            byte_stream += write_field(field.type, field.value)
+
+        return byte_stream
 
 
 class Attribute(object):
@@ -904,20 +933,19 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def destroy_set(self, set_id):
         status = Status()
 
-        byte_stream = write_uint16(MRP_MSG_TAG_DEFAULT)
+        message = DefaultMessage()
+        message.seq_num = self.give_seq_and_increment()
 
-        # Field count
-        byte_stream += write_uint16(3)
+        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
+        message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
 
-        byte_stream += self.write_sequence_number()
-        byte_stream += write_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
-        byte_stream += write_field(RESPROTO_RESOURCE_SET_ID, set_id)
+        message.pretty_print()
 
-        message = parse_message(byte_stream)
+        parse_message(message.convert_to_byte_stream()).pretty_print()
 
         self.queue.add(message.req_type, message.seq_num, status)
 
-        self.send_message(byte_stream)
+        self.send_message(message.convert_to_byte_stream())
 
         # We wait for the response, and exit if we don't get one
         gatekeeper = status.wait(5.0)
