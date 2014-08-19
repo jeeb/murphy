@@ -515,6 +515,32 @@ class DefaultMessage(MurphyMessage):
 
         return byte_stream
 
+class ResourceSetCreation(DefaultMessage):
+    def __init__(self, seq_num, res_set, app_class, zone):
+        super(ResourceSetCreation, self).__init__(seq_num)
+        flags = 0
+
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
+
+        if res_set.autorelease:
+            flags += 1
+
+        if res_set.autoacquire:
+            flags += 2
+
+        if res_set.no_events:
+            flags += 4
+
+        if res_set.dont_wait:
+            flags += 8
+
+        self.add_field(RESPROTO_RESOURCE_FLAGS, flags)
+        self.add_field(RESPROTO_RESOURCE_PRIORITY, res_set.priority)
+        self.add_field(RESPROTO_CLASS_NAME, app_class)
+        self.add_field(RESPROTO_ZONE_NAME, zone)
+
+        self.add_resources(res_set.resources.values())
+
 
 class Attribute(object):
     def __init__(self, name, data_type, value):
@@ -942,32 +968,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         status = Status()
         status2 = Status()
         set_id = None
-        flags = 0
 
-        message = DefaultMessage(self.next_seq_num)
-
-        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
-
-        if res_set.autorelease:
-            flags += 1
-
-        if res_set.autoacquire:
-            flags += 2
-
-        if res_set.no_events:
-            flags += 4
-
-        if res_set.dont_wait:
-            flags += 8
-
-        message.add_field(RESPROTO_RESOURCE_FLAGS, flags)
-        message.add_field(RESPROTO_RESOURCE_PRIORITY, res_set.priority)
-        message.add_field(RESPROTO_CLASS_NAME, app_class)
-        message.add_field(RESPROTO_ZONE_NAME, zone)
-
-        message.add_resources(res_set.resources.values())
-
-        print(message.pretty_print())
+        message = ResourceSetCreation(self.next_seq_num, res_set, app_class, zone)
 
         # The response to the query, should always come
         self.queue.add(message.req_type, message.seq_num, status)
