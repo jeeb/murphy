@@ -515,6 +515,7 @@ class DefaultMessage(MurphyMessage):
 
         return byte_stream
 
+
 class ResourceSetCreation(DefaultMessage):
     def __init__(self, seq_num, res_set, app_class, zone):
         super(ResourceSetCreation, self).__init__(seq_num)
