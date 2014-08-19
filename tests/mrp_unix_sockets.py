@@ -398,7 +398,7 @@ def parse_message(data):
     return message
 
 
-def parse_message_to_resource_set(message):
+def parse_message_to_resource_set(message, given_res_set=None):
     res_set = ResourceSet()
     res = Resource()
     grant = None
@@ -465,6 +465,18 @@ def parse_message_to_resource_set(message):
             res_set.add_resource(res)
             res = Resource()
             cached_value = None
+
+    # Now, if we have had a set given to us, update it
+    if given_res_set:
+        given_res_set.update(res_set.data)
+
+        for res in given_res_set.resources.values():
+            updated_res = res_set.resources.get(res.name)
+            res.update(updated_res.data)
+            res.attributes.update(updated_res.attributes)
+
+        # And actually return the updated one
+        res_set = given_res_set
 
     return res_set
 
@@ -678,53 +690,49 @@ class Attribute(object):
 
 class Resource(object):
     def __init__(self):
-        self._name = None
-        self._shareable = False
-        self._mandatory = True
-        self._acquired = False
-        self._available = False
+        self._data = dict()
 
         self._attributes = dict()
 
     @property
     def name(self):
-        return self._name
+        return self._data.get("name")
 
     @name.setter
     def name(self, val):
-        self._name = val
+        self._data.update({"name": val})
 
     @property
     def shareable(self):
-        return self._shareable
+        return self._data.get("shareable")
 
     @shareable.setter
     def shareable(self, val):
-        self._shareable = val
+        self._data.update({"shareable": val})
 
     @property
     def mandatory(self):
-        return self._mandatory
+        return self._data.get("mandatory")
 
     @mandatory.setter
     def mandatory(self, val):
-        self._mandatory = val
+        self._data.update({"mandatory": val})
 
     @property
     def acquired(self):
-        return self._acquired
+        return self._data.get("acquired")
 
     @acquired.setter
     def acquired(self, val):
-        self._acquired = val
+        self._data.update({"acquired": val})
 
     @property
     def available(self):
-        return self._available
+        return self._data.get("available")
 
     @available.setter
     def available(self, val):
-        self._available = val
+        self._data.update({"available": val})
 
     @property
     def attributes(self):
@@ -733,9 +741,16 @@ class Resource(object):
     def add_attribute(self, attr):
         self._attributes[attr.name] = attr
 
+    def update(self, data):
+        self._data.update(data)
+
+    @property
+    def data(self):
+        return self._data
+
     def copy(self):
         res = Resource()
-        res.name = self.name
+        res.update(self._data)
 
         for attr in self.attributes.values():
             res.add_attribute(Attribute(attr.name, attr.data_type, attr.value))
@@ -758,32 +773,64 @@ class Resource(object):
 
 class ResourceSet(object):
     def __init__(self):
-        self._set_id = None
-        self._acquired = False
-
-        self._autorelease = False
-        self._autoacquire = False
-        self._noevents = False
-        self._dontwait = False
-        self._priority = 0
-
+        self._data = dict()
         self._resources = dict()
 
     @property
     def id(self):
-        return self._set_id
+        return self._data.get("id")
 
     @id.setter
     def id(self, val):
-        self._set_id = val
+        self._data["id"] = val
 
     @property
     def acquired(self):
-        return self._acquired
+        return self._data.get("acquired")
 
     @acquired.setter
     def acquired(self, val):
-        self._acquired = val
+        self._data["acquired"] = val
+
+    @property
+    def autorelease(self):
+        return self._data.get("autorelease")
+
+    @autorelease.setter
+    def autorelease(self, val):
+        self._data["autorelease"] = val
+
+    @property
+    def autoacquire(self):
+        return self._data.get("autoacquire")
+
+    @autoacquire.setter
+    def autoacquire(self, val):
+        self._data["autoacquire"] = val
+
+    @property
+    def no_events(self):
+        return self._data.get("no_events")
+
+    @no_events.setter
+    def no_events(self, val):
+        self._data["no_events"] = val
+
+    @property
+    def dont_wait(self):
+        return self._data.get("dont_wait")
+
+    @dont_wait.setter
+    def dont_wait(self, val):
+        self._data["dont_wait"] = val
+
+    @property
+    def priority(self):
+        return self._data.get("priority", 0)
+
+    @priority.setter
+    def priority(self, val):
+        self._data["priority"] = val
 
     @property
     def resources(self):
@@ -792,45 +839,12 @@ class ResourceSet(object):
     def add_resource(self, res):
         self._resources[res.name] = res
 
-    @property
-    def autorelease(self):
-        return self._autorelease
-
-    @autorelease.setter
-    def autorelease(self, val):
-        self._autorelease = val
+    def update(self, data):
+        self._data.update(data)
 
     @property
-    def autoacquire(self):
-        return self._autoacquire
-
-    @autoacquire.setter
-    def autoacquire(self, val):
-        self._autoacquire = val
-
-    @property
-    def no_events(self):
-        return self._noevents
-
-    @no_events.setter
-    def no_events(self, val):
-        self._noevents = val
-
-    @property
-    def dont_wait(self):
-        return self._dontwait
-
-    @dont_wait.setter
-    def dont_wait(self, val):
-        self._dontwait = val
-
-    @property
-    def priority(self):
-        return self._priority
-
-    @priority.setter
-    def priority(self, val):
-        self._priority = val
+    def data(self):
+        return self._data
 
     def pretty_print(self):
         string = "Resource Set %s:\n" \
@@ -1089,6 +1103,9 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 set_id = field.value
                 break
 
+        res_set = parse_message_to_resource_set(response)
+        self.own_sets[res_set.id] = res_set
+
         return set_id, response
 
     def destroy_set(self, set_id):
@@ -1097,7 +1114,9 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             print("E: Zone listing request failed")
             return None
 
-        # The resource set was successfully destroyed
+        # The resource set was successfully destroyed, remove it from the internal list
+        del(self.own_sets[set_id])
+
         return True
 
     def acquire_set(self, set_id):
@@ -1106,9 +1125,11 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         response = self.send_request_with_event(message)
         if response is None:
             print("E: Set acquisition query failed")
+            return None
 
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_STATE:
+                parse_message_to_resource_set(response, self.own_sets.get(set_id))
                 return bool(field.value), field.value
 
         print("E: Failed to find set state from the event!")
@@ -1120,9 +1141,11 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         response = self.send_request_with_event(message)
         if response is None:
             print("E: Set release query failed")
+            return None
 
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_STATE:
+                parse_message_to_resource_set(response, self.own_sets.get(set_id))
                 return not bool(field.value), field.value
 
         print("E: Failed to find set state from the event!")
