@@ -398,6 +398,77 @@ def parse_message(data):
     return message
 
 
+def parse_message_to_resource_set(message):
+    res_set = ResourceSet()
+    res = Resource()
+    grant = None
+    advice = None
+    cached_value = None
+
+    # Parse resource set information
+    for field in list(message.fields):
+        if field.type is RESPROTO_RESOURCE_ID or field.type is RESPROTO_RESOURCE_NAME:
+            # We move to parsing the per-resource information
+            break
+        else:
+            if field.type is RESPROTO_RESOURCE_SET_ID:
+                res_set.id = field.value
+                message.fields.remove(field)
+
+            elif field.type is RESPROTO_RESOURCE_STATE:
+                res_set.acquired = bool(field.value)
+                message.fields.remove(field)
+
+            elif field.type is RESPROTO_RESOURCE_GRANT:
+                grant = field.value
+                message.fields.remove(field)
+
+            elif field.type is RESPROTO_RESOURCE_ADVICE:
+                advice = field.value
+                message.fields.remove(field)
+
+            elif field.type is RESPROTO_RESOURCE_FLAGS:
+                res_set.autorelease = bool(field.value & 1)
+                res_set.autoacquire = bool(field.value & 2)
+                res_set.no_events = bool(field.value & 4)
+                res_set.dont_wait = bool(field.value & 8)
+                message.fields.remove(field)
+
+            elif field.type is RESPROTO_RESOURCE_PRIORITY:
+                res_set.priority = field.value
+
+    # Now parse the per-resource information
+    for field in message.fields:
+        if field.type is RESPROTO_RESOURCE_ID:
+            res.acquired = bool(grant & field.value)
+            res.available = bool(advice & field.value)
+
+        elif field.type is RESPROTO_RESOURCE_NAME:
+            res.name = field.value
+
+        elif field.type is RESPROTO_RESOURCE_FLAGS:
+            res.mandatory = bool(field.value & 1)
+            res.shareable = bool(field.value & 2)
+
+        elif field.type is RESPROTO_ATTRIBUTE_NAME:
+            cached_value = field.value
+
+        elif field.type is RESPROTO_ATTRIBUTE_VALUE:
+            if cached_value is None:
+                ValueError("Parser error: Attribute value without name!?")
+
+            res.add_attribute(Attribute(cached_value, field.data_type, field.value))
+            cached_value = None
+
+        elif field.type is RESPROTO_SECTION_END:
+            # A single resource's information has ended, we commit
+            res_set.add_resource(res)
+            res = Resource()
+            cached_value = None
+
+    return res_set
+
+
 class MurphyMessage(object):
     def __init__(self):
         self.__msg_type = -1
@@ -960,44 +1031,14 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             print("E: Resource listing request failed")
             return None
 
-        res_set = ResourceSet()
-
         names = []
 
-        cached_value = None
-
-        for field in response.fields:
-            if field.type is RESPROTO_RESOURCE_NAME:
-                res = Resource()
-                res.name = field.value
-                names.append(field.value)
-
-            elif field.type is RESPROTO_RESOURCE_FLAGS:
-                # We're not yet parsing a resource
-                if res is None:
-                    continue
-
-                res.mandatory = bool(field.value & 1)
-                res.shareable = bool(field.value & 2)
-
-            elif field.type is RESPROTO_RESOURCE_PRIORITY:
-                res.priority = field.value
-
-            elif field.type is RESPROTO_ATTRIBUTE_NAME:
-                cached_value = field.value
-
-            elif field.type is RESPROTO_ATTRIBUTE_VALUE:
-                if cached_value is None:
-                    ValueError("Parser error: Attribute value without name!?")
-
-                res.add_attribute(Attribute(cached_value, field.data_type, field.value))
-
-            elif field.type is RESPROTO_SECTION_END:
-                res_set.add_resource(res)
-                res = None
-                cached_value = None
+        res_set = parse_message_to_resource_set(response)
 
         self._internal_set = res_set
+
+        for resource in res_set.resources.values():
+            names.append(resource.name)
 
         return names
 
