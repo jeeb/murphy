@@ -41,15 +41,14 @@ if __name__ == "__main__":
     print("\tAvailable Classes: %s" % (", ".join(str(x) for x in classes)))
     print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
 
-    resource_list = []
+    res_set = mrp.ResourceSet()
 
-    resource_list.append(conn.get_resource(resources[0]))
-    resource_list.append(conn.get_resource(resources[1]))
+    res_set.add_resource(conn.get_resource(resources[0]))
+    res_set.add_resource(conn.get_resource(resources[1]))
 
-    for resource in resource_list:
-        print(resource.pretty_print())
+    print(res_set.pretty_print())
 
-    set_id, set = conn.create_set(resource_list, classes[0], zones[0])
+    set_id, set = conn.create_set(res_set, classes[0], zones[0])
     conn.release_set(set_id)
     conn.acquire_set(set_id)
     conn.release_set(set_id)
