@@ -542,6 +542,27 @@ class ResourceSetCreation(DefaultMessage):
         self.add_resources(res_set.resources.values())
 
 
+class ResourceSetDestruction(DefaultMessage):
+    def __init__(self, seq_num, set_id):
+        super(ResourceSetDestruction, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
+        self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+
+
+class ResourceSetAcquisition(DefaultMessage):
+    def __init__(self, seq_num, set_id):
+        super(ResourceSetAcquisition, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_ACQUIRE_RESOURCE_SET)
+        self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+
+
+class ResourceSetRelease(DefaultMessage):
+    def __init__(self, seq_num, set_id):
+        super(ResourceSetRelease, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_RELEASE_RESOURCE_SET)
+        self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+
+
 class Attribute(object):
     def __init__(self, name, data_type, value):
         self._name = name
@@ -1025,10 +1046,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def destroy_set(self, set_id):
         status = Status()
 
-        message = DefaultMessage(self.next_seq_num)
-
-        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
-        message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+        message = ResourceSetDestruction(self.next_seq_num, set_id)
 
         self.queue.add(message.req_type, message.seq_num, status)
 
@@ -1061,9 +1079,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def acquire_set(self, set_id):
         status = Status()
 
-        message = DefaultMessage(self.next_seq_num)
-        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_ACQUIRE_RESOURCE_SET)
-        message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+        message = ResourceSetAcquisition(self.next_seq_num, set_id)
 
         self.queue.add(message.req_type, message.seq_num, status)
 
@@ -1095,9 +1111,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def release_set(self, set_id):
         status = Status()
 
-        message = DefaultMessage(self.next_seq_num)
-        message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_RELEASE_RESOURCE_SET)
-        message.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
+        message = ResourceSetRelease(self.next_seq_num, set_id)
 
         self.queue.add(message.req_type, message.seq_num, status)
 
