@@ -921,6 +921,38 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         return response
 
+    def send_request_with_event(self, message):
+        status = Status()
+
+        # The event that should come if the creation is successful
+        self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status)
+
+        response = self.send_request(message)
+        if response is None:
+            print("E: Failed to gain reply or reply was a failure (seq %d - type %d)" % (message.seq_num,
+                                                                                                 message.req_type))
+            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+            return None
+
+        # We wait for the event
+        gatekeeper = status.wait(5.0)
+
+        # If gatekeeper tells us that we didn't get a response, we timed out
+        if not gatekeeper:
+            print("E: Timed out on the event (waited five seconds; seq %d - type %d)" % (message.seq_num,
+                                                                                            message.req_type))
+            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+            return None
+
+        # Get the response data from the status object
+        response = status.get_result()
+        self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
+
+        # Delete the status object itself
+        del(status)
+
+        return response
+
     def list_resources(self):
         response = self.send_request(ResourceListing(self.next_seq_num))
         if response is None:
@@ -1002,156 +1034,54 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return resource.copy()
 
     def create_set(self, res_set, app_class, zone):
-        status = Status()
-        status2 = Status()
         set_id = None
 
         message = ResourceSetCreation(self.next_seq_num, res_set, app_class, zone)
 
-        # The response to the query, should always come
-        self.queue.add(message.req_type, message.seq_num, status)
+        response = self.send_request_with_event(message)
+        if response is None:
+            print("E: Set creation failed")
 
-        # The event that should come if the creation is successful
-        self.queue.add(RESPROTO_RESOURCES_EVENT, message.seq_num, status2)
-
-        self.send_message(message.convert_to_byte_stream())
-
-        # We wait for the response, and exit if we don't get one
-        gatekeeper = status.wait(5.0)
-        if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
-                                                                                            message.req_type))
-            self.queue.remove(message.req_type, message.seq_num)
-            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-            return None
-
-        # We grab the response
-        response = status.get_result()
-        self.queue.remove(message.req_type, message.seq_num)
-
-        # Check the status value of the response
         for field in response.fields:
-            if field.type is RESPROTO_REQUEST_STATUS and field.value:
-                print("E: Request status error code is nonzero! (%s)" % (field.value))
-                self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-                return None
-            elif field.type is RESPROTO_RESOURCE_SET_ID:
+            if field.type is RESPROTO_RESOURCE_SET_ID:
                 set_id = field.value
-                print("I: The resource set ID for the newly created set is %s" % (field.value))
-
-        # We wait for the actual event
-        gatekeeper = status2.wait(5.0)
-
-        # If gatekeeper tells us that we didn't get a response, we timed out
-        if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
-                                                                                            message.req_type))
-            self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-            return None
-
-        # Get the response data from the status object
-        response = status2.get_result()
-        self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-
-        # Delete the status object itself
-        del(status)
-        del(status2)
+                break
 
         return set_id, response
 
     def destroy_set(self, set_id):
-        status = Status()
-
-        message = ResourceSetDestruction(self.next_seq_num, set_id)
-
-        self.queue.add(message.req_type, message.seq_num, status)
-
-        self.send_message(message.convert_to_byte_stream())
-
-        # We wait for the response, and exit if we don't get one
-        gatekeeper = status.wait(5.0)
-        if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
-                                                                                            message.req_type))
-            self.queue.remove(message.req_type, message.seq_num)
-
-        # We grab the response
-        response = status.get_result()
-        self.queue.remove(message.req_type, message.seq_num)
-
-        # Check the status value of the response
-        for field in response.fields:
-            if field.type is RESPROTO_REQUEST_STATUS:
-                if field.value:
-                    print("E: Request status error code is nonzero! (%s)" % (field.value))
-                    self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-                    return None
-                else:
-                    break
+        response = self.send_request(ResourceSetDestruction(self.next_seq_num, set_id))
+        if response is None:
+            print("E: Zone listing request failed")
+            return None
 
         # The resource set was successfully destroyed
         return True
 
     def acquire_set(self, set_id):
-        status = Status()
-
         message = ResourceSetAcquisition(self.next_seq_num, set_id)
 
-        self.queue.add(message.req_type, message.seq_num, status)
+        response = self.send_request_with_event(message)
+        if response is None:
+            print("E: Set acquisition query failed")
 
-        self.send_message(message.convert_to_byte_stream())
-
-        # We wait for the response, and exit if we don't get one
-        gatekeeper = status.wait(5.0)
-        if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
-                                                                                            message.req_type))
-            self.queue.remove(message.req_type, message.seq_num)
-
-        response = status.get_result()
-        self.queue.remove(message.req_type, message.seq_num)
-
-        # Check the status value of the response
         for field in response.fields:
-            if field.type is RESPROTO_REQUEST_STATUS:
-                if field.value:
-                    print("E: Request status error code is nonzero! (%s)" % (field.value))
-                    self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-                    return None
-                else:
-                    break
+            if field.type is RESPROTO_RESOURCE_STATE:
+                return bool(field.value), field.value
 
-        # The resource set's acquisition was successfully requested
-        return True
+        print("E: Failed to find set state from the event!")
+        return None
 
     def release_set(self, set_id):
-        status = Status()
-
         message = ResourceSetRelease(self.next_seq_num, set_id)
 
-        self.queue.add(message.req_type, message.seq_num, status)
+        response = self.send_request_with_event(message)
+        if response is None:
+            print("E: Set release query failed")
 
-        self.send_message(message.convert_to_byte_stream())
-
-        # We wait for the response, and exit if we don't get one
-        gatekeeper = status.wait(5.0)
-        if not gatekeeper:
-            print("E: Timed out on the response (waited five seconds; seq %s - type %s)" % (message.seq_num,
-                                                                                            message.req_type))
-            self.queue.remove(message.req_type, message.seq_num)
-
-        response = status.get_result()
-        self.queue.remove(message.req_type, message.seq_num)
-
-        # Check the status value of the response
         for field in response.fields:
-            if field.type is RESPROTO_REQUEST_STATUS:
-                if field.value:
-                    print("E: Request status error code is nonzero! (%s)" % (field.value))
-                    self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
-                    return None
-                else:
-                    break
+            if field.type is RESPROTO_RESOURCE_STATE:
+                return not bool(field.value), field.value
 
-        # The resource set's release was successfully requested
-        return True
+        print("E: Failed to find set state from the event!")
+        return None
