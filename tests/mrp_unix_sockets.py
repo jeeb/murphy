@@ -440,8 +440,8 @@ def parse_message_to_resource_set(message):
     # Now parse the per-resource information
     for field in message.fields:
         if field.type is RESPROTO_RESOURCE_ID:
-            res.acquired = bool(grant & field.value)
-            res.available = bool(advice & field.value)
+            res.acquired = bool(grant & 1 << field.value)
+            res.available = bool(advice & 1 << field.value)
 
         elif field.type is RESPROTO_RESOURCE_NAME:
             res.name = field.value
