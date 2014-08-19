@@ -623,6 +623,12 @@ class ResourceSet(object):
         self._set_id = None
         self._acquired = False
 
+        self._autorelease = False
+        self._autoacquire = False
+        self._noevents = False
+        self._dontwait = False
+        self._priority = 0
+
         self._resources = dict()
 
     @property
@@ -647,6 +653,46 @@ class ResourceSet(object):
 
     def add_resource(self, res):
         self._resources[res.name] = res
+
+    @property
+    def autorelease(self):
+        return self._autorelease
+
+    @autorelease.setter
+    def autorelease(self, val):
+        self._autorelease = val
+
+    @property
+    def autoacquire(self):
+        return self._autoacquire
+
+    @autoacquire.setter
+    def autoacquire(self, val):
+        self._autoacquire = val
+
+    @property
+    def no_events(self):
+        return self._noevents
+
+    @no_events.setter
+    def no_events(self, val):
+        self._noevents = val
+
+    @property
+    def dont_wait(self):
+        return self._dontwait
+
+    @dont_wait.setter
+    def dont_wait(self, val):
+        self._dontwait = val
+
+    @property
+    def priority(self):
+        return self._priority
+
+    @priority.setter
+    def priority(self, val):
+        self._priority = val
 
     def pretty_print(self):
         string = "Resource Set %s:\n" \
@@ -892,23 +938,34 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         return resource.copy()
 
-    def create_set(self, resources, app_class, zone):
+    def create_set(self, res_set, app_class, zone):
         status = Status()
         status2 = Status()
         set_id = None
-
-        if not isinstance(resources, list):
-            resources = [resources]
+        flags = 0
 
         message = DefaultMessage(self.next_seq_num)
 
         message.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_CREATE_RESOURCE_SET)
-        message.add_field(RESPROTO_RESOURCE_FLAGS, 0)
-        message.add_field(RESPROTO_RESOURCE_PRIORITY, 0)
+
+        if res_set.autorelease:
+            flags += 1
+
+        if res_set.autoacquire:
+            flags += 2
+
+        if res_set.no_events:
+            flags += 4
+
+        if res_set.dont_wait:
+            flags += 8
+
+        message.add_field(RESPROTO_RESOURCE_FLAGS, flags)
+        message.add_field(RESPROTO_RESOURCE_PRIORITY, res_set.priority)
         message.add_field(RESPROTO_CLASS_NAME, app_class)
         message.add_field(RESPROTO_ZONE_NAME, zone)
 
-        message.add_resources(resources)
+        message.add_resources(res_set.resources.values())
 
         print(message.pretty_print())
 
