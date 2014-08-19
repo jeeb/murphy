@@ -43,6 +43,7 @@ except NameError:
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_DEFAULT_RECEIVE_SIZE = 4096
+MRP_DEFAULT_TIMEOUT = 5.0
 MRP_MSG_TAG_DEFAULT = 0x0
 
 (MRP_MSG_FIELD_INVALID,
@@ -897,7 +898,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self.send_message(message.convert_to_byte_stream())
 
-        gatekeeper = status.wait(5.0)
+        gatekeeper = status.wait(MRP_DEFAULT_TIMEOUT)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
@@ -935,7 +936,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             return None
 
         # We wait for the event
-        gatekeeper = status.wait(5.0)
+        gatekeeper = status.wait(MRP_DEFAULT_TIMEOUT)
 
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
