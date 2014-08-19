@@ -516,6 +516,24 @@ class DefaultMessage(MurphyMessage):
         return byte_stream
 
 
+class ApplicationClassListing(DefaultMessage):
+    def __init__(self, seq_num):
+        super(ApplicationClassListing, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_CLASSES)
+
+
+class ZoneListing(DefaultMessage):
+    def __init__(self, seq_num):
+        super(ZoneListing, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_ZONES)
+
+
+class ResourceListing(DefaultMessage):
+    def __init__(self, seq_num):
+        super(ResourceListing, self).__init__(seq_num)
+        self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_RESOURCES)
+
+
 class ResourceSetCreation(DefaultMessage):
     def __init__(self, seq_num, res_set, app_class, zone):
         super(ResourceSetCreation, self).__init__(seq_num)
@@ -872,11 +890,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_counter += 1
         return current
 
-    def send_request(self, request_type):
+    def send_request(self, message):
         status = Status()
-
-        message = DefaultMessage(self.next_seq_num)
-        message.add_field(RESPROTO_REQUEST_TYPE, request_type)
 
         self.queue.add(message.req_type, message.seq_num, status)
 
@@ -907,7 +922,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return response
 
     def list_resources(self):
-        response = self.send_request(RESPROTO_QUERY_RESOURCES)
+        response = self.send_request(ResourceListing(self.next_seq_num))
         if response is None:
             print("E: Resource listing request failed")
             return None
@@ -954,7 +969,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return names
 
     def list_classes(self):
-        response = self.send_request(RESPROTO_QUERY_CLASSES)
+        response = self.send_request(ApplicationClassListing(self.next_seq_num))
         if response is None:
             print("E: Application class listing request failed!")
             return None
@@ -967,7 +982,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return None
 
     def list_zones(self):
-        response = self.send_request(RESPROTO_QUERY_ZONES)
+        response = self.send_request(ZoneListing(self.next_seq_num))
         if response is None:
             print("E: Zone listing request failed")
             return None
