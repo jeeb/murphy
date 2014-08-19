@@ -930,7 +930,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         response = self.send_request(message)
         if response is None:
             print("E: Failed to gain reply or reply was a failure (seq %d - type %d)" % (message.seq_num,
-                                                                                                 message.req_type))
+                                                                                         message.req_type))
             self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
             return None
 
@@ -940,7 +940,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         # If gatekeeper tells us that we didn't get a response, we timed out
         if not gatekeeper:
             print("E: Timed out on the event (waited five seconds; seq %d - type %d)" % (message.seq_num,
-                                                                                            message.req_type))
+                                                                                         message.req_type))
             self.queue.remove(RESPROTO_RESOURCES_EVENT, message.seq_num)
             return None
 
