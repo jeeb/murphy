@@ -405,41 +405,45 @@ def parse_message_to_resource_set(message, given_res_set=None):
     advice = None
     cached_value = None
 
+    # We make a copy of the original list as we will be removing fields
+    fields = list(message.fields)
+
     # Parse resource set information
-    for field in list(message.fields):
+    for field in list(fields):
         if field.type is RESPROTO_RESOURCE_ID or field.type is RESPROTO_RESOURCE_NAME:
             # We move to parsing the per-resource information
             break
         else:
             if field.type is RESPROTO_RESOURCE_SET_ID:
                 res_set.id = field.value
-                message.fields.remove(field)
+                fields.remove(field)
 
             elif field.type is RESPROTO_RESOURCE_STATE:
                 res_set.acquired = bool(field.value)
-                message.fields.remove(field)
+                fields.remove(field)
 
             elif field.type is RESPROTO_RESOURCE_GRANT:
                 grant = field.value
-                message.fields.remove(field)
+                fields.remove(field)
 
             elif field.type is RESPROTO_RESOURCE_ADVICE:
                 advice = field.value
-                message.fields.remove(field)
+                fields.remove(field)
 
             elif field.type is RESPROTO_RESOURCE_FLAGS:
                 res_set.autorelease = bool(field.value & 1)
                 res_set.autoacquire = bool(field.value & 2)
                 res_set.no_events = bool(field.value & 4)
                 res_set.dont_wait = bool(field.value & 8)
-                message.fields.remove(field)
+                fields.remove(field)
 
             elif field.type is RESPROTO_RESOURCE_PRIORITY:
                 res_set.priority = field.value
 
     # Now parse the per-resource information
-    for field in message.fields:
+    for field in fields:
         if field.type is RESPROTO_RESOURCE_ID:
+            res.id = field.value
             res.acquired = bool(grant & 1 << field.value)
             res.available = bool(advice & 1 << field.value)
 
@@ -472,8 +476,16 @@ def parse_message_to_resource_set(message, given_res_set=None):
 
         for res in given_res_set.resources.values():
             updated_res = res_set.resources.get(res.name)
-            res.update(updated_res.data)
-            res.attributes.update(updated_res.attributes)
+
+            # If the resource is available in the update, update it
+            if updated_res is not None:
+                print("Updating res %s" % (updated_res.name))
+                res.update(updated_res.data)
+                res.attributes.update(updated_res.attributes)
+            else:
+                print("Res %s not transferred, using grant/advice" % (res.name))
+                res.acquired = bool(grant & 1 << res.id)
+                res.available = bool(advice & 1 << res.id)
 
         # And actually return the updated one
         res_set = given_res_set
@@ -693,6 +705,14 @@ class Resource(object):
         self._data = dict()
 
         self._attributes = dict()
+
+    @property
+    def id(self):
+        return self._data.get("id")
+
+    @id.setter
+    def id(self, val):
+        self._data.update({"id": val})
 
     @property
     def name(self):
