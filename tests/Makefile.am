@@ -13,6 +13,10 @@ NEEDED_LOGS += test_mrp_resource_native.log
 TESTS += test_mrp_resource.conf
 test_mrp_resource_native.log: run_murphyd.log
 NEEDED_LOGS += test_mrp_resource.log
+
+TESTS += test_mrp_unix_sockets.conf
+test_mrp_resource_native.log: run_murphyd.log
+NEEDED_LOGS += test_mrp_unix_sockets.log
 endif
 
 if DBUS_ENABLED
