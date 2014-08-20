@@ -479,13 +479,15 @@ def parse_message_to_resource_set(message, given_res_set=None):
 
             # If the resource is available in the update, update it
             if updated_res is not None:
-                print("Updating res %s" % (updated_res.name))
+                print("D: Updating res %s" % (updated_res.name))
                 res.update(updated_res.data)
                 res.attributes.update(updated_res.attributes)
-            else:
-                print("Res %s not transferred, using grant/advice" % (res.name))
+            elif res.id is not None:
+                print("D: Res %s not transferred, using grant/advice" % (res.name))
                 res.acquired = bool(grant & 1 << res.id)
                 res.available = bool(advice & 1 << res.id)
+            else:
+                print("D: Res %s not transferred and doesn't yet have an ID - implicit values used" % (res.name))
 
         # And actually return the updated one
         res_set = given_res_set
@@ -724,7 +726,7 @@ class Resource(object):
 
     @property
     def shareable(self):
-        return self._data.get("shareable")
+        return self._data.get("shareable", False)
 
     @shareable.setter
     def shareable(self, val):
@@ -732,7 +734,7 @@ class Resource(object):
 
     @property
     def mandatory(self):
-        return self._data.get("mandatory")
+        return self._data.get("mandatory", True)
 
     @mandatory.setter
     def mandatory(self, val):
@@ -740,7 +742,7 @@ class Resource(object):
 
     @property
     def acquired(self):
-        return self._data.get("acquired")
+        return self._data.get("acquired", False)
 
     @acquired.setter
     def acquired(self, val):
@@ -748,7 +750,7 @@ class Resource(object):
 
     @property
     def available(self):
-        return self._data.get("available")
+        return self._data.get("available", False)
 
     @available.setter
     def available(self, val):
@@ -806,7 +808,7 @@ class ResourceSet(object):
 
     @property
     def acquired(self):
-        return self._data.get("acquired")
+        return self._data.get("acquired", False)
 
     @acquired.setter
     def acquired(self, val):
@@ -814,7 +816,7 @@ class ResourceSet(object):
 
     @property
     def autorelease(self):
-        return self._data.get("autorelease")
+        return self._data.get("autorelease", False)
 
     @autorelease.setter
     def autorelease(self, val):
@@ -822,7 +824,7 @@ class ResourceSet(object):
 
     @property
     def autoacquire(self):
-        return self._data.get("autoacquire")
+        return self._data.get("autoacquire", False)
 
     @autoacquire.setter
     def autoacquire(self, val):
@@ -830,7 +832,7 @@ class ResourceSet(object):
 
     @property
     def no_events(self):
-        return self._data.get("no_events")
+        return self._data.get("no_events", False)
 
     @no_events.setter
     def no_events(self, val):
@@ -838,7 +840,7 @@ class ResourceSet(object):
 
     @property
     def dont_wait(self):
-        return self._data.get("dont_wait")
+        return self._data.get("dont_wait", False)
 
     @dont_wait.setter
     def dont_wait(self, val):
@@ -969,11 +971,61 @@ class MurphyConnection(asyncore.dispatcher_with_send):
     def check_message(self, message):
         queue = self.queue.contents
 
-        if message.seq_num in queue:
-            if message.req_type in queue.get(message.seq_num):
-                print("D: Got a response to a sent message! (seq %s - type %s)" % (message.seq_num, message.req_type))
-                queue.get(message.seq_num, {}).get(message.req_type).set_result(message)
+        seq_num = message.seq_num
+        req_type = message.req_type
+
+        # Is this an event?
+        if req_type is RESPROTO_RESOURCES_EVENT:
+            print("D: Got an event! (seq %s - type %s)" % (message.seq_num, request_type_to_string(req_type)))
+
+            if seq_num in queue and req_type in queue.get(seq_num):
+                print("D: Got an event that is a response to a sent message!")
+                queue.get(seq_num, {}).get(req_type).set_result(message)
                 return
+            else:
+                self.events.append(message)
+
+        # Or something expected in general?
+        elif seq_num in queue and req_type in queue.get(seq_num):
+            print("D: Got a response to a sent message! (seq %s - type %s)" % (seq_num,
+                                                                               request_type_to_string(req_type)))
+            queue.get(seq_num, {}).get(req_type).set_result(message)
+            return
+
+        # Or just something completely else?
+        else:
+            print("D: Got unrelated message (seq %s - type %s)" % (seq_num, request_type_to_string(req_type)))
+
+    def parse_event(self, event):
+        res_set = parse_message_to_resource_set(event)
+        if res_set.id is None:
+            print("E: No set id in event!")
+            return None
+
+        set_id = res_set.id
+
+        if set_id in self.own_sets:
+            print("D: We found an event for set %s" % (set_id))
+            parse_message_to_resource_set(event, self.own_sets.get(set_id))
+            return True
+        else:
+            print("D: We found an event for a set that is not yet in our books (id = %s)" % (set_id))
+            return False
+
+    def parse_received_events(self):
+        if not self.events:
+            return None
+
+        for event in list(self.events):
+            result = self.parse_event(event)
+
+            # Either the event was invalid or a set was updated with its information,
+            # remove the event from the list
+            if result is None or result:
+                self.events.remove(event)
+            # Otherwise we just keep iterating
+
+        return True
 
     def handle_read(self):
         # Do an initial read
@@ -1132,7 +1184,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
                 set_id = field.value
                 break
 
-        res_set = parse_message_to_resource_set(response)
+        parse_message_to_resource_set(response, res_set)
         self.own_sets[res_set.id] = res_set
 
         return set_id, response
@@ -1179,3 +1231,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         print("E: Failed to find set state from the event!")
         return None
+
+    def get_state(self, set_id):
+        return self.own_sets.get(set_id)
