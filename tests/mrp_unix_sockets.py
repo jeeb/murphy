@@ -866,6 +866,15 @@ class ResourceSet(object):
     def data(self):
         return self._data
 
+    def copy(self):
+        res_set = ResourceSet()
+        res_set.update(self.data)
+
+        for res in self.resources.values():
+            res_set.add_resource(res.copy())
+
+        return res_set
+
     def pretty_print(self):
         string = "Resource Set %s:\n" \
                  "  Acquired: %s\n" \
