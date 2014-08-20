@@ -78,12 +78,13 @@ if __name__ == "__main__":
 
     print("WebSocketExample: Set state now: %s" % connection.get_state(r_set))
 
-    try:
-        while True:
-            if connection.parse_received_events():
-                print(connection.get_state(r_set))
-    except KeyboardInterrupt:
-        pass
+    if len(sys.argv) > 1 and sys.argv[1] == "listen":
+        try:
+            while True:
+                if connection.parse_received_events():
+                    print(connection.get_state(r_set))
+        except KeyboardInterrupt:
+            pass
 
     if connection.release_set(r_set):
         print("WebSocketExample: Set %s was successfully released!" % (r_set))
