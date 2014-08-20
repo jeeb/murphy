@@ -1,0 +1,182 @@
+# Copyright (c) 2014, Intel Corporation
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+aal "murphy_unix_sockets" {
+    language "python" {
+        from test_mrp_unix_sockets import *
+    }
+
+    # preview-show-vars: connected, app_classes_listed, resources_listed, set_created, set_acquired, set_locked, autorelease_enabled, resource_added, attributes_listed, attribute_modified
+    # preview-depth: 10
+    variables {
+        connected, classes, resources, zones, res_objs, \
+        set_id, set_acquired, set_locked
+    }
+
+    initial_state {
+        connected = False
+        classes = None
+        resources = None
+        zones = None
+        res_objs = []
+
+        set_id = None
+        set_acquired = False
+        set_locked = False
+    }
+
+    # When we have no connection, we can just connect
+    input "connect" {
+        guard { return not connected }
+        body  { connected = True }
+        adapter {
+            connect()
+        }
+    }
+
+    # Now we have a connection
+    tag "connection available" {
+        guard { return connected }
+
+        input "disconnect" {
+            body {
+                connected = False
+                classes = None
+                resources = None
+                zones = None
+                res_objs = []
+
+                set_id = None
+                set_acquired = False
+                set_locked = False
+            }
+            adapter {
+                disconnect()
+            }
+        }
+
+        input "add_resource" {
+            guard {
+                return bool(resources)
+            }
+            adapter {
+                local_resource = resources.pop()
+                res_objs.append(add_resource(local_resource))
+            }
+        }
+
+        input "remove_resource" {
+            guard {
+                return bool(res_objs)
+            }
+            body {
+                local_resource = res_objs.pop()
+                resources.append(local_resource.name)
+            }
+        }
+
+        input "list_classes" {
+            guard { return classes is None }
+            adapter {
+                classes = list_classes()
+            }
+        }
+
+        input "list_resources" {
+            guard { return resources is None }
+            adapter {
+                resources = list_resources()
+            }
+        }
+
+        input "list_zones" {
+            guard { return zones is None }
+            adapter {
+                zones = list_zones()
+            }
+        }
+    }
+
+    # Now we have resource objects that we can make a
+    # set of
+    tag "resource available" {
+        guard { return bool(res_objs) }
+
+        input "build_res_set" {
+            guard {
+                return set_id is None and \
+                       bool(classes) and \
+                       bool(zones)
+            }
+            body {
+                set_locked = True
+            }
+            adapter {
+                set_id = build_set(res_objs, classes[0], zones[0])
+            }
+        }
+    }
+
+    # Now we have a resource set available
+    tag "set available" {
+        guard { return set_id is not None }
+
+        input "destroy_res_set" {
+            body {
+                set_locked = False
+                set_acquired = False
+            }
+            adapter {
+                set_id = destroy_set(set_id)
+            }
+        }
+
+        input "acquire_set" {
+            body {
+                if not set_acquired:
+                    set_acquired = True
+            }
+            adapter {
+                acquire_set(set_id)
+            }
+        }
+
+        input "release_set" {
+            body {
+                set_acquired = False
+            }
+            adapter {
+                release_set(set_id)
+            }
+        }
+    }
+
+    adapter_exit {
+        if connected:
+            disconnect()
+    }
+}
