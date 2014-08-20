@@ -49,7 +49,7 @@ if __name__ == "__main__":
     res_set.add_resource(resource)
     res_set.add_resource(conn.get_resource(resources[1]))
 
-    set_id, set = conn.create_set(res_set, classes[0], zones[0])
+    set_id = conn.create_set(res_set, classes[0], zones[0])
     conn.release_set(set_id)
     conn.acquire_set(set_id)
 

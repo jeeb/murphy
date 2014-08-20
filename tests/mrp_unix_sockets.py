@@ -1187,7 +1187,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         parse_message_to_resource_set(response, res_set)
         self.own_sets[res_set.id] = res_set
 
-        return set_id, response
+        return set_id
 
     def destroy_set(self, set_id):
         response = self.send_request(ResourceSetDestruction(self.next_seq_num, set_id))
