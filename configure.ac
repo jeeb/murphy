@@ -180,6 +180,10 @@ AC_SUBST(SDBUS_ENABLED)
 AC_SUBST(SDBUS_CFLAGS)
 AC_SUBST(SDBUS_LIBS)
 
+# Common D-Bus enablement variable
+AM_CONDITIONAL(DBUS_ENABLED, [test "$enable_libdbus" = "yes" \
+                              -o   "$enable_sdbus" = "yes"])
+
 # Check if PulseAudio mainloop support was enabled.
 AC_ARG_ENABLE(pulse,
               [  --enable-pulse          enable PulseAudio mainloop support],
@@ -538,6 +542,24 @@ if test "x$has_check" = "xno"; then
     AC_MSG_WARN([Check framework not found, unit tests are DISABLED.])
 fi
 
+# Check for fMBT
+AC_CHECK_PROG(fmbt_found,fmbt,yes,no)
+AC_CHECK_PROG(fmbt_log_found,fmbt-log,yes,no)
+AC_CHECK_PROG(remote_pyaal_found,remote_pyaal,yes,no)
+AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes" -a \
+                                     "$fmbt_log_found" = "yes" -a \
+                                     "$remote_pyaal_found" = "yes"])
+AC_SUBST(FMBT_AVAILABLE)
+
+if test "$fmbt_found" = "no" -o "$fmbt_log_found" = "no" -o \
+        "$remote_pyaal_found" = "no"; then
+    AC_MSG_WARN([fMBT testing tool not found, fMBT-based tests are DISABLED.])
+else
+    AC_MSG_NOTICE([fMBT testing tools found, enabling fMBT-based tests.])
+fi
+
+
+
 # Check for documentation tools
 AC_ARG_WITH([documentation],
             [AS_HELP_STRING([--with-documentation],
@@ -642,6 +664,7 @@ AC_CONFIG_FILES([build-aux/shave
 		 doc/plugin-developer-guide/db/Makefile
 		 doc/plugin-developer-guide/doxml/Makefile
 		 src/plugins/resource-native/libmurphy-resource/murphy-resource.pc
+		 tests/Makefile
 		 ])
 AC_OUTPUT
 

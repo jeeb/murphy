@@ -46,6 +46,10 @@ test-suite.log
 
 .rebase-branch-name
 
+tests/*.log
+tests/*.trs
+*.pyc
+
 # Generated code files
 src/*-func-info.c
 src/linkedin-domain-control-loader.[c,h]

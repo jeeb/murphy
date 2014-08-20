@@ -1,0 +1,198 @@
+# Copyright (c) 2014, Intel Corporation
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright notice,
+#       this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#     * Neither the name of Intel Corporation nor the names of its contributors
+#       may be used to endorse or promote products derived from this software
+#       without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+aal "murphy_dbus" {
+    language "python" {
+        from test_mrp_dbus import *
+    }
+
+    # preview-show-vars: connected, res_set_state, resource_state, resource_mandatory, resource_shared, resource_set_locked, set_acquired
+    # preview-depth: 10
+    variables {
+        connected, res_set_state, resource_state, \
+        resource_mandatory, resource_shared, \
+        resource_set_locked, set_acquired
+    }
+
+    initial_state {
+        connected = False
+        res_set_state = "not available"
+        resource_state = "not available"
+        resource_mandatory = True
+        resource_shared = False
+        resource_set_locked = False
+        set_acquired = False
+    }
+
+    input "connect" {
+        guard { return not connected }
+        body  { connected = True }
+        adapter {
+            connect()
+        }
+    }
+
+    tag "connection available" {
+        guard { return connected }
+
+        input "disconnect" {
+            body {
+                resource_state  = "not available"
+                res_set_state   = "not available"
+                connected = False
+                resource_set_locked = False
+                set_acquired = False
+            }
+            adapter {
+                disconnect()
+            }
+        }
+
+        input "create_res_set" {
+            guard { return res_set_state == "not available" }
+            body { res_set_state = "available" }
+            adapter {
+                create_res_set()
+            }
+        }
+    }
+
+    tag "set available" {
+        guard { return res_set_state == "available" }
+
+        input "remove_res_set" {
+            body {
+                resource_state = "not available"
+                res_set_state = "not available"
+                resource_set_locked = False
+                set_acquired = False
+            }
+            adapter {
+                remove_res_set()
+            }
+        }
+
+        input "set_class" {
+            adapter {
+               set_class(resource_set_locked)
+            }
+        }
+
+        input "add_resource" {
+            guard { return resource_state == "not available" }
+            body {
+                resource_state = "available"
+            }
+            adapter {
+                add_resource()
+            }
+        }
+    }
+
+    tag "resource available" {
+        guard { return resource_state == "available" }
+
+        input "acquire_set" {
+            guard { return not set_acquired }
+            body {
+                set_acquired = True
+
+                # Acquiring or releasing a set triggers a lock
+                if not resource_set_locked:
+                    resource_set_locked = True
+            }
+            adapter {
+                acquire_set()
+            }
+        }
+
+        input "release_set" {
+            body {
+                set_acquired = False
+
+                # Acquiring or releasing a set triggers a lock
+                if not resource_set_locked:
+                    resource_set_locked = True
+            }
+            adapter {
+                release_set()
+            }
+        }
+
+        input "remove_resource" {
+            guard { return not resource_set_locked }
+            body {
+                resource_state = "not available"
+            }
+            adapter {
+                remove_resource()
+            }
+        }
+
+        input "modify_attribute" {
+            adapter {
+                modify_attribute(resource_set_locked)
+            }
+        }
+
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_mandatory" {
+            guard { return not resource_mandatory }
+            body { resource_mandatory = True }
+            adapter {
+                make_resource_mandatory()
+            }
+        }
+
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_nonessential" {
+            guard { return resource_mandatory }
+            body { resource_mandatory = False }
+            adapter {
+                make_resource_nonessential()
+            }
+        }
+
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_shareable" {
+            guard { return not resource_shared }
+            body { resource_shared = True }
+            adapter {
+                make_resource_shareable()
+            }
+        }
+
+        # This _should_ fail after a set gets locked, yet it doesn't
+        input "make_unshareable" {
+            guard { return resource_shared }
+            body { resource_shared = False }
+            adapter {
+                make_resource_unshareable()
+            }
+        }
+    }
+}
