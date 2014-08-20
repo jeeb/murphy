@@ -29,6 +29,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import mrp_unix_sockets as mrp
+from sys import argv
 
 if __name__ == "__main__":
     conn = mrp.MurphyConnection(mrp.MRP_DEFAULT_ADDRESS)
@@ -42,13 +43,24 @@ if __name__ == "__main__":
     print("\tAvailable Zones: %s" % (", ".join(str(x) for x in zones)))
 
     res_set = mrp.ResourceSet()
+    resource = conn.get_resource(resources[0])
+    resource.mandatory = False
 
-    res_set.add_resource(conn.get_resource(resources[0]))
+    res_set.add_resource(resource)
     res_set.add_resource(conn.get_resource(resources[1]))
 
     set_id, set = conn.create_set(res_set, classes[0], zones[0])
     conn.release_set(set_id)
     conn.acquire_set(set_id)
+
+    if len(argv) > 1 and argv[1] == "listen":
+        try:
+            while True:
+                if conn.parse_received_events():
+                    print(conn.get_state(set_id).pretty_print())
+        except KeyboardInterrupt:
+            pass
+
     conn.release_set(set_id)
     conn.destroy_set(set_id)
     conn.close()
