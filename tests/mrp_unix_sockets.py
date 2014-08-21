@@ -68,6 +68,12 @@ MRP_MSG_TAG_DEFAULT = 0x0
 
 
 def data_type_to_string(data_type):
+    """
+    Returns the string representation of a field data type
+
+    :param data_type: Integer that represents a field's data type
+    :return:          String representation of the given field data type
+    """
     return {
         MRP_MSG_FIELD_INVALID: "Invalid",
         MRP_MSG_FIELD_STRING: "String",
@@ -113,6 +119,12 @@ MRP_MSG_FIELD_END = 0x00
 
 
 def type_to_string(field_type):
+    """
+    Returns the string representation of a field type
+
+    :param field_type: Integer that represents a field's type
+    :return:           String representation of the given field type
+    """
     return {
         RESPROTO_MESSAGE_END: "MsgEnd",
         RESPROTO_SECTION_END: "SecEnd",
@@ -137,6 +149,15 @@ def type_to_string(field_type):
 
 
 def type_to_data_type(field_type):
+    """
+    Returns the field data type and struct format string based on a field type
+
+    :param field_type: Integer that represents a field's type
+    :return:           None if the value is not defined, otherwise a Tuple that
+                       contains the integer representation of the field data type
+                       as well as the format string for this field data type
+
+    """
     return {
         RESPROTO_SECTION_END: (MRP_MSG_FIELD_UINT8, "!B"),
         # RESPROTO_ARRAY_DIMENSION
@@ -170,6 +191,13 @@ def type_to_data_type(field_type):
 
 
 def request_type_to_string(query_type):
+    """
+    Returns the string representation of a protocol request type
+
+    :param query_type: Integer that represents a protocol request type
+    :return:           "Unknown" if value is not defined, String representation of the
+                       protocol request type otherwise
+    """
     return {
         RESPROTO_QUERY_RESOURCES: "Resource Listing",
         RESPROTO_QUERY_CLASSES: "Application Class Listing",
@@ -183,12 +211,25 @@ def request_type_to_string(query_type):
 
 
 def message_type_to_string(message_type):
+    """
+    Returns the string representation of a protocol message type
+
+    :param message_type: Integer that represents a protocol message type
+    :return:             "Unknown" if value is not defined, String representation of the
+                         protocol message type otherwise
+    """
     return {
         0: "Default",
     }.get(message_type, "Unknown")
 
 
 def protocol_to_family(protocol):
+    """
+    Returns the socket protocol value of a given protocol type
+
+    :param protocol: String that represents a protocol type
+    :return:         None if no protocol matched, a socket type value otherwise
+    """
     return {
         b"unxs:": AF_UNIX,
         b"tcp4:": AF_INET,
@@ -196,16 +237,27 @@ def protocol_to_family(protocol):
     }.get(protocol)
 
 
-def read_value(data_string, data_type):
-    if data_type == "s":
+def read_value(byte_string, format_string):
+    """
+    Reads a value from a byte string based upon its format string
+
+    :param byte_string:   Byte string from which the value will be read. Has to be exactly
+                          as long as needed, or longer. Strings are read by their length, so
+                          they have to be exactly as long as marked
+    :param format_string: String that represents the data type to be read from the byte string.
+                          When reading a string, no length is needed, "s" is enough
+    :return:              Tuple that contains the read value as well as the the amount of byte
+                          string that was read
+    """
+    if format_string == "s":
         # With a string, we check the given length and set data type accordingly
-        size = len(data_string)
-        data_type = "%ss" % (size)
+        size = len(byte_string)
+        format_string = "%ss" % (size)
     else:
         # If we're not dealing with a string, we can get the size from struct
-        size = calcsize(data_type)
+        size = calcsize(format_string)
 
-    value = unpack(data_type, data_string[:size])[0]
+    value = unpack(format_string, byte_string[:size])[0]
 
     # If the read string ends with a null, we remove it
     if (isinstance(value, str) or isinstance(value, bytes)) and value[-1] == b"\0"[0]:
@@ -215,19 +267,49 @@ def read_value(data_string, data_type):
 
 
 def write_uint16(value):
+    """
+    Writes a byte string that contains a given uint16 value
+
+    :param value: Integer that is to be written out as a byte string
+    :return:      Byte string that contains the given uint16 value
+    """
     return pack("!H", value)
 
 
 def write_uint32(value):
+    """
+    Writes a byte string that contains a given uint32 value
+
+    :param value: Integer that is to be written out as a byte string
+    :return:      Byte string that contains the given uint32 value
+    """
     return pack("!L", value)
 
 
 def write_string(value):
+    """
+    Writes a byte string that contains a length-prefixed string as
+    sent/received by the protocol
+
+    :param value: String that is to be written out as a byte string
+    :return:      Byte string that contains the given string length-prefixed
+    """
     string = pack("s", value)
     return pack("!L", len(string)) + string
 
 
 def write_field_value(data_type, value):
+    """
+    Writes the value part of a field to a byte string. this includes
+    the value data type as well as the value itself
+
+    :param data_type: Tuple that contains the integer representation of the field data type
+                      as well as the format string for this field data type, such as returned by
+                      type_to_data_type
+    :param value:     Actual value to be written
+    :return:          None if an error occurred, a byte string with a field's value part in it
+                      otherwise
+    """
     if data_type is not None:
         if data_type[1] == "s":
             # We don't have a trailing null in Python strings, this pads the output with a null byte
@@ -261,95 +343,118 @@ def write_field_value(data_type, value):
 
 
 def write_field(field_type, value):
+    """
+    Writes a field to a byte string (field type, field's data type and the field's value itself)
+
+    :param field_type: Type of field to be written
+    :param value:      Value to be written into the field
+    :return:           Byte string that contains the field
+    """
     string = write_uint16(field_type) + write_field_value(type_to_data_type(field_type), value)
 
     return string
 
 
-def read_field_value(data, value_type):
-    original_data_length = len(data)
+def read_field_value(byte_string, value_type):
+    """
+    Reads a field's value out of a byte string
+
+    :param byte_string: Byte string to read a value from
+    :param value_type:  Integer representation (MRP_MSG_FIELD_*) of the type of value
+                        to be read
+    :return:            Tuple that contains the value read (or None if failure occurred),
+                        and the amount of byte string that was read
+    """
+    original_data_length = len(byte_string)
 
     if value_type == MRP_MSG_FIELD_STRING:
         # We actually read the length first
-        length, bytes_read = read_value(data, "!L")
-        data = data[bytes_read:]
+        length, bytes_read = read_value(byte_string, "!L")
+        byte_string = byte_string[bytes_read:]
 
         # And then we read the actual string
-        value, bytes_read = read_value(data[:length], "s")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string[:length], "s")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_BOOL:
         # According to mrp_msg_default_encode uint32 is used for bool
-        value, bytes_read = read_value(data, "!L")
+        value, bytes_read = read_value(byte_string, "!L")
         value = bool(value)
-        data = data[bytes_read:]
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_UINT8:
-        value, bytes_read = read_value(data, "!B")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!B")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_SINT8:
-        value, bytes_read = read_value(data, "!b")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!b")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_UINT16:
-        value, bytes_read = read_value(data, "!H")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!H")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_SINT16:
-        value, bytes_read = read_value(data, "!h")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!h")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_UINT32:
-        value, bytes_read = read_value(data, "!L")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!L")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_SINT32:
-        value, bytes_read = read_value(data, "!l")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!l")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_UINT64:
-        value, bytes_read = read_value(data, "!Q")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!Q")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_SINT64:
-        value, bytes_read = read_value(data, "!q")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "!q")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_DOUBLE:
-        value, bytes_read = read_value(data, "d")
-        data = data[bytes_read:]
+        value, bytes_read = read_value(byte_string, "d")
+        byte_string = byte_string[bytes_read:]
     elif value_type == MRP_MSG_FIELD_BLOB:
         # Read the length first
-        length, bytes_read = read_value(data, "!L")
-        data = data[bytes_read:]
+        length, bytes_read = read_value(byte_string, "!L")
+        byte_string = byte_string[bytes_read:]
 
-        value = data[:length]
-        data = data[length:]
+        value = byte_string[:length]
+        byte_string = byte_string[length:]
     elif value_type & MRP_MSG_FIELD_ARRAY:
         value_type &= ~MRP_MSG_FIELD_ARRAY
-        counter, bytes_read = read_value(data, "!L")
-        data = data[bytes_read:]
+        counter, bytes_read = read_value(byte_string, "!L")
+        byte_string = byte_string[bytes_read:]
 
         value = []
 
         for _ in MRP_RANGE(counter):
-            parsed_value, bytes_read = read_field_value(data, value_type)
+            parsed_value, bytes_read = read_field_value(byte_string, value_type)
             value.append(parsed_value)
-            data = data[bytes_read:]
+            byte_string = byte_string[bytes_read:]
     else:
         print("Unknown type %s found!" % (value_type))
         value = None
 
-    final_length = len(data)
+    final_length = len(byte_string)
 
     return value, (original_data_length - final_length)
 
 
-def read_field(data):
+def read_field(byte_string):
+    """
+    Reads a single field out of a byte string
+
+    :param byte_string: Byte string to read the field from
+    :return:            Tuple that contains a Field object as well as
+                        the amount of byte string that was read
+    """
     general_read_amount = 0
 
-    tag, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
+    tag, bytes_read = read_value(byte_string, "!H")
+    byte_string = byte_string[bytes_read:]
 
     general_read_amount += bytes_read
 
-    value_type, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
+    value_type, bytes_read = read_value(byte_string, "!H")
+    byte_string = byte_string[bytes_read:]
 
     general_read_amount += bytes_read
 
-    value, bytes_read = read_field_value(data, value_type)
+    value, bytes_read = read_field_value(byte_string, value_type)
 
     general_read_amount += bytes_read
 
@@ -357,6 +462,13 @@ def read_field(data):
 
 
 def parse_default(data, message):
+    """
+    Parses an MRP_MSG_TAG_DEFAULT structure
+
+    :param data:
+    :param message:
+    :return:
+    """
     # Default message type:
     # [uint16 = number of fields in message]
     #
