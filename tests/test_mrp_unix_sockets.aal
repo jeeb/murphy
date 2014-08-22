@@ -149,9 +149,10 @@ aal "murphy_unix_sockets" {
             body {
                 set_locked = False
                 set_acquired = False
+                set_id = None
             }
             adapter {
-                set_id = destroy_set(set_id)
+                destroy_set(set_id)
             }
         }
 
