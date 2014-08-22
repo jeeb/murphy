@@ -461,48 +461,53 @@ def read_field(byte_string):
     return Field(tag, value_type, value), general_read_amount
 
 
-def parse_default(data, message):
+def parse_default(byte_string, message):
     """
-    Parses an MRP_MSG_TAG_DEFAULT structure
+    Parses an MRP_MSG_TAG_DEFAULT (default message type) structure from
+    a byte string
 
-    :param data:
-    :param message:
-    :return:
+    Structure:
+        [uint16 = number of fields in message]
+
+        foreach field:
+            [uint16 = field type]
+            [uint16 = field data type]
+            [variable length data (depends on type)]
+
+    :param byte_string: Byte string to parse the message from
+    :param message:     MurphyMessage object to write the parsed information to
+    :return:            MurphyMessage containing the pased information
     """
-    # Default message type:
-    # [uint16 = number of fields in message]
-    #
-    # Foreach field:
-    # [uint16 = id (0x3, sequence number)]
-    # [uint16 = data type (0xn, uint32)]
-    # [data (1)]
-    # [uint16 = id (0x4, request)]
-    # [uint16 = data type (0x10, uint16)]
-    # [data (0, resources list)]
-    field_count, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
+    field_count, bytes_read = read_value(byte_string, "!H")
+    byte_string = byte_string[bytes_read:]
     print("Field count in message: %s" % (field_count))
 
     for _ in MRP_RANGE(field_count):
-        field, bytes_read = read_field(data)
-        data = data[bytes_read:]
+        field, bytes_read = read_field(byte_string)
+        byte_string = byte_string[bytes_read:]
 
         message.add_field_obj(field)
 
     return message
 
 
-def parse_message(data):
-    # Message header:
-    # [uint16 = data type tag (0x0 = default)]
+def parse_message(byte_string):
+    """
+    Parses a Murphy resource protocol message delivered via a byte string to
+    a MurphyMessage instance
+
+    :param byte_string: Byte string to parse
+    :return:            None in case of failure, MurphyMessage instance with the
+                        parsed fields otherwise
+    """
     message = MurphyMessage()
 
-    # Message type
-    message.type, bytes_read = read_value(data, "!H")
-    data = data[bytes_read:]
+    # Message type [uint16 = message type (0x0 = default)]
+    message.type, bytes_read = read_value(byte_string, "!H")
+    byte_string = byte_string[bytes_read:]
 
     if message.type == MRP_MSG_TAG_DEFAULT:
-        parse_default(data, message)
+        parse_default(byte_string, message)
     else:
         print("Unknown message type %s" % (message.type))
         return None
@@ -511,6 +516,13 @@ def parse_message(data):
 
 
 def parse_message_to_resource_set(message, given_res_set=None):
+    """
+    Parses a ResourceSet out of a MurphyMessage instance
+
+    :param message:       MurphyMessage instance to parse the information from
+    :param given_res_set: Possible already existing ResourceSet instance to update
+    :return:              Newly created or updated ResourceSet instance
+    """
     res_set = ResourceSet()
     res = Resource()
     grant = None
@@ -609,11 +621,19 @@ def parse_message_to_resource_set(message, given_res_set=None):
 
 class MurphyMessage(object):
     def __init__(self):
+        """
+        Abstraction of the fields transferred in a Murphy resource protocol
+        """
         self.__msg_type = -1
         self._msg_fields = []
 
     @property
     def type(self):
+        """
+        Murphy resource protocol message type
+
+        :return: Integer representing the set message type
+        """
         return self.__msg_type
 
     @type.setter
@@ -622,20 +642,52 @@ class MurphyMessage(object):
 
     @property
     def fields(self):
+        """
+        List of fields contained within this message
+
+        :return: List of Fields contained in this Murphy resource protocol message
+        """
         return self._msg_fields
 
     def add_field(self, field_type, field_value):
+        """
+        Adds a Field to the list of fields based on its information
+
+        :param field_type:  Integer representing the field type
+        :param field_value: Value the be set to this field
+        :return:            Void
+        """
         field = Field(field_type, type_to_data_type(field_type)[0], field_value)
         self.fields.append(field)
 
     def add_field_obj(self, obj):
+        """
+        Adds a Field object to the list of fields
+
+        :param obj: Field instance to append to the list of fields
+        :return:    Void
+        """
         self.fields.append(obj)
 
     def add_attribute(self, attr_name, attr_type, attr_value):
+        """
+        Adds a Field-based representation of a resource attribute to the list of fields
+
+        :param attr_name:  Name of attribute to be added
+        :param attr_type:  Data type of attribute to be added
+        :param attr_value: Value of attribute to be added
+        :return:           Void
+        """
         self.add_field_obj(Field(RESPROTO_ATTRIBUTE_NAME, MRP_MSG_FIELD_STRING, attr_name))
         self.add_field_obj(Field(RESPROTO_ATTRIBUTE_VALUE, attr_type, attr_value))
 
     def add_resource(self, resource):
+        """
+        Adds a Field-based representation of a resource to the list of fields
+
+        :param resource: Resource instance to be added
+        :return:         Void
+        """
         res_flags = 0
 
         self.add_field(RESPROTO_RESOURCE_NAME, resource.name)
@@ -654,11 +706,23 @@ class MurphyMessage(object):
         self.add_field(RESPROTO_SECTION_END, MRP_MSG_TAG_DEFAULT)
 
     def add_resources(self, resources):
+        """
+        Adds a Field-based representation of multiple resources to the list of fields
+
+        :param resources: List of Resource instances to be added
+        :return:          Void
+        """
         for resource in resources:
             self.add_resource(resource)
 
     @property
     def seq_num(self):
+        """
+        Sequence number of this message, is the first field
+
+        :return: None if not yet set, integer with the sequence number otherwise
+        :raises: ValueError if there are fields, but the first one isn't a sequence number
+        """
         if self.fields:
             field = self.fields[0]
             if field.type is not RESPROTO_SEQUENCE_NO:
@@ -679,6 +743,12 @@ class MurphyMessage(object):
 
     @property
     def req_type(self):
+        """
+        Request type contained within this message
+
+        :return: None if a request type is not contained within this message,
+                 integer representing the request type otherwise
+        """
         for field in self.fields:
             if field.type == RESPROTO_REQUEST_TYPE:
                 return field.value
@@ -688,9 +758,20 @@ class MurphyMessage(object):
 
     @property
     def length(self):
+        """
+        Count of fields in this message
+
+        :return: Integer representing the amount of fields in this message
+        """
         return len(self._msg_fields)
 
     def pretty_print(self):
+        """
+        Returns a human-readable representation of this MurphyMessage instance
+
+        :return: String containing the human-readable representation of this
+                 MurphyMessage instance
+        """
         string = "Message:\n"\
                  "\tType: %s (%d)\n\n" % (message_type_to_string(self.type), self.type)
 
@@ -710,13 +791,24 @@ class MurphyMessage(object):
 
 class DefaultMessage(MurphyMessage):
     def __init__(self, seq_num):
+        """
+        Abstraction of a Murphy resource protocol message of the type
+        MRP_MSG_TAG_DEFAULT
+
+        :param seq_num: Sequence number of this message
+        """
         super(DefaultMessage, self).__init__()
         self.type = MRP_MSG_TAG_DEFAULT
 
         if seq_num is not None:
             self.seq_num = seq_num
 
-    def convert_to_byte_stream(self):
+    def convert_to_byte_string(self):
+        """
+        Creates a byte string representation of this message
+
+        :return: Byte string representation of this message
+        """
         byte_stream = write_uint16(self.type)
         byte_stream += write_uint16(self.length)
 
@@ -728,24 +820,52 @@ class DefaultMessage(MurphyMessage):
 
 class ApplicationClassListing(DefaultMessage):
     def __init__(self, seq_num):
+        """
+        Abstraction of a Murphy resource protocol message containing an
+        application class listing request
+
+        :param seq_num: Sequence number of this message
+        """
         super(ApplicationClassListing, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_CLASSES)
 
 
 class ZoneListing(DefaultMessage):
     def __init__(self, seq_num):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        zone listing request
+
+        :param seq_num: Sequence number of this message
+        """
         super(ZoneListing, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_ZONES)
 
 
 class ResourceListing(DefaultMessage):
     def __init__(self, seq_num):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        resource listing request
+
+        :param seq_num: Sequence number of this message
+        """
         super(ResourceListing, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_QUERY_RESOURCES)
 
 
 class ResourceSetCreation(DefaultMessage):
     def __init__(self, seq_num, res_set, app_class, zone):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        resource set creation request
+
+        :param seq_num:   Sequence number of this message
+        :param res_set:   ResourceSet object containing the requested resources
+                          as well as the set's flags
+        :param app_class: Application class the created set will be part of
+        :param zone:      Zone the created set will be part of
+        """
         super(ResourceSetCreation, self).__init__(seq_num)
         flags = 0
 
@@ -773,6 +893,13 @@ class ResourceSetCreation(DefaultMessage):
 
 class ResourceSetDestruction(DefaultMessage):
     def __init__(self, seq_num, set_id):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        resource set destruction request
+
+        :param seq_num: Sequence number of this message
+        :param set_id:  Integer ID of the resource set to destroy
+        """
         super(ResourceSetDestruction, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_DESTROY_RESOURCE_SET)
         self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
@@ -780,6 +907,13 @@ class ResourceSetDestruction(DefaultMessage):
 
 class ResourceSetAcquisition(DefaultMessage):
     def __init__(self, seq_num, set_id):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        resource set acquisition request
+
+        :param seq_num: Sequence number of this message
+        :param set_id:  Integer ID of the resource set to acquire
+        """
         super(ResourceSetAcquisition, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_ACQUIRE_RESOURCE_SET)
         self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
@@ -787,6 +921,13 @@ class ResourceSetAcquisition(DefaultMessage):
 
 class ResourceSetRelease(DefaultMessage):
     def __init__(self, seq_num, set_id):
+        """
+        Abstraction of a Murphy resource protocol message containing a
+        resource set release request
+
+        :param seq_num: Sequence number of this message
+        :param set_id:  Integer ID of the resource set to acquire
+        """
         super(ResourceSetRelease, self).__init__(seq_num)
         self.add_field(RESPROTO_REQUEST_TYPE, RESPROTO_RELEASE_RESOURCE_SET)
         self.add_field(RESPROTO_RESOURCE_SET_ID, set_id)
@@ -794,6 +935,13 @@ class ResourceSetRelease(DefaultMessage):
 
 class Attribute(object):
     def __init__(self, name, data_type, value):
+        """
+        Abstraction of a Murphy resource attribute
+
+        :param name:      Name of attribute
+        :param data_type: Integer representing the data type of this attribute
+        :param value:     Value contained in this attribute
+        """
         self._name = name
         self._data_type = data_type
         self._value = value
@@ -811,17 +959,31 @@ class Attribute(object):
         return self._value
 
     def pretty_print(self):
+        """
+        Returns a human-readable representation of this Attribute instance
+
+        :return: String containing the human-readable representation of this
+                 Attribute instance
+        """
         return "      %s -> %s (%s)\n" % (self.name, self.value, data_type_to_string(self.data_type))
 
 
 class Resource(object):
     def __init__(self):
+        """
+        Abstraction of a Murphy resource
+        """
         self._data = dict()
 
         self._attributes = dict()
 
     @property
     def id(self):
+        """
+        Internal resource ID that is used to define the mask for this resource
+
+        :return: None if not available yet, integer representing the resource ID otherwise
+        """
         return self._data.get("id")
 
     @id.setter
@@ -830,6 +992,11 @@ class Resource(object):
 
     @property
     def name(self):
+        """
+        Name of this resource
+
+        :return: None if not available yet, string representing the resource's name otherwise
+        """
         return self._data.get("name")
 
     @name.setter
@@ -838,6 +1005,11 @@ class Resource(object):
 
     @property
     def shareable(self):
+        """
+        Boolean value representing if this resource can be shared
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("shareable", False)
 
     @shareable.setter
@@ -846,6 +1018,11 @@ class Resource(object):
 
     @property
     def mandatory(self):
+        """
+        Boolean value representing if this resource is mandatory for this set
+
+        :return: True if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("mandatory", True)
 
     @mandatory.setter
@@ -854,6 +1031,11 @@ class Resource(object):
 
     @property
     def acquired(self):
+        """
+        Boolean value representing if this resource is acquired
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("acquired", False)
 
     @acquired.setter
@@ -862,6 +1044,11 @@ class Resource(object):
 
     @property
     def available(self):
+        """
+        Boolean value representing if this resource is available for acquisition
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("available", False)
 
     @available.setter
@@ -870,19 +1057,49 @@ class Resource(object):
 
     @property
     def attributes(self):
+        """
+        Dictionary containing the names of this resource's attributes as keys, and
+        the related Attribute objects as values
+
+        :return: Dictionary with attribute names as keys and the Attribute objects
+                 as values
+        """
         return self._attributes
 
     def add_attribute(self, attr):
+        """
+        Adds an Attribute object to the dictionary of attributes for this resource
+
+        :param attr: Attribute object to add to the dictionary
+        :return:     Void
+        """
         self._attributes[attr.name] = attr
 
     def update(self, data):
+        """
+        Updates the contained value dictionary
+
+        :param data: Dictionary that contains the new information to update against
+        :return:     Void
+        """
         self._data.update(data)
 
     @property
     def data(self):
+        """
+        Returns the internal Dictionary containing the values set in this
+        resource
+
+        :return: Dictionary containing the values set in this resource
+        """
         return self._data
 
     def copy(self):
+        """
+        Creates a copy of this resource
+
+        :return: Resource object that is a copy of the called one
+        """
         res = Resource()
         res.update(self._data)
 
@@ -892,6 +1109,12 @@ class Resource(object):
         return res
 
     def pretty_print(self):
+        """
+        Returns a human-readable representation of this Resource instance
+
+        :return: String containing the human-readable representation of this
+                 Resource instance
+        """
         string = "  Resource %s:\n" \
                  "    Shareable: %s\n" \
                  "    Mandatory: %s\n" \
@@ -907,11 +1130,19 @@ class Resource(object):
 
 class ResourceSet(object):
     def __init__(self):
+        """
+        Abstraction of a Murphy resource set
+        """
         self._data = dict()
         self._resources = dict()
 
     @property
     def id(self):
+        """
+        Resource set ID
+
+        :return: None if not available yet, integer representing the resource set ID otherwise
+        """
         return self._data.get("id")
 
     @id.setter
@@ -920,6 +1151,11 @@ class ResourceSet(object):
 
     @property
     def acquired(self):
+        """
+        Boolean value representing if this resource set is acquired
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("acquired", False)
 
     @acquired.setter
@@ -928,6 +1164,11 @@ class ResourceSet(object):
 
     @property
     def autorelease(self):
+        """
+        Boolean value representing if this resource set has an autorelease flag set
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("autorelease", False)
 
     @autorelease.setter
@@ -936,6 +1177,11 @@ class ResourceSet(object):
 
     @property
     def autoacquire(self):
+        """
+        Boolean value representing if this resource set has an autoacquire flag set
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("autoacquire", False)
 
     @autoacquire.setter
@@ -944,6 +1190,11 @@ class ResourceSet(object):
 
     @property
     def no_events(self):
+        """
+        Boolean value representing if this resource set has a 'no events' flag set
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("no_events", False)
 
     @no_events.setter
@@ -952,6 +1203,11 @@ class ResourceSet(object):
 
     @property
     def dont_wait(self):
+        """
+        Boolean value representing if this resource set has a "don't wait" flag set
+
+        :return: False if not set yet, boolean value set for this flag otherwise
+        """
         return self._data.get("dont_wait", False)
 
     @dont_wait.setter
@@ -960,6 +1216,11 @@ class ResourceSet(object):
 
     @property
     def priority(self):
+        """
+        Integer value representing the priority value of this resource set
+
+        :return: Zero if not set yet, integer value representing the priority value set otherwise
+        """
         return self._data.get("priority", 0)
 
     @priority.setter
@@ -968,19 +1229,48 @@ class ResourceSet(object):
 
     @property
     def resources(self):
+        """
+        Returns the dictionary of resources included in this resource set
+
+        :return: Dictionary with resource names as keys, and related Resource objects
+                 as values
+        """
         return self._resources
 
     def add_resource(self, res):
+        """
+        Adds a resource to this resource set
+
+        :param res: Resource instance to add to this resource set
+        :return:    Void
+        """
         self._resources[res.name] = res
 
     def update(self, data):
+        """
+        Updates the contained value dictionary
+
+        :param data: Dictionary that contains the new information to update against
+        :return:     Void
+        """
         self._data.update(data)
 
     @property
     def data(self):
+        """
+        Returns the internal Dictionary containing the values set in this
+        resource set
+
+        :return: Dictionary containing the values set in this resource
+        """
         return self._data
 
     def copy(self):
+        """
+        Creates a copy of this resource set
+
+        :return: ResourceSet object that is a copy of the called one
+        """
         res_set = ResourceSet()
         res_set.update(self.data)
 
@@ -990,6 +1280,12 @@ class ResourceSet(object):
         return res_set
 
     def pretty_print(self):
+        """
+        Returns a human-readable representation of this ResourceSet instance
+
+        :return: String containing the human-readable representation of this
+                 ResourceSet instance
+        """
         string = "Resource Set %s:\n" \
                  "  Acquired: %s\n" \
                  "  Resources:\n\n" % (self.id, self.acquired)
@@ -1002,6 +1298,14 @@ class ResourceSet(object):
 
 class Field(object):
     def __init__(self, field_type, data_type, field_value):
+        """
+        Abstraction of a single field in a Murphy resource protocol message
+
+        :param field_type:  Integer representing the type of this field
+        :param data_type:   Integer representing the data type of this field
+        :param field_value: Value contained in this field
+        :return:
+        """
         self.__field_type = field_type
         self.__data_type = data_type
         self.__field_value = field_value
@@ -1021,6 +1325,22 @@ class Field(object):
 
 class MurphyConnection(asyncore.dispatcher_with_send):
     def __init__(self, address, daemonize=True):
+        """
+        Abstracts a connection to Murphy
+
+        :param address:   Address to a Murphy socket, in the format shared with libmurphy-resource.
+                          Is given in the format "socket_type:address", where socket_type can be
+                          one of the following:
+                            * unxs [unix socket]
+                            * tcp4 [ipv4 tcp socket]
+                            * tcp6 [ipv6 tcp socket]
+
+                          Additionally, with unix sockets one can prefix the socket name with @,
+                          which will use an abstract unix socket
+        :param daemonize: Optional boolean, defaults to True. Defines whether or not the internal
+                          socket thread is created as daemon or not
+        :raises:          ValueError in case the protocol type was unknown
+        """
         asyncore.dispatcher_with_send.__init__(self)
 
         family = protocol_to_family(address[:5])
@@ -1051,15 +1371,33 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self.thread.start()
 
     def close(self):
+        """
+        Closes the socket, effectively ending the usage of this object
+
+        :return: Void
+        """
         self._running = False
         self.socket.shutdown(SHUT_RDWR)
         asyncore.dispatcher_with_send.close(self)
 
     def run_loop(self):
+        """
+        Runs the socket reading loop until the closing is initialized
+
+        :return: Void
+        """
         while self._running:
             asyncore.loop(count=1)
 
     def read_message(self, read_buffer):
+        """
+        Reads enough data from a buffer and the socket until a full message is received
+
+        :param read_buffer: Byte string buffer that is currently being handled
+        :return:            Tuple containing the read byte string buffer that starts
+                            with the read message, as well as the length of the buffer
+                            occupied by the read message
+        """
         header_size = calcsize("!L")
         full_size = len(read_buffer)
 
@@ -1081,6 +1419,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return read_buffer, message_size
 
     def check_message(self, message):
+        """
+        Checks if a MurphyMessage is a response to something we sent
+
+        :param message: MurphyMessage instance to parse
+        :return:        Void
+        """
         queue = self.queue.contents
 
         seq_num = message.seq_num
@@ -1108,8 +1452,19 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         else:
             print("D: Got unrelated message (seq %s - type %s)" % (seq_num, request_type_to_string(req_type)))
 
-    def parse_event(self, event):
-        res_set = parse_message_to_resource_set(event)
+    def parse_event(self, event_msg):
+        """
+        Parses an event's information from a MurphyMessage instance, and applies
+        the updated information to one of the internally kept state sets in case
+        the event is for one of them
+
+        :param event_msg: MurphyMessage that contains an event
+        :return:          None if the message contains no resource set ID,
+                          False if the included resource set ID is not one of
+                          the currently known ones and True if one of the internal
+                          sets was successfully updated
+        """
+        res_set = parse_message_to_resource_set(event_msg)
         if res_set.id is None:
             print("E: No set id in event!")
             return None
@@ -1118,13 +1473,19 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         if set_id in self.own_sets:
             print("D: We found an event for set %s" % (set_id))
-            parse_message_to_resource_set(event, self.own_sets.get(set_id))
+            parse_message_to_resource_set(event_msg, self.own_sets.get(set_id))
             return True
         else:
             print("D: We found an event for a set that is not yet in our books (id = %s)" % (set_id))
             return False
 
     def parse_received_events(self):
+        """
+        Checks received events and updates internally kept states, meant
+        for manual calling outside of callbacks
+
+        :return: None if no events were received, True if events were parsed
+        """
         if not self.events:
             return None
 
@@ -1140,6 +1501,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return True
 
     def handle_read(self):
+        """
+        Implements the reading of Murphy resource protocol messages from a
+        socket.
+
+        :return: Void
+        """
         # Do an initial read
         read_buffer = self.recv(MRP_DEFAULT_RECEIVE_SIZE)
 
@@ -1151,30 +1518,44 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             read_buffer = read_buffer[message_size:]
             print("Reader length: %s" % (len(read_buffer)))
 
-    def send_message(self, msg_buffer):
-        amount_to_write = len(msg_buffer)
+    def send_message(self, byte_string):
+        """
+        Sends a message in byte string form to the Murphy server
 
-        self.send(pack("!L", amount_to_write) + msg_buffer)
+        :param byte_string: Byte string containing a Murphy resource protocol
+                            message
+        :return:            Void
+        """
+        amount_to_write = len(byte_string)
+
+        self.send(pack("!L", amount_to_write) + byte_string)
 
     @property
     def next_seq_num(self):
         """
-        Returns the current value of the internal counter for sequence IDs, and
-        increments it by one.
+        Returns the current value of the internal counter for sequence numbers,
+        and increments it by one.
 
         :return: Integer value representing the current value of the internal
-                 counter for sequence IDs
+                 counter for sequence numbers
         """
         current = self._internal_counter
         self._internal_counter += 1
         return current
 
     def send_request(self, message):
+        """
+        Sends a request to Murphy and waits for a response
+
+        :param message: MurphyMessage instance the contents of which to send
+        :return:        None if a failure occurred, a MurphyMessage object
+                        otherwise.
+        """
         status = Status()
 
         self.queue.add(message.req_type, message.seq_num, status)
 
-        self.send_message(message.convert_to_byte_stream())
+        self.send_message(message.convert_to_byte_string())
 
         gatekeeper = status.wait(MRP_DEFAULT_TIMEOUT)
 
@@ -1201,6 +1582,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return response
 
     def send_request_with_event(self, message):
+        """
+        Sends a request to Murphy and waits for both a response as well as an event
+
+        :param message: MurphyMessage instance the contents of which to send
+        :return:        None if a failure occurred, a MurphyMessage object
+                        otherwise
+        """
         status = Status()
 
         # The event that should come if the creation is successful
@@ -1233,6 +1621,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return response
 
     def list_resources(self):
+        """
+        Lists the resources available in the Murphy server
+
+        :return: None if a failure occurred, a list containing the names
+                 of resources otherwise
+        """
         response = self.send_request(ResourceListing(self.next_seq_num))
         if response is None:
             print("E: Resource listing request failed")
@@ -1250,6 +1644,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return names
 
     def list_classes(self):
+        """
+        Lists the application classes available in the Murphy server
+
+        :return: None if a failure occurred, a list containing the names of
+                 application classes otherwise
+        """
         response = self.send_request(ApplicationClassListing(self.next_seq_num))
         if response is None:
             print("E: Application class listing request failed!")
@@ -1263,6 +1663,12 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return None
 
     def list_zones(self):
+        """
+        Lists the zones available in the Murphy server
+
+        :return: None if failure occurred, a list containing the names of
+                 zones otherwise
+        """
         response = self.send_request(ZoneListing(self.next_seq_num))
         if response is None:
             print("E: Zone listing request failed")
@@ -1276,6 +1682,14 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return None
 
     def get_resource(self, res_name):
+        """
+        Gets a copy of a resource from the internal listing, usable for
+        resource set creation
+
+        :param res_name: Name of resource to add
+        :return:         None if resource by such name is not available,
+                         a Resource object otherwise
+        """
         resource = self._internal_set.resources.get(res_name)
         if resource is None:
             return None
@@ -1283,6 +1697,16 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return resource.copy()
 
     def create_set(self, res_set, app_class, zone):
+        """
+        Sends out a resource set creation request to create a resource set
+        on the server side for this client
+
+        :param res_set:   ResourceSet instance describing the resource set to be created
+        :param app_class: Application class to which the created resource set will be set
+        :param zone:      Zone to which the created resource set will be set
+        :return:          None if a failure occurred, integer representing the newly created
+                          resource set's ID otherwise
+        """
         set_id = None
 
         message = ResourceSetCreation(self.next_seq_num, res_set, app_class, zone)
@@ -1302,6 +1726,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return set_id
 
     def destroy_set(self, set_id):
+        """
+        Sends out a resource set destruction request to destroy a given set on the
+        server side for this client
+
+        :param set_id: Integer representing the resource set's ID to be destroyed
+        :return:       None if failure occurred, True if set was successfully destroyed
+        """
         response = self.send_request(ResourceSetDestruction(self.next_seq_num, set_id))
         if response is None:
             print("E: Zone listing request failed")
@@ -1313,6 +1744,15 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         return True
 
     def acquire_set(self, set_id):
+        """
+        Sends out a resource set acquisition request to acquire a given set on the server
+        side for this client
+
+        :param set_id: Integer representing the resource set's ID to be acquired
+        :return:       None if failure occurred, boolean that notes whether or not the
+                       resource set was acquired. For a more detailed result, get_state()
+                       can be used
+        """
         message = ResourceSetAcquisition(self.next_seq_num, set_id)
 
         response = self.send_request_with_event(message)
@@ -1323,12 +1763,21 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_STATE:
                 parse_message_to_resource_set(response, self.own_sets.get(set_id))
-                return bool(field.value), field.value
+                return bool(field.value)
 
         print("E: Failed to find set state from the event!")
         return None
 
     def release_set(self, set_id):
+        """
+        Sends out a resource set release request to release a given set on the server
+        side for this client
+
+        :param set_id: Integer representing the resource set's ID to be acquired
+        :return:       None if failure occurred, boolean that notes whether or not the
+                       resource set was released. For a more detailed result, get_state()
+                       can be used
+        """
         message = ResourceSetRelease(self.next_seq_num, set_id)
 
         response = self.send_request_with_event(message)
@@ -1339,10 +1788,21 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_STATE:
                 parse_message_to_resource_set(response, self.own_sets.get(set_id))
-                return not bool(field.value), field.value
+                return not bool(field.value)
 
         print("E: Failed to find set state from the event!")
         return None
 
     def get_state(self, set_id):
-        return self.own_sets.get(set_id)
+        """
+        Returns the current state of a resource set kept in the internal data structure
+
+        :param set_id: Integer representing the resource set's ID for which a state is requested
+        :return:       None if a resource set with a given ID was not found, a ResourceSet instance
+                       otherwise
+        """
+        res_set = self.own_sets.get(set_id)
+        if res_set is not None:
+            return res_set.copy()
+        else:
+            return None
