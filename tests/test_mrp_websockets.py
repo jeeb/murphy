@@ -81,10 +81,7 @@ def build_set(resources, app_class, zone, priority):
 
 
 def destroy_set(set_id):
-    ret_val = connection.destroy_set(set_id)
-    assert ret_val
-
-    return None
+    assert connection.destroy_set(set_id)
 
 
 def acquire_set(set_id):
