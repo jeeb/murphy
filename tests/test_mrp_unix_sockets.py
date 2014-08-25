@@ -30,6 +30,7 @@
 
 import mrp_unix_sockets as mrp
 
+
 def connect():
     global connection
 
@@ -89,6 +90,7 @@ def destroy_set(set_id):
 
 def acquire_set(set_id):
     assert connection.acquire_set(set_id)
+
 
 def release_set(set_id):
     assert connection.release_set(set_id)
