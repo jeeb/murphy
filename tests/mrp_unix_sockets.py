@@ -1435,7 +1435,13 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
             if seq_num in queue and req_type in queue.get(seq_num):
                 print("D: Got an event that is a response to a sent message!")
-                queue.get(seq_num, {}).get(req_type).set_result(message)
+
+                status = queue.get(seq_num, {}).get(req_type)
+                if status:
+                    status.set_result(message)
+                else:
+                    print("E: Something bad happened, we lost our Status object!")
+
                 return
             else:
                 self.events.append(message)
