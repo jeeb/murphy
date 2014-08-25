@@ -30,11 +30,21 @@
 
 import mrp_unix_sockets as mrp
 
+connection = None
+local_resources = []
+local_classes = []
+local_zones = []
+
+added_resources = []
+
+set_id = None
 
 def connect():
     global connection
 
-    connection = mrp.MurphyConnection(mrp.MRP_DEFAULT_ADDRESS)
+    thread = mrp.MurphyConnectionThread(mrp.MRP_DEFAULT_ADDRESS)
+
+    connection = thread.mrp_conn
 
 
 def disconnect():
@@ -45,52 +55,71 @@ def disconnect():
 
 
 def list_classes():
+    global local_classes
+
     classes = connection.list_classes()
     assert classes is not None and classes
 
-    return classes
+    local_classes = classes
 
 
 def list_resources():
+    global local_resources
+
     resources = connection.list_resources()
     assert resources is not None and resources
 
-    return resources
+    local_resources = resources
 
 
 def list_zones():
+    global local_zones
+
     zones = connection.list_zones()
     assert zones is not None and zones
 
-    return zones
+    local_zones = zones
 
 
-def add_resource(name):
-    res = connection.get_resource(name)
+def add_resource(num):
+    res = connection.get_resource(local_resources[num - 1])
     assert res is not None
 
-    return res
+    added_resources.append(res)
 
 
-def build_set(resources, app_class, zone):
+def remove_resource(num):
+    name = local_resources[num - 1]
+
+    for res in list(added_resources):
+        if res.name is name:
+            added_resources.remove(res)
+            return
+
+
+def build_set():
+    global set_id
+
     res_set = mrp.ResourceSet()
 
-    for res in resources:
+    for res in added_resources:
         res_set.add_resource(res)
 
-    set_id = connection.create_set(res_set, app_class, zone)
+    set_id = connection.create_set(res_set, local_classes[0], local_zones[0])
     assert set_id is not None
 
-    return set_id
 
+def destroy_set():
+    global set_id
 
-def destroy_set(set_id):
     assert connection.destroy_set(set_id)
 
+    set_id = None
 
-def acquire_set(set_id):
+
+def acquire_set():
     assert connection.acquire_set(set_id)
 
 
-def release_set(set_id):
+def release_set():
     assert connection.release_set(set_id)
