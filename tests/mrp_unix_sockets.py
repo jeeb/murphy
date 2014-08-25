@@ -461,7 +461,7 @@ def read_field(byte_string):
     return Field(tag, value_type, value), general_read_amount
 
 
-def parse_default(byte_string, message):
+def parse_default(byte_string):
     """
     Parses an MRP_MSG_TAG_DEFAULT (default message type) structure from
     a byte string
@@ -475,9 +475,10 @@ def parse_default(byte_string, message):
             [variable length data (depends on type)]
 
     :param byte_string: Byte string to parse the message from
-    :param message:     MurphyMessage object to write the parsed information to
-    :return:            MurphyMessage containing the pased information
+    :return:            DefaultMessage containing the parsed information
     """
+    message = DefaultMessage()
+
     field_count, bytes_read = read_value(byte_string, "!H")
     byte_string = byte_string[bytes_read:]
     print("Field count in message: %s" % (field_count))
@@ -500,16 +501,14 @@ def parse_message(byte_string):
     :return:            None in case of failure, MurphyMessage instance with the
                         parsed fields otherwise
     """
-    message = MurphyMessage()
-
     # Message type [uint16 = message type (0x0 = default)]
-    message.type, bytes_read = read_value(byte_string, "!H")
+    msg_type, bytes_read = read_value(byte_string, "!H")
     byte_string = byte_string[bytes_read:]
 
-    if message.type == MRP_MSG_TAG_DEFAULT:
-        parse_default(byte_string, message)
+    if msg_type == MRP_MSG_TAG_DEFAULT:
+        message = parse_default(byte_string)
     else:
-        print("Unknown message type %s" % (message.type))
+        print("Unknown message type %s" % (msg_type))
         return None
 
     return message
@@ -790,12 +789,12 @@ class MurphyMessage(object):
 
 
 class DefaultMessage(MurphyMessage):
-    def __init__(self, seq_num):
+    def __init__(self, seq_num=None):
         """
         Abstraction of a Murphy resource protocol message of the type
         MRP_MSG_TAG_DEFAULT
 
-        :param seq_num: Sequence number of this message
+        :param seq_num: Optional, sequence number of this message
         """
         super(DefaultMessage, self).__init__()
         self.type = MRP_MSG_TAG_DEFAULT
