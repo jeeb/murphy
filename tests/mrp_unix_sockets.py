@@ -1336,8 +1336,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
                           Additionally, with unix sockets one can prefix the socket name with @,
                           which will use an abstract unix socket
-        :param daemonize: Optional boolean, defaults to True. Defines whether or not the internal
-                          socket thread is created as daemon or not
         :raises:          ValueError in case the protocol type was unknown
         """
         asyncore.dispatcher_with_send.__init__(self)
