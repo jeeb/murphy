@@ -1323,7 +1323,7 @@ class Field(object):
 
 
 class MurphyConnection(asyncore.dispatcher_with_send):
-    def __init__(self, address, daemonize=True):
+    def __init__(self, address):
         """
         Abstracts a connection to Murphy
 
@@ -1365,9 +1365,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_set = ResourceSet()
 
         self._running = True
-        self.thread = Thread(target=self.run_loop)
-        self.thread.daemon = daemonize
-        self.thread.start()
 
     def close(self):
         """
@@ -1811,3 +1808,18 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             return res_set.copy()
         else:
             return None
+
+
+class MurphyConnectionThread(Thread):
+    def __init__(self, address):
+        super(MurphyConnectionThread, self).__init__()
+        self.daemon = True
+        self.mrp_conn = MurphyConnection(address)
+        self.start()
+
+    def run(self):
+        self.mrp_conn.run_loop()
+
+    @property
+    def conn(self):
+        return self.mrp_conn
