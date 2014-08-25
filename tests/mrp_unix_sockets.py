@@ -1712,7 +1712,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         response = self.send_request_with_event(message)
         if response is None:
-            print("E: Set creation failed")
+            print("E: Set creation request failed")
 
         for field in response.fields:
             if field.type is RESPROTO_RESOURCE_SET_ID:
@@ -1734,7 +1734,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         """
         response = self.send_request(ResourceSetDestruction(self.next_seq_num, set_id))
         if response is None:
-            print("E: Zone listing request failed")
+            print("E: Set destruction request failed")
             return None
 
         # The resource set was successfully destroyed, remove it from the internal list
@@ -1756,7 +1756,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         response = self.send_request_with_event(message)
         if response is None:
-            print("E: Set acquisition query failed")
+            print("E: Set acquisition request failed")
             return None
 
         for field in response.fields:
@@ -1781,7 +1781,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         response = self.send_request_with_event(message)
         if response is None:
-            print("E: Set release query failed")
+            print("E: Set release request failed")
             return None
 
         for field in response.fields:
