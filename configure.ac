@@ -597,19 +597,42 @@ fi
 AC_CHECK_PROG(fmbt_found,fmbt,yes,no)
 AC_CHECK_PROG(fmbt_log_found,fmbt-log,yes,no)
 AC_CHECK_PROG(remote_pyaal_found,remote_pyaal,yes,no)
-AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_found" = "yes" -a \
-                                     "$fmbt_log_found" = "yes" -a \
-                                     "$remote_pyaal_found" = "yes"])
+AS_IF( [ test "$fmbt_found" = "yes" -a \
+         "$fmbt_log_found" = "yes" -a \
+         "$remote_pyaal_found" = "yes" ],
+       [ fmbt_available="yes" ],
+       [ fmbt_available="no" ] )
+
+AM_CONDITIONAL(FMBT_AVAILABLE, [test "$fmbt_available" = "yes"])
 AC_SUBST(FMBT_AVAILABLE)
 
-if test "$fmbt_found" = "no" -o "$fmbt_log_found" = "no" -o \
-        "$remote_pyaal_found" = "no"; then
-    AC_MSG_WARN([fMBT testing tool not found, fMBT-based tests are DISABLED.])
-else
+if test "$fmbt_available" = "yes"; then
     AC_MSG_NOTICE([fMBT testing tools found, enabling fMBT-based tests.])
+else
+    AC_MSG_WARN([fMBT testing tool not found, fMBT-based tests are DISABLED.])
 fi
 
+# Check for ws4py
+if test "$fmbt_available" = "yes" -a "$enable_websockets" = "yes"; then
+    AC_PATH_TOOL([MRP_PYTHON], python)
+    if test "$MRP_PYTHON" != ""; then
+        # If we have Python, check if ws4py and the exact thing we use are found
+        echo "from ws4py.client.threadedclient import WebSocketClient" | "$MRP_PYTHON"
+        AS_IF( [ test "$?" -eq 0 ],
+               [ ws4py_found="yes" ],
+               [ ws4py_found="no" ] )
 
+        # Print out the results
+        if test "$ws4py_found" = "yes"; then
+            AC_MSG_NOTICE([ws4py found, enabling the fMBT websockets tests.])
+        else
+            AC_MSG_WARN([websockets and fMBT tests are enabled, but ws4py is not found, fMBT websockets tests are DISABLED.])
+        fi
+    fi
+fi
+
+AM_CONDITIONAL(WS4PY_AVAILABLE, [test "$ws4py_found" = "yes"])
+AC_SUBST(WS4PY_AVAILABLE)
 
 # Check for documentation tools
 AC_ARG_WITH([documentation],
