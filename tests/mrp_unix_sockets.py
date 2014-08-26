@@ -28,7 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-from threading import Thread
+from threading import Thread, Lock
 from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM, SHUT_RDWR)
 from struct import (calcsize, pack, unpack)
 import asyncore
@@ -1362,7 +1362,14 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         self._internal_set = ResourceSet()
 
+        self._write_lock = Lock()
+
         self._running = True
+
+    def initiate_send(self):
+        self._write_lock.acquire()
+        asyncore.dispatcher_with_send.initiate_send(self)
+        self._write_lock.release()
 
     def close(self):
         """
