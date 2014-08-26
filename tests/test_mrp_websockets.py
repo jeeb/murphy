@@ -30,6 +30,15 @@
 
 from mrp_websockets import MurphyConnection
 
+connection = None
+local_resources = []
+local_classes = []
+local_zones = []
+
+added_resources = []
+
+set_id = None
+
 def connect():
     global connection
 
@@ -46,47 +55,55 @@ def disconnect():
 
 
 def list_classes():
-    classes = connection.list_classes()
-    assert classes is not None and classes
-
-    return classes
+    global local_classes
+    local_classes = connection.list_classes()
+    assert local_classes is not None and local_classes
 
 
 def list_resources():
-    resources = connection.list_resources()
-    assert resources is not None and resources
-
-    return resources
+    global local_resources, added_resources
+    local_resources = connection.list_resources()
+    added_resources = []
+    assert local_resources is not None and local_resources
 
 
 def list_zones():
-    zones = connection.list_zones()
-    assert zones is not None and zones
+    global local_zones
+    local_zones = connection.list_zones()
+    assert local_zones is not None and local_zones
 
-    return zones
 
-
-def add_resource(name):
-    res = connection.get_resource(name)
+def add_resource(num):
+    res = connection.get_resource(local_resources[num - 1])
     assert res is not None
 
-    return res
+    added_resources.append(res)
 
 
-def build_set(resources, app_class, zone, priority):
-    set_id = connection.create_set(app_class, zone, priority, resources)
+def remove_resource(num):
+    name = local_resources[num - 1]
+
+    for res in list(added_resources):
+        if res.name == name:
+            added_resources.remove(res)
+            return
+
+
+def build_set():
+    global set_id
+    set_id = connection.create_set(local_classes[0], local_zones[0], 0, added_resources)
     assert set_id is not None
 
-    return set_id
 
-
-def destroy_set(set_id):
+def destroy_set():
+    global set_id
     assert connection.destroy_set(set_id)
+    set_id = None
 
 
-def acquire_set(set_id):
+def acquire_set():
     assert connection.acquire_set(set_id)
 
 
-def release_set(set_id):
+def release_set():
     assert connection.release_set(set_id)
