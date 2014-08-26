@@ -30,11 +30,11 @@ aal "murphy_websockets" {
         from test_mrp_websockets import *
     }
 
-    # preview-show-vars: connected, app_classes_listed, resources_listed, set_created, set_acquired, set_locked, autorelease_enabled, resource_added, attributes_listed, attribute_modified
+    # preview-show-vars: connected, classes, resources, zones, set_acquired, set_locked, available_res_count
     # preview-depth: 10
     variables {
-        connected, classes, resources, zones, res_objs, \
-        set_id, set_acquired, set_locked
+        connected, classes, resources, zones, \
+        set_acquired, set_locked, available_res_count
     }
 
     initial_state {
@@ -42,11 +42,10 @@ aal "murphy_websockets" {
         classes = None
         resources = None
         zones = None
-        res_objs = []
 
-        set_id = None
         set_acquired = False
         set_locked = False
+        available_res_count = 4
     }
 
     # When we have no connection, we can just connect
@@ -65,14 +64,14 @@ aal "murphy_websockets" {
         input "disconnect" {
             body {
                 connected = False
-                classes = None
-                resources = None
-                zones = None
-                res_objs = []
 
-                set_id = None
+                classes = False
+                resources = False
+                zones = False
+
                 set_acquired = False
                 set_locked = False
+                available_res_count = 4
             }
             adapter {
                 disconnect()
@@ -81,42 +80,57 @@ aal "murphy_websockets" {
 
         input "add_resource" {
             guard {
-                return bool(resources)
+                return bool(available_res_count > 0 \
+                            and resources)
+            }
+            body {
+                available_res_count -= 1
             }
             adapter {
-                local_resource = resources.pop()
-                res_objs.append(add_resource(local_resource))
+                add_resource(available_res_count)
             }
         }
 
         input "remove_resource" {
             guard {
-                return bool(res_objs)
+                return bool(available_res_count < 4)
             }
             body {
-                local_resource = res_objs.pop()
-                resources.append(local_resource.name)
+                available_res_count += 1
+            }
+            adapter {
+                remove_resource(available_res_count)
             }
         }
 
         input "list_classes" {
-            guard { return classes is None }
+            guard { return not classes }
+            body {
+                classes = True
+            }
             adapter {
-                classes = list_classes()
+                list_classes()
             }
         }
 
         input "list_resources" {
-            guard { return resources is None }
+            guard { return not resources }
+            body {
+                resources = True
+                available_res_count = 4
+            }
             adapter {
-                resources = list_resources()
+                list_resources()
             }
         }
 
         input "list_zones" {
-            guard { return zones is None }
+            guard { return not zones }
+            body {
+                zones = True
+            }
             adapter {
-                zones = list_zones()
+                list_zones()
             }
         }
     }
@@ -124,35 +138,33 @@ aal "murphy_websockets" {
     # Now we have resource objects that we can make a
     # set of
     tag "resource available" {
-        guard { return bool(res_objs) }
+        guard { return available_res_count < 4 }
 
         input "build_res_set" {
             guard {
-                return set_id is None and \
-                       bool(classes) and \
-                       bool(zones)
+                return classes and \
+                       zones
             }
             body {
                 set_locked = True
             }
             adapter {
-                set_id = build_set(res_objs, classes[0], zones[0], 0)
+                build_set()
             }
         }
     }
 
     # Now we have a resource set available
     tag "set available" {
-        guard { return set_id is not None }
+        guard { return set_locked }
 
         input "destroy_res_set" {
             body {
                 set_locked = False
                 set_acquired = False
-                set_id = None
             }
             adapter {
-                destroy_set(set_id)
+                destroy_set()
             }
         }
 
@@ -162,7 +174,7 @@ aal "murphy_websockets" {
                     set_acquired = True
             }
             adapter {
-                acquire_set(set_id)
+                acquire_set()
             }
         }
 
@@ -171,7 +183,7 @@ aal "murphy_websockets" {
                 set_acquired = False
             }
             adapter {
-                release_set(set_id)
+                release_set()
             }
         }
     }
