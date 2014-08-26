@@ -26,9 +26,11 @@ NEEDED_LOGS += test_mrp_dbus.log
 endif
 
 if WEBSOCKETS_ENABLED
+if WS4PY_AVAILABLE
 TESTS += test_mrp_websockets.conf
 test_mrp_websockets.log: run_murphyd.log
 NEEDED_LOGS += test_mrp_websockets.log
+endif
 endif
 
 if BUILD_RESOURCES
