@@ -617,7 +617,7 @@ if test "$fmbt_available" = "yes" -a "$enable_websockets" = "yes"; then
     AC_PATH_TOOL([MRP_PYTHON], python)
     if test "$MRP_PYTHON" != ""; then
         # If we have Python, check if ws4py and the exact thing we use are found
-        echo "from ws4py.client.threadedclient import WebSocketClient" | "$MRP_PYTHON"
+        echo "from ws4py.client.threadedclient import WebSocketClient" | "$MRP_PYTHON" >&AS_MESSAGE_LOG_FD 2>&1
         AS_IF( [ test "$?" -eq 0 ],
                [ ws4py_found="yes" ],
                [ ws4py_found="no" ] )
