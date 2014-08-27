@@ -29,11 +29,11 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-def get_test_value_by_type(type):
+def get_test_value_by_type(murphy_type_char):
     """
     Returns a value meant for testing of a given Murphy attribute type
 
-    :param type: Murphy attribute type given as a single-character string
+    :param murphy_type_char: Murphy attribute type given as a single-character string
     :return:     A valid value that can be used for testing of an attribute
     """
     return {
@@ -41,7 +41,7 @@ def get_test_value_by_type(type):
         "i": -9001,
         "u": 1192,
         "f": 3.14,
-    }.get(type)
+    }.get(murphy_type_char)
 
 
 def new_res_callback(new_res_set, opaque):

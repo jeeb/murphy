@@ -98,11 +98,11 @@ def pretty_str_dbus_dict(d, level=0):
     return s
 
 
-def get_test_value_by_type(type):
+def get_test_value_by_type(dbus_type):
     """
     Returns a value meant for testing of a given D-Bus value type
 
-    :param type: D-Bus type for which an example value is needed.
+    :param dbus_type: D-Bus type for which an example value is needed.
                  Currently implemented types are as follows:
                  * dbus.String
                  * dbus.Int32
@@ -116,7 +116,7 @@ def get_test_value_by_type(type):
         dbus.Int32:  -9001,
         dbus.UInt32: 1192,
         dbus.Double: 3.14,
-    }.get(type)
+    }.get(dbus_type)
 
 
 def example_callback(prop, value, original_thing, user_data):
@@ -257,16 +257,16 @@ class MandatorynessModification(Modification):
     """
     Subclass that wraps modification of a resource's mandatory field
     """
-    def __init__(self, bool):
-        super(MandatorynessModification, self).__init__("mandatory", bool)
+    def __init__(self, boolean):
+        super(MandatorynessModification, self).__init__("mandatory", boolean)
 
 
 class SharingModification(Modification):
     """
     Subclass that wraps modification of a resource's shared field
     """
-    def __init__(self, bool):
-        super(SharingModification, self).__init__("shared", bool)
+    def __init__(self, boolean):
+        super(SharingModification, self).__init__("shared", boolean)
 
 
 class Acquisition(Modification):
@@ -298,47 +298,47 @@ class ChangeManager():
         """
         self.change_sets = dict()
 
-    def get_changes(self, object):
+    def get_changes(self, mrp_dbus_object):
         """
         Gets the changes specific to an object
 
-        :param object: Object the changes of which are to be returned
+        :param mrp_dbus_object: Object the changes of which are to be returned
         :return:       None if there are no changes recorded for this object,
                        otherwise a list of changes recorded for this object
         """
-        path = object.get_path()
+        path = mrp_dbus_object.get_path()
         if path in self.change_sets:
             return self.change_sets[path]
         else:
             return None
 
-    def add_change(self, object, change):
+    def add_change(self, mrp_dbus_object, change):
         """
         Adds a change to the list of changes recorded for a given object. In
         case the object has not yet been recorded, a single-item list will be
         created of the given change
 
-        :param object: Object for which the change will be recorded
+        :param mrp_dbus_object: Object for which the change will be recorded
         :param change: Change that will be recorded
         :return:       Void
         """
-        path = object.get_path()
+        path = mrp_dbus_object.get_path()
         if path in self.change_sets:
             self.change_sets[path].append(change)
         else:
             self.change_sets[path] = [change]
 
-    def remove_change(self, object, change):
+    def remove_change(self, mrp_dbus_object, change):
         """
         Removes a change from the list of recorded changes for a given object.
         In case the list becomes empty by means of this removal, the object
         gets removed from the dictionary.
 
-        :param object: Object for which the change has been recorded
+        :param mrp_dbus_object: Object for which the change has been recorded
         :param change: Change that will be removed from record
         :return:       False if unsuccessful, True if successful
         """
-        path = object.get_path()
+        path = mrp_dbus_object.get_path()
         if path in self.change_sets:
             self.change_sets[path].remove(change)
             if not len(self.change_sets[path]):
@@ -347,15 +347,15 @@ class ChangeManager():
         else:
             return False
 
-    def remove_changes(self, object):
+    def remove_changes(self, mrp_dbus_object):
         """
         Removes all changes from the list of recorded changes for a given object,
         and the object itself is purged from the dictionary
 
-        :param object: Object which is to be cleansed
+        :param mrp_dbus_object: Object which is to be cleansed
         :return:       False if unsuccessful, True if successful
         """
-        path = object.get_path()
+        path = mrp_dbus_object.get_path()
         if path in self.change_sets:
             del(self.change_sets[path])
             return True
@@ -370,25 +370,25 @@ class ChangeManager():
         """
         return bool(len(self.change_sets))
 
-    def was_this_an_expected_change(self, object, key, value):
+    def was_this_an_expected_change(self, mrp_dbus_object, key, value):
         """
         Checks if a given change for a given object was recorded. If such a
         change was found, that change will also be removed from the list of
         recorded changes for given object.
 
-        :param object: Object for which the change was recorded for
+        :param mrp_dbus_object: Object for which the change was recorded for
         :param key:    Key of the change
         :param value:  Value of the change
         :return:       False if change was not found, True if it was found
                        as well as removed
         """
-        available_changes = self.get_changes(object)
+        available_changes = self.get_changes(mrp_dbus_object)
         print("Beep: %s" % (available_changes))
         if available_changes:
             for c in list(available_changes):
                 if c.check(key, value):
                     print(c)
-                    self.remove_change(object, c)
+                    self.remove_change(mrp_dbus_object, c)
                     return True
 
         return False

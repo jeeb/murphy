@@ -37,9 +37,9 @@ from mrp_status import Status, StatusQueue
 
 # For basic Py2/Py3 compatibility
 try:
-    MRP_RANGE = xrange
+    mrp_range = xrange
 except NameError:
-    MRP_RANGE = range
+    mrp_range = range
 
 MRP_DEFAULT_ADDRESS = b"unxs:@murphy-resource-native"
 MRP_DEFAULT_RECEIVE_SIZE = 4096
@@ -115,7 +115,7 @@ MRP_MSG_FIELD_END = 0x00
  RESPROTO_ZONE_NAME,
  RESPROTO_ATTRIBUTE_INDEX,
  RESPROTO_ATTRIBUTE_NAME,
- RESPROTO_ATTRIBUTE_VALUE) = MRP_RANGE(0x00, 0x13)
+ RESPROTO_ATTRIBUTE_VALUE) = mrp_range(0x00, 0x13)
 
 
 def type_to_string(field_type):
@@ -187,7 +187,7 @@ def type_to_data_type(field_type):
  RESPROTO_DESTROY_RESOURCE_SET,
  RESPROTO_ACQUIRE_RESOURCE_SET,
  RESPROTO_RELEASE_RESOURCE_SET,
- RESPROTO_RESOURCES_EVENT) = MRP_RANGE(0x00, 0x08)
+ RESPROTO_RESOURCES_EVENT) = mrp_range(0x00, 0x08)
 
 
 def request_type_to_string(query_type):
@@ -421,7 +421,7 @@ def read_field_value(byte_string, value_type):
 
         value = []
 
-        for _ in MRP_RANGE(counter):
+        for _ in mrp_range(counter):
             parsed_value, bytes_read = read_field_value(byte_string, value_type)
             value.append(parsed_value)
             byte_string = byte_string[bytes_read:]
@@ -483,7 +483,7 @@ def parse_default(byte_string):
     byte_string = byte_string[bytes_read:]
     print("Field count in message: %s" % (field_count))
 
-    for _ in MRP_RANGE(field_count):
+    for _ in mrp_range(field_count):
         field, bytes_read = read_field(byte_string)
         byte_string = byte_string[bytes_read:]
 

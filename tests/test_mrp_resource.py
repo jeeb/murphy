@@ -56,8 +56,8 @@ def disconnect():
     global conn, res_sets
 
     # Remove all leftover resource sets
-    for set in res_sets:
-        set.delete()
+    for res_set in res_sets:
+        res_set.delete()
 
     # Reset the list
     res_sets = []
@@ -96,9 +96,9 @@ def remove_res_set():
     assert pre_count
 
     # Remove the actual resource set
-    set = res_sets[0]
-    set.delete()
-    res_sets.remove(set)
+    res_set = res_sets[0]
+    res_set.delete()
+    res_sets.remove(res_set)
 
     # Reset information stored in the opaque user data
     update_state_dumps(conn, None)
@@ -118,27 +118,27 @@ def set_class(failure_expected=False):
 def add_resource():
     global conn, res_sets
 
-    set = res_sets[0]
+    res_set = res_sets[0]
     res_list = conn.list_resources()
     res_names = res_list.list_resource_names()
 
-    assert set.create_resource(res_names[0])
+    assert res_set.create_resource(res_names[0])
     # Update the state dumps in opaque user data
-    update_state_dumps(conn, set)
+    update_state_dumps(conn, res_set)
 
 
 def remove_resource():
     global conn, res_sets
 
-    set = res_sets[0]
-    res_names = set.list_resource_names()
+    res_set = res_sets[0]
+    res_names = res_set.list_resource_names()
     assert len(res_names)
 
     name = res_names[0]
 
-    set.delete_resource_by_name(name)
+    res_set.delete_resource_by_name(name)
     # Update the state dumps in opaque user data
-    update_state_dumps(conn, set)
+    update_state_dumps(conn, res_set)
 
 
 def modify_attribute(failure_expected=False):
@@ -171,8 +171,8 @@ def make_resource_unshareable():
 def acquire_set():
     global res_sets
     assert len(res_sets)
-    set = res_sets[0]
-    assert set.acquire()[0]
+    res_set = res_sets[0]
+    assert res_set.acquire()[0]
     conn.get_opaque_data().res_set_state.set_acquired()
     check_results(conn)
 
@@ -180,7 +180,7 @@ def acquire_set():
 def release_set():
     global res_sets
     assert len(res_sets)
-    set = res_sets[0]
-    assert set.release()[0]
+    res_set = res_sets[0]
+    assert res_set.release()[0]
     conn.get_opaque_data().res_set_state.set_released()
     check_results(conn)

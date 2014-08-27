@@ -35,17 +35,17 @@ from mrp_resource_native_helpers import (new_res_callback, py_status_callback, S
 import sys
 
 
-def actual_test_steps(conn):
+def actual_test_steps(connection):
     # Create a clean, empty new resource set
     print("Entered actual test steps")
-    res_set = conn.create_resource_set(new_res_callback, "player")
+    res_set = connection.create_resource_set(new_res_callback, "player")
     if not res_set:
         print("Failed to create a resource set")
         return False
 
     # We hold the currently worked upon res_set
     # in the opaque data
-    conn.get_opaque_data().res_set = res_set
+    connection.get_opaque_data().res_set = res_set
 
     # Add the audio_playback resource to the empty set
     resource = res_set.create_resource("audio_playback")
@@ -62,9 +62,9 @@ def actual_test_steps(conn):
     return acquired_status
 
 
-def check_tests_results(conn):
+def check_tests_results(connection):
     # Check new status
-    res_set = conn.get_opaque_data().res_set
+    res_set = connection.get_opaque_data().res_set
     if res_set.get_state() != "acquired":
         print("FirstTest: Something went wrong, resource set's not ours")
         return False

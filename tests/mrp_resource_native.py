@@ -36,9 +36,9 @@ from ctypes import (Structure, Union, POINTER, pointer, CFUNCTYPE,
 
 # For basic Py2/Py3 compatibility
 try:
-    xrange
+    mrp_range = xrange
 except NameError:
-    xrange = range
+    mrp_range = range
 
 # Murphy resource-native API related defines
 (MRP_RES_CONNECTED, MRP_RES_DISCONNECTED) = (0, 1)
@@ -433,7 +433,7 @@ class Resource(object):
             mrp_reslib.mrp_res_list_attribute_names(pointer(self.res))
 
         if mrp_list:
-            for i in xrange(mrp_list.contents.num_strings):
+            for i in mrp_range(mrp_list.contents.num_strings):
                 attribute_list.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
@@ -611,7 +611,7 @@ class ResourceSet(object):
             mrp_reslib.mrp_res_list_resource_names(pointer(self.res_set))
 
         if mrp_list:
-            for i in xrange(mrp_list.contents.num_strings):
+            for i in mrp_range(mrp_list.contents.num_strings):
                 names.append(mrp_list.contents.strings[i])
 
             mrp_reslib.mrp_res_free_string_array(mrp_list)
@@ -894,7 +894,7 @@ class Connection(object):
             mrp_reslib.mrp_res_list_application_classes(pointer(self.res_ctx))
 
         if mrp_list:
-            for i in xrange(mrp_list.contents.num_strings):
+            for i in mrp_range(mrp_list.contents.num_strings):
                 class_list.append(mrp_list.contents.strings[i])
 
         return class_list
