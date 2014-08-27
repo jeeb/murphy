@@ -39,6 +39,7 @@ added_resources = []
 
 set_id = None
 
+
 def connect():
     global connection
 
