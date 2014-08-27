@@ -1379,7 +1379,6 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         """
         self._running = False
         self.socket.shutdown(SHUT_RDWR)
-        asyncore.dispatcher_with_send.close(self)
 
     def run_loop(self):
         """
@@ -1389,6 +1388,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         """
         while self._running:
             asyncore.loop(count=1)
+
+        asyncore.dispatcher_with_send.close(self)
 
     def read_message(self, read_buffer):
         """
@@ -1828,3 +1829,7 @@ class MurphyConnectionThread(Thread):
     @property
     def conn(self):
         return self.mrp_conn
+
+    def close(self):
+        self.conn.close()
+        self.join(None)
