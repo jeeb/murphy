@@ -34,7 +34,7 @@ from sys import argv
 if __name__ == "__main__":
     thread = mrp.MurphyConnectionThread(mrp.MRP_DEFAULT_ADDRESS)
 
-    conn = thread.mrp_conn
+    conn = thread.conn
 
     resources = conn.list_resources()
     print(resources)
