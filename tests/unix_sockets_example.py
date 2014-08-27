@@ -65,4 +65,5 @@ if __name__ == "__main__":
 
     conn.release_set(set_id)
     conn.destroy_set(set_id)
-    conn.close()
+
+    thread.close()
