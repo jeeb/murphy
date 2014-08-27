@@ -617,12 +617,16 @@ if test "$fmbt_available" = "yes" -a "$enable_websockets" = "yes"; then
     AC_PATH_TOOL([MRP_PYTHON], python)
     if test "$MRP_PYTHON" != ""; then
         # If we have Python, check if ws4py and the exact thing we use are found
+        AC_MSG_CHECKING([for ws4py])
+
         echo "from ws4py.client.threadedclient import WebSocketClient" | "$MRP_PYTHON" >&AS_MESSAGE_LOG_FD 2>&1
         AS_IF( [ test "$?" -eq 0 ],
                [ ws4py_found="yes" ],
                [ ws4py_found="no" ] )
 
         # Print out the results
+        AC_MSG_RESULT($ws4py_found)
+
         if test "$ws4py_found" = "yes"; then
             AC_MSG_NOTICE([ws4py found, enabling the fMBT websockets tests.])
         else
