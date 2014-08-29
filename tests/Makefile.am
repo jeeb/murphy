@@ -6,13 +6,13 @@ NEEDED_LOGS = run_murphyd.log
 # Actual tests requiring Murphy begin
 
 if BUILD_RESOURCES
-TESTS += test_mrp_resource_native.conf
-test_mrp_resource_native.log: run_murphyd.log
-NEEDED_LOGS += test_mrp_resource_native.log
+TESTS += test_mrp_libresource.conf
+test_mrp_libresource.log: run_murphyd.log
+NEEDED_LOGS += test_mrp_libresource.log
 
-TESTS += test_mrp_resource.conf
-test_mrp_resource_native.log: run_murphyd.log
-NEEDED_LOGS += test_mrp_resource.log
+TESTS += test_mrp_libresource_dbuslike.conf
+test_mrp_libresource_dbuslike.log: run_murphyd.log
+NEEDED_LOGS += test_mrp_libresource_dbuslike.log
 
 TESTS += test_mrp_unix_sockets.conf
 test_mrp_resource_native.log: run_murphyd.log

@@ -30,8 +30,8 @@
 
 import os
 os.environ["MRP_IN_TREE"] = "1"
-from mrp_resource_native import (Connection)
-from mrp_resource_native_helpers import (new_res_callback, py_status_callback, StatusObj)
+from mrp_libresource import (Connection)
+from mrp_libresource_helpers import (new_res_callback, py_status_callback, StatusObj)
 import sys
 
 
