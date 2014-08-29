@@ -25,9 +25,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-aal "murphy_resource" {
+aal "murphy_libresource" {
     language "python" {
-        from test_mrp_resource_native import *
+        from test_mrp_libresource import *
     }
 
     # preview-show-vars: connected, app_classes_listed, system_resources_listed, set_created, set_acquired, set_locked, autorelease_enabled, resource_added, attributes_listed, attribute_modified

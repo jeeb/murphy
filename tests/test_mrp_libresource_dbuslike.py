@@ -30,13 +30,13 @@
 
 import os
 os.environ["MRP_IN_TREE"] = "1"
-from mrp_resource_native import (Connection)
-from mrp_resource_native_helpers import (StatusObj,
-                                         py_status_callback,
-                                         get_test_value_by_type,
-                                         new_res_callback,
-                                         update_state_dumps,
-                                         check_results)
+from mrp_libresource import (Connection)
+from mrp_libresource_helpers import (StatusObj,
+                                     py_status_callback,
+                                     get_test_value_by_type,
+                                     new_res_callback,
+                                     update_state_dumps,
+                                     check_results)
 
 
 attr_name = "role"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-TEST_CONFS=( "test_mrp_dbus.conf" "test_mrp_resource.conf" )
+TEST_CONFS=( "test_mrp_dbus.conf" "test_mrp_libresource_dbuslike.conf" )
 ACTIONS=`fmbt -o adapter=dummy test_mrp_dbus.conf 2>/dev/null | fmbt-log -f '$ax'`
 
 run_test()
