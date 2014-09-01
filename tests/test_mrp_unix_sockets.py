@@ -31,6 +31,7 @@
 import mrp_unix_sockets as mrp
 
 connection = None
+thread = None
 local_resources = []
 local_classes = []
 local_zones = []
@@ -41,7 +42,7 @@ set_id = None
 
 
 def connect():
-    global connection
+    global connection, thread
 
     thread = mrp.MurphyConnectionThread(mrp.MRP_DEFAULT_ADDRESS)
 
@@ -49,9 +50,11 @@ def connect():
 
 
 def disconnect():
-    global connection
+    global connection, thread
 
-    connection.close()
+    thread.close()
+
+    thread = None
     connection = None
 
 
