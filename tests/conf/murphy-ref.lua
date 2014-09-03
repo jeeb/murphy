@@ -49,9 +49,19 @@ else
     m:info("No WRT resource plugin found...")
 end
 
--- load the domain control plugin if it exists
 if m:plugin_exists('domain-control') then
-    m:load_plugin('domain-control')
+    if m:plugin_exists('resource-wrt') then
+        -- load a domain-control instance with WRT export enabled
+        m:load_plugin('domain-control',
+             'wrt-export', {
+                wrt_address = "wsck:127.0.0.1:5000/murphy",
+                httpdir     = "../src/plugins/domain-control"  })
+        m:info("Loaded domain-control with websockets")
+    else
+        -- load a normal domain-control instance
+        m:load_plugin('domain-control')
+        m:info("Loaded domain-control without websockets")
+    end
 else
     m:info("No domain-control plugin found...")
 end
