@@ -29,7 +29,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from threading import Thread, Lock
-from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM, SHUT_RDWR)
+from socket import (AF_UNIX, AF_INET, AF_INET6, SOCK_STREAM, SHUT_RDWR, socket)
 from struct import (calcsize, pack, unpack)
 import asyncore
 
@@ -1349,7 +1349,9 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         if family is AF_UNIX and address[0] == b"@"[0]:
             address = b"\0" + address[1:]
 
-        self.create_socket(family, SOCK_STREAM)
+        sock = socket(family, SOCK_STREAM)
+        sock.setblocking(1)
+        self.set_socket(sock)
         self.connect(address)
 
         self.family = family
@@ -1363,6 +1365,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
         self._internal_set = ResourceSet()
 
         self._write_lock = Lock()
+        self._read_lock = Lock()
 
         self._running = True
 
@@ -1515,6 +1518,7 @@ class MurphyConnection(asyncore.dispatcher_with_send):
 
         :return: Void
         """
+        self._read_lock.acquire()
         # Do an initial read
         read_buffer = self.recv(MRP_DEFAULT_RECEIVE_SIZE)
 
@@ -1525,6 +1529,8 @@ class MurphyConnection(asyncore.dispatcher_with_send):
             print(message.pretty_print())
             read_buffer = read_buffer[message_size:]
             print("Reader length: %s" % (len(read_buffer)))
+
+        self._read_lock.release()
 
     def send_message(self, byte_string):
         """
