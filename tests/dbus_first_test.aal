@@ -1,5 +1,7 @@
 aal "dbus_first_test" {
-    language "python" {}
+    language "python" {
+        from test_mrp_dbus import *
+    }
 
     # preview-hide-vars:
     # preview-depth: 5
