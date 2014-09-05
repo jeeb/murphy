@@ -1,0 +1,17 @@
+aal "noname" {
+    language "python" {}
+
+    # preview-hide-vars:
+    # preview-depth: 5
+    variables {
+        varname1, varname2
+    }
+    initial_state {
+        varname1 = 42        # comment1
+        varname2 = 'hello' # comment2
+    }
+    input "test step 1" {
+        guard { return varname1 == 42 }
+        body  { varname2 = 'bye' }
+    }
+}
