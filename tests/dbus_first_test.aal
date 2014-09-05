@@ -12,4 +12,14 @@ aal "dbus_first_test" {
     initial_state {
         set_created = False
     }
+
+    input "create_set" {
+        guard { return not set_created }
+        body { set_created = True }
+        adapter {
+            connect()
+            create_res_set()
+            add_resource()
+        }
+    }
 }
