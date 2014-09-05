@@ -1,4 +1,4 @@
-aal "noname" {
+aal "dbus_first_test" {
     language "python" {}
 
     # preview-hide-vars:
