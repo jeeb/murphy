@@ -22,4 +22,29 @@ aal "dbus_first_test" {
             add_resource()
         }
     }
+
+    tag "set available" {
+        guard { return set_created }
+
+        input "acquire set" {
+            adapter {
+                acquire_set()
+            }
+        }
+
+        input "release set" {
+            adapter {
+                release_set()
+            }
+        }
+
+        input "disconnect" {
+            body {
+                set_created = False
+            }
+            adapter {
+                disconnect()
+            }
+        }
+    }
 }
