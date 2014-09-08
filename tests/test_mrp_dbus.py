@@ -263,11 +263,13 @@ def acquire_set():
     global res_sets
 
     res_set = res_sets[0]
+    will_we_get_callback = not (res_set.get_state() == "acquired")
 
     assert res_set.request()
-    c_manager.add_change(res_set, Acquisition())
-    conn.get_mainloop().run()
-    assert res_set.get_state() == "acquired"
+    if will_we_get_callback:
+        c_manager.add_change(res_set, Acquisition())
+        conn.get_mainloop().run()
+        assert res_set.get_state() == "acquired"
 
     print(res_set.pretty_print())
     print("<<< AcquireSet")
