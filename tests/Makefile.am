@@ -41,6 +41,12 @@ NEEDED_LOGS += run_multiprotocol_comparison.log
 endif
 endif
 
+if DBUS_ENABLED
+TESTS += dbus_first_test.conf
+dbus_first_test.log: run_murphyd.log
+NEEDED_LOGS += dbus_first_test.conf
+endif # DBUS_ENABLED
+
 # Actual tests requiring Murphy end
 
 TESTS += stop_murphyd.sh
