@@ -6,11 +6,15 @@ aal "dbus_first_test" {
     # preview-hide-vars:
     # preview-depth: 5
     variables {
-        set_created
+        set_created, \
+        set_acquired, \
+        set_updating
     }
 
     initial_state {
         set_created = False
+        set_acquired = False
+        set_updating = False
     }
 
     input "create_set" {
@@ -27,12 +31,20 @@ aal "dbus_first_test" {
         guard { return set_created }
 
         input "acquire set" {
+            body {
+                set_acquired = True
+                set_updating = True
+            }
             adapter {
                 acquire_set()
             }
         }
 
         input "release set" {
+            body {
+                set_acquired = False
+                set_updating = True
+            }
             adapter {
                 release_set()
             }
@@ -40,7 +52,9 @@ aal "dbus_first_test" {
 
         input "disconnect" {
             body {
+                set_acquired = False
                 set_created = False
+                set_updating = False
             }
             adapter {
                 disconnect()
