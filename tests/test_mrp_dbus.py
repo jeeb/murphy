@@ -66,6 +66,7 @@ def disconnect():
         res_sets.remove(res_set)
 
     print(conn.pretty_print())
+    conn.disconnect()
     conn.get_mainloop().quit()
     conn = None
 

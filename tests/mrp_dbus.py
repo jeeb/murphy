@@ -672,6 +672,11 @@ class Connection(object):
 
         self.int_callback = connection_internal_callback
 
+        self.callback_registration = None
+
+    def disconnect(self):
+        self.callback_registration.remove()
+
     def create_resource_set(self):
         """
         Creates a resource set, which is the basic unit of acquiring and releasing resources. Resources can be
@@ -733,7 +738,7 @@ class Connection(object):
         self.cb_set = cb
         self.user_data = user_data
 
-        self.interface.connect_to_signal("propertyChanged", self.int_callback)
+        self.callback_registration = self.interface.connect_to_signal("propertyChanged", self.int_callback)
 
     def get_mainloop(self):
         """
